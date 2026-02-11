@@ -75,6 +75,12 @@ Includes:
 
 ---
 
+## 👥 Contributors
+
+- **Kumar Mannepalli** ([@KumarMannepalli](https://github.com/KumarMannepalli)) - mannepallikumar55@gmail.com
+
+---
+
 <p align="center">
   Built with ❤️ for the builder community. 
 </p>
