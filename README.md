@@ -77,6 +77,7 @@ Includes:
 
 ## 👥 Contributors
 
+- **Venu Thota** ([@SamppurnaTH](https://github.com/SamppurnaTH))
 - **Kumar Mannepalli** ([@KumarMannepalli](https://github.com/KumarMannepalli)) - mannepallikumar55@gmail.com
 
 ---
