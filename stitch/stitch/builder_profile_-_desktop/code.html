@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Builder Profile - ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f24a0d",
+                        "background-light": "#f8f6f5",
+                        "background-dark": "#412653", // Updated to the requested background color
+                        "steel-blue": "#4682B4",
+                        "space-magenta": "#ff00ff",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .glass-card {
+            background: rgba(70, 130, 180, 0.15);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-white min-h-screen">
+<div class="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden">
+<!-- Top Navigation -->
+<div class="layout-container flex h-full grow flex-col">
+<div class="w-full flex justify-center border-b border-white/10">
+<div class="layout-content-container flex flex-col max-w-[1200px] flex-1">
+<header class="flex items-center justify-between whitespace-nowrap px-10 py-4">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-white">
+<div class="size-6 text-primary">
+<span class="material-symbols-outlined !text-3xl">rocket_launch</span>
+</div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-tight font-display">ShipSpace</h2>
+</div>
+<label class="flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-full h-full bg-white/5 border border-white/10 overflow-hidden">
+<div class="text-white/50 flex items-center justify-center pl-4">
+<span class="material-symbols-outlined !text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden text-white focus:outline-0 focus:ring-0 border-none bg-transparent h-full placeholder:text-white/30 px-4 text-sm font-normal" placeholder="Search Builders" value=""/>
+</div>
+</label>
+</div>
+<div class="flex flex-1 justify-end gap-8 items-center">
+<div class="flex items-center gap-9">
+<a class="text-white/80 hover:text-white text-sm font-medium transition-colors" href="#">Missions</a>
+<a class="text-white/80 hover:text-white text-sm font-medium transition-colors" href="#">Hangar</a>
+<a class="text-white/80 hover:text-white text-sm font-medium transition-colors" href="#">Terminal</a>
+</div>
+<div class="flex gap-3">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center rounded-full h-10 bg-white/5 text-white min-w-0 px-3 border border-white/10">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex min-w-[100px] cursor-pointer items-center justify-center rounded-full h-10 px-5 bg-primary text-white text-sm font-bold shadow-lg shadow-primary/20">
+<span>Profile</span>
+</button>
+</div>
+</div>
+</header>
+</div>
+</div>
+<main class="flex flex-1 justify-center py-8">
+<div class="layout-content-container flex flex-col max-w-[1200px] flex-1 px-4 md:px-10 gap-8">
+<!-- Profile Header Section -->
+<div class="flex p-6 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+<div class="flex w-full flex-col gap-6 @[520px]:flex-row @[520px]:justify-between @[520px]:items-center">
+<div class="flex gap-6 items-center">
+<div class="relative">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-32 w-32 border-4 border-primary/20" data-alt="Portrait of Commander Alex Rivera in a spacesuit" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA5xb73pDOi1L32WMHdtS6DFusvODNaN5TbnTw0cCNIbouo8x66r4IGVd_Ut-LYdnSWQvLAckQ5BEoDb0piOm6VTzhLsfWQs900lyk0LjAyyiMNTId4pfZ-386GwXTanImDHbkyksnwPLtyvNSxjwMNvkotgSyXWirqsdlgDVzn3cnBzss2q0n5mZEYKNrPQt8SokRYQ1uefUt8D0Pgk4B5F8LD1qmoJYoiP9IK_mCzMQd5gIGRz2MRUID6jDzQMONKgWbiVDjOWhg");'></div>
+<div class="absolute bottom-1 right-1 h-6 w-6 bg-green-500 rounded-full border-4 border-[#412653]"></div>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-3xl font-bold leading-tight tracking-tight font-display">Commander Alex Rivera</h1>
+<p class="text-white/60 text-lg font-normal">@arivera • Lead Systems Architect</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="flex h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+<p class="text-primary text-sm font-bold tracking-widest uppercase">Orbiting (Available for Missions)</p>
+</div>
+</div>
+</div>
+<div class="flex w-full max-w-[400px] gap-4">
+<button class="flex-1 min-w-[120px] cursor-pointer items-center justify-center rounded-full h-12 px-6 bg-primary text-white text-base font-bold transition-all hover:scale-105 active:scale-95 shadow-xl shadow-primary/30">
+<span class="truncate">Follow</span>
+</button>
+<button class="flex-1 min-w-[120px] cursor-pointer items-center justify-center rounded-full h-12 px-6 bg-white/10 text-white text-base font-bold border border-white/10 hover:bg-white/20 transition-all">
+<span class="truncate">Hire for Mission</span>
+</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Column: Bio and Badges -->
+<div class="lg:col-span-2 flex flex-col gap-8">
+<!-- Action Panel: Status Toggle -->
+<div class="flex flex-col items-start justify-between gap-4 rounded-xl border border-white/10 bg-white/5 p-6 @[480px]:flex-row @[480px]:items-center">
+<div class="flex flex-col gap-1">
+<p class="text-white text-lg font-bold font-display">Mission Status</p>
+<p class="text-white/50 text-base font-normal">Toggle your availability for deep space deployments</p>
+</div>
+<label class="relative flex h-[36px] w-[64px] cursor-pointer items-center rounded-full border-none bg-white/10 p-1 has-[:checked]:justify-end has-[:checked]:bg-primary transition-all duration-300">
+<div class="h-full w-[28px] rounded-full bg-white shadow-lg"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+<!-- Badge Shelf -->
+<div>
+<h2 class="text-white text-xl font-bold leading-tight tracking-tight px-1 pb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-space-magenta">military_tech</span>
+                                    Badge Shelf
+                                </h2>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="flex flex-col gap-3 rounded-xl border border-space-magenta/30 bg-space-magenta/5 p-5 items-center text-center hover:bg-space-magenta/10 transition-colors">
+<div class="text-space-magenta">
+<span class="material-symbols-outlined !text-4xl">rocket</span>
+</div>
+<h3 class="text-white text-sm font-bold font-display">First Launch</h3>
+</div>
+<div class="flex flex-col gap-3 rounded-xl border border-space-magenta/30 bg-space-magenta/5 p-5 items-center text-center hover:bg-space-magenta/10 transition-colors">
+<div class="text-space-magenta">
+<span class="material-symbols-outlined !text-4xl">construction</span>
+</div>
+<h3 class="text-white text-sm font-bold font-display">Mission Builder</h3>
+</div>
+<div class="flex flex-col gap-3 rounded-xl border border-space-magenta/30 bg-space-magenta/5 p-5 items-center text-center hover:bg-space-magenta/10 transition-colors">
+<div class="text-space-magenta">
+<span class="material-symbols-outlined !text-4xl">star</span>
+</div>
+<h3 class="text-white text-sm font-bold font-display">Deep Space</h3>
+</div>
+<div class="flex flex-col gap-3 rounded-xl border border-space-magenta/30 bg-space-magenta/5 p-5 items-center text-center hover:bg-space-magenta/10 transition-colors">
+<div class="text-space-magenta">
+<span class="material-symbols-outlined !text-4xl">public</span>
+</div>
+<h3 class="text-white text-sm font-bold font-display">Nebula Architect</h3>
+</div>
+</div>
+</div>
+<!-- Project Gallery -->
+<div>
+<div class="flex justify-between items-end pb-4 px-1">
+<h2 class="text-white text-xl font-bold font-display flex items-center gap-2">
+<span class="material-symbols-outlined text-steel-blue">inventory_2</span>
+                                        Project Gallery
+                                    </h2>
+<a class="text-primary text-sm font-bold hover:underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Card 1 -->
+<div class="rounded-xl overflow-hidden glass-card group">
+<div class="h-48 w-full bg-cover bg-center transition-transform group-hover:scale-105" data-alt="Blue glowing futuristic interface design" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCGZIxme2SxV0EXCP8qbbIkck946_ak8NIeXz7ezJ0w1KdFIrt38E6mQFCt8rJuQ634fTiiwqCV-zfK55YQAHV42qn7Zja0tMEv_FwoZy9IVLippVavsdW9Um3-F-ARkhfN5bl7-C-rBg6Kiu-rLSNkHgq6FZJkiRiTe1FY8Xinf8h--YpzPSmsdhLrXgN-WgDlJbFhZja-Fjp9uwcpGO_CbauugWb8nHVIbv5mYmAXE2RhWS05VowpWGFWwi0FiwAjr66cWMMGENc");'></div>
+<div class="p-5 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<h3 class="text-white text-lg font-bold font-display">Nebula Engine v2</h3>
+<span class="text-[10px] bg-primary/20 text-primary px-2 py-1 rounded-full font-bold uppercase tracking-widest">Live</span>
+</div>
+<p class="text-white/60 text-sm line-clamp-2">High-performance rendering engine for planetary simulation and light-speed calculations.</p>
+<div class="flex gap-2">
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">Rust</span>
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">Wasm</span>
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">WebGPU</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="rounded-xl overflow-hidden glass-card group">
+<div class="h-48 w-full bg-cover bg-center transition-transform group-hover:scale-105" data-alt="Cybernetic network connections on dark background" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDn6BTfqGhv7Hegu6fMlGOrkLEipu5ksbnFKvpMU9LJJWaxqRHWXCWje5nlz1cI8Gdm_S2UgCOXq4bbmB8EQyunKP8fgWr-TNBCI93EcObWcYR8UXZN6ovRhYGP2QjwUUnu6_6l_aM4z-geSktDtTWjIV1S-jvsa3BmjuTNd72AvsrBjv7yXdaEGdDqDiaF8oBZ_rOIPvxidyD2dV3Ou5o4IoLrDjaRv91Edxmw5mt_dbPFuJmAK9VGJoXIEhM3X-NBImtdPs1GiW8");'></div>
+<div class="p-5 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<h3 class="text-white text-lg font-bold font-display">Star-Link API</h3>
+<span class="text-[10px] bg-white/10 text-white/40 px-2 py-1 rounded-full font-bold uppercase tracking-widest">Beta</span>
+</div>
+<p class="text-white/60 text-sm line-clamp-2">Low-latency communication protocol for deep space networking and satellite handshakes.</p>
+<div class="flex gap-2">
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">Go</span>
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">gRPC</span>
+<span class="text-[10px] border border-white/20 text-white/40 px-2 py-0.5 rounded-full">Redis</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Sidebar Stats -->
+<div class="flex flex-col gap-6">
+<div class="rounded-xl border border-white/10 bg-white/5 p-6">
+<h3 class="text-white text-lg font-bold font-display mb-6">Mission Logs</h3>
+<div class="space-y-6">
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<div>
+<p class="text-2xl font-bold leading-none">42</p>
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest">Total Launches</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-steel-blue/20 flex items-center justify-center text-steel-blue">
+<span class="material-symbols-outlined">code</span>
+</div>
+<div>
+<p class="text-2xl font-bold leading-none">1.2M</p>
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest">Lines Orbiting</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="h-10 w-10 rounded-full bg-space-magenta/20 flex items-center justify-center text-space-magenta">
+<span class="material-symbols-outlined">group</span>
+</div>
+<div>
+<p class="text-2xl font-bold leading-none">8.5k</p>
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest">Crew Members</p>
+</div>
+</div>
+</div>
+</div>
+<div class="rounded-xl border border-white/10 bg-white/5 p-6">
+<h3 class="text-white text-lg font-bold font-display mb-4">Ship Components</h3>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">React.js</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">TypeScript</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">Next.js</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">Three.js</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">TailwindCSS</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">Rust</span>
+<span class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium">WebAssembly</span>
+</div>
+</div>
+<!-- Map Component -->
+<div class="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+<div class="p-4 border-b border-white/10">
+<p class="text-white font-bold text-sm">Deployment Origin</p>
+<p class="text-white/50 text-xs">San Francisco, Sector 7</p>
+</div>
+<div class="h-40 bg-cover bg-center" data-alt="Satellite view of San Francisco city lights at night" data-location="San Francisco" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCT2a7KSOv3zNGfUXKOrgB2IBnmcHBRv5sqGVlONk2o8ZBqc30yB8oxKUmjLJjZOyCaU2uDuX3j0xOCPhr8XWe54THWHDs7lDYoU1FLfD1OKarj5OTH3iupSSNo-R3DwHEyOPkfQ3ouT3VGcEWcDkFlA-MoWaf_kTKKR5f-DyyaLwK9YtWZRcizZCg-hgNM-dboxqolC3DlKWUHvZAZR1F7Qctm9Y7sVmPso7fabFIY0F5cIwUj1MtCDptRUNa8mjeWa9tpG6ow8fM");'></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Simple Footer -->
+<footer class="w-full flex justify-center py-10 border-t border-white/10 mt-12">
+<div class="layout-content-container flex flex-col items-center max-w-[1200px] flex-1">
+<div class="flex items-center gap-2 mb-4 opacity-50">
+<span class="material-symbols-outlined text-primary">rocket_launch</span>
+<span class="font-display font-bold">ShipSpace</span>
+</div>
+<p class="text-white/30 text-xs tracking-widest uppercase">© 2024 Interstellar Build Collective. All Systems Operational.</p>
+</div>
+</footer>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Builder Analytics &amp; Mission Impact | ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#e0563e",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#412653", // Deep Purple requested background
+                        "steel-blue": "#3F567F",
+                        "magenta": "#D174D2",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Space Grotesk", sans-serif;
+        }
+        .bg-custom-gradient {
+            background: linear-gradient(180deg, rgba(63, 86, 127, 0.4) 0%, rgba(65, 38, 83, 0) 100%);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white min-h-screen">
+<div class="layout-container flex h-full grow flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-white/10 px-6 py-3 bg-background-light dark:bg-background-dark/50 backdrop-blur-md sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3 text-primary">
+<div class="size-8 flex items-center justify-center bg-primary text-white rounded-lg">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-tight font-display">ShipSpace</h2>
+</div>
+<div class="hidden md:flex items-center gap-6">
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Dashboard</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Missions</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Ships</a>
+<a class="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-primary transition-colors" href="#">Network</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<label class="hidden lg:flex items-center min-w-40 h-10 max-w-64 relative">
+<span class="material-symbols-outlined absolute left-3 text-slate-400">search</span>
+<input class="form-input w-full h-full pl-10 rounded-lg border-none bg-slate-200 dark:bg-white/10 text-sm focus:ring-2 focus:ring-primary/50" placeholder="Search missions..." value=""/>
+</label>
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:opacity-90 transition-opacity">
+<span>New Ship</span>
+</button>
+<div class="size-10 rounded-full border-2 border-primary/20 bg-cover bg-center" data-alt="User profile avatar of a developer" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDuJAU4jJfR3hXxyL8b1g_FTF-i8bUno8DEMYLvXudk9AepGwbb2marUW_7QbodOn8NqYcmEJ3Xx-m-eqMhxfUDnbOL5QhAhHia_86GvdYQwINweK3jX2NJ9gnnMz7goZm9OP4XcBDh_wCZhO7S9Wq4b9UxB3bEbPHXf_Lv4C4t7fuFpBj68JCNB1OhsZiXadE-a5CK8a3IcPwL7xav3CTz_TtOQOLEkQ4qQ-TNN9_l4spvzCqIJNxcESsLuPziFsNVcc9VOh1TEyw");'></div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-white/10 p-4 hidden xl:flex flex-col justify-between bg-white dark:bg-background-dark">
+<div class="flex flex-col gap-6">
+<div class="flex flex-col px-2">
+<h1 class="text-slate-900 dark:text-white text-lg font-bold">Mission Control</h1>
+<p class="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest font-bold">Engineering Velocity</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<p class="text-sm font-semibold">Analytics</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<p class="text-sm font-medium">Project History</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<p class="text-sm font-medium">Collaborators</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<p class="text-sm font-medium">Tech Stack</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium">Settings</p>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-3 pt-4 border-t border-white/10">
+<button class="flex items-center justify-center gap-2 rounded-lg h-10 px-4 border border-primary/40 text-primary text-sm font-bold hover:bg-primary/5 transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+<span>Export Report</span>
+</button>
+</div>
+</aside>
+<!-- Main Dashboard Content -->
+<main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-6 lg:p-10">
+<div class="max-w-6xl mx-auto space-y-8">
+<!-- Page Heading -->
+<div class="flex flex-wrap items-end justify-between gap-4">
+<div class="space-y-1">
+<h2 class="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight font-display">Mission Analytics &amp; Impact</h2>
+<p class="text-slate-500 dark:text-slate-400 text-lg">Track your engineering velocity and global mission footprint.</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-steel-blue/40 text-slate-700 dark:text-white rounded-lg text-sm font-bold hover:bg-steel-blue/60 transition-colors">
+<span class="material-symbols-outlined text-sm">calendar_today</span>
+<span>Last 30 Days</span>
+</button>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-steel-blue shadow-sm border border-slate-200 dark:border-white/5">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-200 text-sm font-medium">Total Ships</p>
+<span class="material-symbols-outlined text-primary text-sm">rocket</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold font-display leading-tight">42</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-green-500 text-xs">trending_up</span>
+<p class="text-green-500 text-xs font-bold">+12% from last month</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-steel-blue shadow-sm border border-slate-200 dark:border-white/5">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-200 text-sm font-medium">Global Impact Score</p>
+<span class="material-symbols-outlined text-magenta text-sm">public</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold font-display leading-tight">850</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-green-500 text-xs">trending_up</span>
+<p class="text-green-500 text-xs font-bold">+5% engagement</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-steel-blue shadow-sm border border-slate-200 dark:border-white/5">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-200 text-sm font-medium">Current Streak</p>
+<span class="material-symbols-outlined text-primary text-sm">local_fire_department</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold font-display leading-tight">12 Days</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-green-500 text-xs">done_all</span>
+<p class="text-green-500 text-xs font-bold">New personal best!</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-steel-blue shadow-sm border border-slate-200 dark:border-white/5">
+<div class="flex justify-between items-start">
+<p class="text-slate-500 dark:text-slate-200 text-sm font-medium">Velocity Index</p>
+<span class="material-symbols-outlined text-magenta text-sm">speed</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold font-display leading-tight">94%</p>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-red-500 text-xs">trending_down</span>
+<p class="text-red-500 text-xs font-bold">-1.2% cycle time</p>
+</div>
+</div>
+</div>
+<!-- Charts Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Main Launch History Chart -->
+<div class="lg:col-span-2 flex flex-col gap-4 rounded-xl border border-slate-200 dark:border-white/10 p-6 bg-white dark:bg-white/5 shadow-xl">
+<div class="flex justify-between items-center">
+<div class="space-y-1">
+<p class="text-slate-900 dark:text-white text-lg font-bold font-display">Launch History</p>
+<div class="flex items-center gap-2">
+<p class="text-slate-500 dark:text-slate-400 text-sm">Project views &amp; Feedback Quality</p>
+<span class="px-2 py-0.5 rounded text-[10px] bg-primary/20 text-primary font-bold">LIVE METRIC</span>
+</div>
+</div>
+<div class="flex gap-2">
+<div class="flex items-center gap-1">
+<div class="size-2 rounded-full bg-primary"></div>
+<span class="text-[10px] font-bold text-slate-400">VIEWS</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="size-2 rounded-full bg-magenta"></div>
+<span class="text-[10px] font-bold text-slate-400">QUALITY</span>
+</div>
+</div>
+</div>
+<div class="relative min-h-[300px] flex flex-col justify-end pt-8">
+<!-- Abstract Waveform SVG as requested -->
+<svg class="w-full h-[220px]" preserveaspectratio="none" viewbox="0 0 500 150">
+<defs>
+<lineargradient id="coralGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#e0563e;stop-opacity:0.4"></stop>
+<stop offset="100%" style="stop-color:#e0563e;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+<!-- Secondary Data Line (Magenta) -->
+<path d="M0,120 Q50,60 100,100 T200,80 T300,110 T400,60 T500,90" fill="none" opacity="0.6" stroke="#D174D2" stroke-dasharray="4" stroke-width="2"></path>
+<!-- Primary Data Line (Coral) -->
+<path d="M0,110 Q40,30 80,100 T160,40 T240,90 T320,20 T400,80 T500,30" fill="url(#coralGradient)"></path>
+<path d="M0,110 Q40,30 80,100 T160,40 T240,90 T320,20 T400,80 T500,30" fill="none" stroke="#e0563e" stroke-linecap="round" stroke-width="4"></path>
+<!-- Markers -->
+<circle cx="160" cy="40" fill="#fff" r="4" stroke="#e0563e" stroke-width="2"></circle>
+<circle cx="320" cy="20" fill="#fff" r="4" stroke="#e0563e" stroke-width="2"></circle>
+</svg>
+<div class="flex justify-between mt-4 px-2">
+<span class="text-xs font-bold text-slate-400">JAN</span>
+<span class="text-xs font-bold text-slate-400">FEB</span>
+<span class="text-xs font-bold text-slate-400">MAR</span>
+<span class="text-xs font-bold text-slate-400 text-primary">APR</span>
+<span class="text-xs font-bold text-slate-400">MAY</span>
+<span class="text-xs font-bold text-slate-400">JUN</span>
+</div>
+</div>
+</div>
+<!-- Side Column: Tech Stack Radar & More -->
+<div class="flex flex-col gap-6">
+<!-- Radar Chart Placeholder -->
+<div class="flex-1 rounded-xl border border-slate-200 dark:border-white/10 p-6 bg-white dark:bg-white/5 shadow-xl flex flex-col gap-4">
+<p class="text-slate-900 dark:text-white text-lg font-bold font-display">Tech Stack Proficiency</p>
+<div class="flex-1 flex items-center justify-center relative">
+<!-- Radar Abstract UI -->
+<div class="size-48 rounded-full border border-slate-200 dark:border-white/10 flex items-center justify-center relative">
+<div class="size-32 rounded-full border border-slate-200 dark:border-white/10"></div>
+<div class="size-16 rounded-full border border-slate-200 dark:border-white/10"></div>
+<!-- Star shape representing proficiency -->
+<svg class="absolute inset-0 size-48 overflow-visible" viewbox="0 0 100 100">
+<polygon fill="rgba(224, 86, 62, 0.3)" points="50,10 90,40 70,90 30,90 10,40" stroke="#e0563e" stroke-width="1"></polygon>
+<text class="text-[8px] fill-slate-400 font-bold" text-anchor="middle" x="50" y="5">RUST</text>
+<text class="text-[8px] fill-slate-400 font-bold" text-anchor="start" x="95" y="42">GO</text>
+<text class="text-[8px] fill-slate-400 font-bold" text-anchor="middle" x="75" y="98">TYPESCRIPT</text>
+<text class="text-[8px] fill-slate-400 font-bold" text-anchor="middle" x="25" y="98">AWS</text>
+<text class="text-[8px] fill-slate-400 font-bold" text-anchor="end" x="5" y="42">REACT</text>
+</svg>
+</div>
+</div>
+</div>
+<!-- Collaborator Reach -->
+<div class="rounded-xl border border-slate-200 dark:border-white/10 p-6 bg-white dark:bg-white/5 shadow-xl flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<p class="text-slate-900 dark:text-white text-lg font-bold font-display">Collaborator Reach</p>
+<p class="text-primary text-xs font-bold">VIEW MAP</p>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">hub</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs mb-1">
+<span class="text-slate-400 font-bold">Open Source Network</span>
+<span class="text-white">82%</span>
+</div>
+<div class="h-1.5 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-magenta" style="width: 82%"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-8 rounded bg-slate-100 dark:bg-white/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">apartment</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-xs mb-1">
+<span class="text-slate-400 font-bold">Enterprise Impact</span>
+<span class="text-white">45%</span>
+</div>
+<div class="h-1.5 w-full bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 45%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Impact Grid (Steel Blue Cards) -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div class="bg-white dark:bg-steel-blue rounded-xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
+<div class="size-10 rounded-lg bg-background-dark/30 flex items-center justify-center text-white">
+<span class="material-symbols-outlined">data_object</span>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-white">Code Contributions</h3>
+<p class="text-slate-500 dark:text-slate-300 text-sm">High-frequency commits to 12 production missions.</p>
+</div>
+<div class="pt-2 border-t border-white/10 flex justify-between items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-white">2.4k</span>
+<span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold">OPTIMIZED</span>
+</div>
+</div>
+<div class="bg-white dark:bg-steel-blue rounded-xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
+<div class="size-10 rounded-lg bg-background-dark/30 flex items-center justify-center text-white">
+<span class="material-symbols-outlined">cloud_done</span>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-white">Deployment Success</h3>
+<p class="text-slate-500 dark:text-slate-300 text-sm">Uptime reliability across distributed clusters.</p>
+</div>
+<div class="pt-2 border-t border-white/10 flex justify-between items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-white">99.9%</span>
+<span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded font-bold">STABLE</span>
+</div>
+</div>
+<div class="bg-white dark:bg-steel-blue rounded-xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
+<div class="size-10 rounded-lg bg-background-dark/30 flex items-center justify-center text-white">
+<span class="material-symbols-outlined">forum</span>
+</div>
+<div>
+<h3 class="font-bold text-slate-900 dark:text-white">Feedback Quality</h3>
+<p class="text-slate-500 dark:text-slate-300 text-sm">Community validation of technical architecture.</p>
+</div>
+<div class="pt-2 border-t border-white/10 flex justify-between items-center">
+<span class="text-2xl font-black text-slate-900 dark:text-white">A+</span>
+<span class="text-xs bg-magenta/20 text-magenta px-2 py-1 rounded font-bold">EXPERT</span>
+</div>
+</div>
+</div>
+<!-- Bottom CTA / Map Visualization Area -->
+<div class="relative w-full h-64 rounded-2xl overflow-hidden group">
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Abstract world map with data points showing global reach" data-location="Global" style="background-image: url('https://placeholder.pics/svg/300');"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/40 to-transparent"></div>
+<div class="absolute bottom-8 left-8 right-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="space-y-1">
+<h4 class="text-2xl font-black text-white font-display">Expand Your Footprint</h4>
+<p class="text-slate-300 text-sm max-w-md">Your ships have been sighted in 14 countries. Ready to reach new territories?</p>
+</div>
+<button class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-xl shadow-primary/20">
+                                Launch Global Mission
+                            </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+</body></html>

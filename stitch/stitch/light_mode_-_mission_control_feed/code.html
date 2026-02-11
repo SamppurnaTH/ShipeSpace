@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShipSpace - Mission Control Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#e0563e",
+                        "background-light": "#ffffff",
+                        "background-dark": "#201412",
+                        "steel-blue": "#3F567F",
+                        "magenta": "#D174D2",
+                        "surface-gray": "#F5F7FA"
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#1a100e]">
+<div class="flex min-h-screen">
+<!-- Sidebar Navigation -->
+<aside class="w-64 bg-steel-blue text-white flex flex-col fixed inset-y-0 left-0 z-50">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8">
+<div class="bg-primary p-2 rounded-lg">
+<svg class="size-6 text-white" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M6 6H42L36 24L42 42H6L12 24L6 6Z" fill="currentColor"></path>
+</svg>
+</div>
+<span class="text-xl font-extrabold tracking-tight">ShipSpace</span>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/10 text-white font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/80 transition-colors font-medium" href="#">
+<span class="material-symbols-outlined">rocket_launch</span>
+                        Missions
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/80 transition-colors font-medium" href="#">
+<span class="material-symbols-outlined">groups</span>
+                        Teams
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/80 transition-colors font-medium" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                        Assets
+                    </a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-white/80 transition-colors font-medium" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+</nav>
+</div>
+<div class="mt-auto p-6 space-y-4">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+                    Launch Mission
+                </button>
+<div class="pt-4 border-t border-white/10 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-white/70 hover:text-white transition-colors text-sm" href="#">
+<span class="material-symbols-outlined text-[20px]">help</span>
+                        Help Center
+                    </a>
+<div class="flex items-center gap-3 px-3 py-3">
+<div class="size-8 rounded-full bg-cover bg-center border border-white/20" data-alt="User profile avatar" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAVpfAfbIjAt7es_KYscvp8cmQLbUsb-e13SwikkJmhmIINYS0VB0FBwOChloRYtHJjqhgnqvpYNhovIiKb9cZesY8Zg8XV0bY6UStGANIavHjKROw_vMKXiy2-Zyu_praUXobhEycln9yA46NCVDxXyBQTdQiRQzkfy6Hlbd6ljkXSM-BBPeEzTDi4QSKos9nI-zBe3LBYc6QktmtM8x-4GCQLT2NvqUQnHB2X9999unKGdiTwHmbxV-9XEX18NXSvR4t3nZ1F3Uo')"></div>
+<div class="flex flex-col">
+<p class="text-xs font-bold leading-tight">Alex Dev</p>
+<p class="text-[10px] text-white/50">Pro Builder</p>
+</div>
+<span class="material-symbols-outlined ml-auto text-white/50 text-[18px]">logout</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 min-h-screen bg-background-light">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 px-8 py-3 flex items-center justify-between">
+<div class="flex items-center flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+<input class="w-full bg-surface-gray border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 placeholder:text-gray-400" placeholder="Search projects, builders, or tags..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden lg:flex items-center gap-6 text-sm font-medium text-gray-600">
+<a class="hover:text-primary transition-colors" href="#">Docs</a>
+<a class="hover:text-primary transition-colors" href="#">Community</a>
+<a class="hover:text-primary transition-colors" href="#">Changelog</a>
+</div>
+<div class="h-6 w-px bg-gray-200"></div>
+<div class="flex items-center gap-3">
+<button class="p-2 hover:bg-surface-gray rounded-lg text-gray-600 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1.5 right-1.5 size-2 bg-primary rounded-full border-2 border-white"></span>
+</button>
+<button class="p-2 hover:bg-surface-gray rounded-lg text-gray-600">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<div class="max-w-6xl mx-auto px-8 py-8 flex gap-8">
+<!-- Feed Column -->
+<div class="flex-1 max-w-[720px]">
+<div class="mb-6">
+<h1 class="text-2xl font-extrabold tracking-tight mb-4">Mission Control</h1>
+<!-- Tabs -->
+<div class="flex border-b border-gray-100 gap-8">
+<a class="border-b-2 border-primary pb-3 text-sm font-bold text-[#1a100e]" href="#">Following</a>
+<a class="border-b-2 border-transparent pb-3 text-sm font-bold text-gray-400 hover:text-gray-600" href="#">Trending</a>
+<a class="border-b-2 border-transparent pb-3 text-sm font-bold text-gray-400 hover:text-gray-600" href="#">Recent Updates</a>
+</div>
+</div>
+<!-- Mission Cards Feed -->
+<div class="space-y-6">
+<!-- Card 1 -->
+<div class="bg-surface-gray border border-gray-100 rounded-xl p-6 hover:shadow-sm transition-shadow">
+<div class="flex items-start justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-cover bg-center" data-alt="Builder avatar profile picture" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDTBLQaP3KsPjX04RXPzxW8O24Bk0pgqoM_FblR8zXCFkmImP0lrE6MDbu50zpU1BTbsvTtT2WTG5PfLc-m_B5tEE2CaB4xyHkSHTb0Cl09DlN7M4XP1aJmCaE9AZSKFiUJc4mzUot4uGOLl90InsI4FmySpCdQ4GylRVPgdEfRqj7IJzAvNTHKTI3HGtSEhjzkQlcsMqHesY-e8s3fZ7dUOwY0dNHx6bxiOBE-bSWXuHtzeC5eR_i5pmBe4qNIMApyn-c5TIIlalw')"></div>
+<div>
+<p class="text-sm font-bold">@sarah_codes <span class="text-gray-400 font-normal ml-1">shipped 45m ago</span></p>
+<p class="text-xs text-magenta font-semibold uppercase tracking-wider">Major Milestone</p>
+</div>
+</div>
+<button class="text-gray-400 hover:text-gray-600">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="mb-4">
+<h3 class="text-lg font-bold text-[#1a100e] mb-2 leading-tight">NeuralSync v2.0 - Core Engine Optimized</h3>
+<p class="text-gray-600 text-sm leading-relaxed mb-4">
+                                    Just finished refactoring the low-latency websocket handler. Reduced message overhead by 40% using custom binary protocols. #rust #realtime
+                                </p>
+<div class="w-full h-48 bg-gray-200 rounded-lg bg-cover bg-center mb-4" data-alt="Technical dashboard UI preview" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBgGZNS5mnOPx83qz85Y1i53OQgJbq4EUw0bhPf6I3CSCT2ozESGa5PkaR9ExB86RffpguNcBG84n3wob_SvmLr-LMKWuqaVMszFzTu5WZ6Pmey_gO85Iccu8qsI49y7k77zD1F3UcPTW_RXt-mRmWyodJYnUmXqutS-6Q2oh56BQCf3u-o3kuu38ivhwdixt4jlm0A1yMKVUYjLV5wWhJ2Kai_guT3on7qvPM6UeJ0Ykdwl3aqUzg6iPjMoRmaXRrJx1NS9Q-A_cg')"></div>
+</div>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Rust</span>
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">WebAssembly</span>
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">GRPC</span>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-gray-200">
+<div class="flex items-center gap-6">
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="text-xs font-bold">128</span>
+</button>
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="text-xs font-bold">24</span>
+</button>
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+</div>
+<button class="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-all">
+                                    Join Mission
+                                </button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-gray border border-gray-100 rounded-xl p-6 hover:shadow-sm transition-shadow">
+<div class="flex items-start justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-cover bg-center" data-alt="Builder avatar profile picture" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBywxDJtYhhkllDU6ed0xoM0w8xOkFirZ8Il5j8Kv5-UEG_mFRBWKWw_6TYWxBeN_jj4vEFHXXipOxg8VLnH_oiTSAfP9z9yhga36tLQm7l7ly083mJmVA_6zvNwm3-3hcgQkD0lG-ORM4e_1LuooffpwIbQ_yCMkxjPIG7rnAhCaUUcm7-aVpUrTG669pvDYRbuobTi3zBSNE_FZOQzx1PbEWVfAS8zgLhFkFs8A0T45wPt9-c5gSaL5JtGm2Skb8hY525dPpVUos')"></div>
+<div>
+<p class="text-sm font-bold">@dev_kyle <span class="text-gray-400 font-normal ml-1">shipped 3h ago</span></p>
+<p class="text-xs text-primary font-semibold uppercase tracking-wider">New Alpha Release</p>
+</div>
+</div>
+<button class="text-gray-400 hover:text-gray-600">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="mb-4">
+<h3 class="text-lg font-bold text-[#1a100e] mb-2 leading-tight">ShipFlow - Multi-tenant Deployment Manager</h3>
+<p class="text-gray-600 text-sm leading-relaxed mb-4">
+                                    Launched the alpha for the edge-side worker management. Now supports one-click rollbacks for multi-cloud deployments. Looking for beta testers!
+                                </p>
+</div>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">TypeScript</span>
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">Next.js</span>
+<span class="bg-magenta/10 text-magenta text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">AWS Lambda</span>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-gray-200">
+<div class="flex items-center gap-6">
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="text-xs font-bold">84</span>
+</button>
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+<span class="text-xs font-bold">12</span>
+</button>
+<button class="flex items-center gap-1.5 text-gray-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">share</span>
+</button>
+</div>
+<button class="bg-primary text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-primary/90 transition-all">
+                                    View Repository
+                                </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Sidebar widgets -->
+<aside class="w-80 space-y-8 hidden xl:block">
+<!-- Trending Missions Widget -->
+<div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+<div class="p-5 border-b border-gray-100 flex items-center justify-between">
+<h2 class="font-bold text-sm">Trending Missions</h2>
+<a class="text-primary text-[11px] font-bold uppercase hover:underline" href="#">See all</a>
+</div>
+<div class="p-5 space-y-4">
+<div class="flex items-start gap-3">
+<span class="text-gray-300 font-black text-xl leading-none">01</span>
+<div>
+<p class="text-sm font-bold text-[#1a100e] leading-tight mb-1">QuantumQuery DB</p>
+<p class="text-xs text-gray-500">Vector store for local LLMs</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="material-symbols-outlined text-[14px] text-primary">local_fire_department</span>
+<span class="text-[10px] font-bold text-gray-400">1.2k ships today</span>
+</div>
+</div>
+</div>
+<div class="flex items-start gap-3">
+<span class="text-gray-300 font-black text-xl leading-none">02</span>
+<div>
+<p class="text-sm font-bold text-[#1a100e] leading-tight mb-1">AutoUI Framework</p>
+<p class="text-xs text-gray-500">Generative component library</p>
+<div class="flex items-center gap-2 mt-2">
+<span class="material-symbols-outlined text-[14px] text-primary">local_fire_department</span>
+<span class="text-[10px] font-bold text-gray-400">856 ships today</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recommended Tags Widget -->
+<div class="bg-white border border-gray-100 rounded-xl p-5">
+<h2 class="font-bold text-sm mb-4">Hot Stack Tags</h2>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-2 bg-surface-gray border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+<span class="text-xs font-bold text-magenta">#rust</span>
+<span class="text-[10px] text-gray-400">4.2k</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-gray border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+<span class="text-xs font-bold text-magenta">#wasm</span>
+<span class="text-[10px] text-gray-400">2.1k</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-gray border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+<span class="text-xs font-bold text-magenta">#go</span>
+<span class="text-[10px] text-gray-400">3.8k</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-gray border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+<span class="text-xs font-bold text-magenta">#distributed</span>
+<span class="text-[10px] text-gray-400">1.5k</span>
+</div>
+<div class="flex items-center gap-2 bg-surface-gray border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+<span class="text-xs font-bold text-magenta">#serverless</span>
+<span class="text-[10px] text-gray-400">950</span>
+</div>
+</div>
+</div>
+<!-- Top Builders -->
+<div class="bg-white border border-gray-100 rounded-xl p-5">
+<h2 class="font-bold text-sm mb-4">Elite Builders</h2>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="size-9 rounded-full bg-cover bg-center" data-alt="Profile picture of top builder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAspLyAUftL3zf2qYZlC0wBwd3bpOOIXdJKlmPgdmS6A8OX8Qhvhx5wK3I8QZauxwyx6Q8oUDTto91ppx0kIpRPBEnE8o_Dd4dkv26wflzx_yWAN2Dka__aRM0diiiuh8FEFsVZXDIfMbZNbpFuxGlN7jtAKpFCsyBMFF5Km4vZyc_nDwy8HDfQKUlWOzw2h4K3MuwZOZAZfKIrCVPXuzZHtZakoOn4Y-zBizSuh7tpUyWCHSCVovujLVK3_edRiLo7VvKVYJrS6Wo')"></div>
+<div class="flex-1">
+<p class="text-sm font-bold leading-none">Marcus Aurelius</p>
+<p class="text-[10px] text-gray-400">System Architect @Core</p>
+</div>
+<button class="text-primary text-[10px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-primary/20 hover:bg-primary/5">Follow</button>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-9 rounded-full bg-cover bg-center" data-alt="Profile picture of top builder" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDeIC7Uk6n5Htyot2SdygZISblBK-wzNNoAXpMuNzmI3TvzfLbDVwkVKQkfRuKsw0v-tZLmqnrhW1u0YIJUGO3StGVexnR5naYcmkh986a9qKYJ82ZG4TXqqlnFasPfitfrdcmk7UexAJnIDHcGlGycErs_zYkvTpuzAfKlZoMkVbzsyjIa5tk4zYZN1Q3Ncy43JL4Np_7CtFygYKPtpUKtId8yXhwdT2CXz6cgLf9GYXVQdE5IZ8bWjxV0Ee6CWUPI-Lhr8YA1ELY')"></div>
+<div class="flex-1">
+<p class="text-sm font-bold leading-none">Elena S.</p>
+<p class="text-[10px] text-gray-400">Wasm Contributor</p>
+</div>
+<button class="text-primary text-[10px] font-extrabold uppercase tracking-wider px-2 py-1 rounded border border-primary/20 hover:bg-primary/5">Follow</button>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</body></html>

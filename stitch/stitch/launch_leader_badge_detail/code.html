@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Launch Leader Badge Detail | ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "badge-purple": "#412653",
+                        "steel-blue": "#3F567F",
+                        "coral-engine": "#E0563F",
+                        "magenta-highlight": "#D174D2",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .rocket-glow {
+            filter: drop-shadow(0 0 15px rgba(224, 86, 63, 0.4));
+        }
+        .atmospheric-ring {
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #FFFFFF;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen font-display">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-10 py-3 bg-white dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-primary">
+<div class="size-8 flex items-center justify-center bg-primary text-white rounded-lg">
+<span class="material-symbols-outlined !text-2xl">rocket_launch</span>
+</div>
+<h2 class="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">ShipSpace</h2>
+</div>
+<nav class="hidden md:flex items-center gap-9">
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Explore</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Leaderboards</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-1" href="#">Projects</a>
+<a class="text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Missions</a>
+</nav>
+</div>
+<div class="flex flex-1 justify-end gap-4 max-w-md">
+<label class="flex flex-col flex-1 h-10">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full bg-slate-100 dark:bg-slate-800">
+<div class="text-slate-400 flex items-center justify-center pl-4 rounded-l-lg">
+<span class="material-symbols-outlined !text-xl">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-0 border-none bg-transparent h-full placeholder:text-slate-400 px-4 pl-2 text-sm font-normal" placeholder="Search builders, projects..."/>
+</div>
+</label>
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+<span class="material-symbols-outlined !text-xl">notifications</span>
+</button>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary" data-alt="User profile avatar placeholder" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAfygw0Ms3lt_yEDUjkTuL26aQeRGXm43Y1bg26_vEchdGMQ5MLkTaHrw39TG6ldsCHovePwvOmC_cQFQMEQ8YEU5vmTO4OzGwaOo5LC9EuQs3NcVdUTLzlJ-QHD8z2QiF9ZoxpQzHcWmjBeWJHbeyAXQNx2bskwW-6uUaLyQevaWA0_zcTFAbvkPOqWAm7u42uEQ29rjdFqOu_K_y51TSGV1wCk4bF1-oyTrcLFLso-HQWtxR037Fn9-Zuvs6CrSimYBb_4OqjBko");'></div>
+</div>
+</div>
+</header>
+<main class="max-w-[1200px] mx-auto py-8 px-6">
+<!-- Breadcrumbs -->
+<div class="flex flex-wrap gap-2 mb-6">
+<a class="text-slate-500 hover:text-primary text-sm font-medium leading-normal flex items-center gap-1" href="#">
+<span class="material-symbols-outlined !text-sm">home</span> Home
+            </a>
+<span class="text-slate-400 text-sm font-medium">/</span>
+<a class="text-slate-500 hover:text-primary text-sm font-medium leading-normal" href="#">Achievements</a>
+<span class="text-slate-400 text-sm font-medium">/</span>
+<span class="text-primary text-sm font-bold leading-normal">Launch Leader Badge</span>
+</div>
+<!-- Hero Badge Showcase -->
+<div class="relative overflow-hidden rounded-xl bg-badge-purple p-12 mb-8 flex flex-col items-center justify-center shadow-2xl border border-white/10">
+<!-- Atmospheric background effect -->
+<div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+<div class="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 50% 50%, #D174D2 0%, transparent 70%);"></div>
+<div class="relative z-10 flex flex-col items-center gap-8">
+<!-- Badge Icon Container -->
+<div class="relative w-64 h-64 flex items-center justify-center">
+<!-- Atmospheric Ring -->
+<div class="absolute inset-0 rounded-full atmospheric-ring animate-pulse duration-[3000ms]"></div>
+<!-- Stylized Rocket (Icon Representation) -->
+<div class="relative rocket-glow">
+<div class="w-24 h-40 bg-white rounded-t-full relative">
+<!-- Rocket Highlights (Magenta) -->
+<div class="absolute top-4 left-2 w-2 h-20 bg-magenta-highlight/40 rounded-full"></div>
+<div class="absolute top-4 right-2 w-2 h-20 bg-magenta-highlight/40 rounded-full"></div>
+<!-- Engineering Linework -->
+<div class="absolute top-1/2 left-0 w-full h-[1px] bg-slate-200"></div>
+<div class="absolute top-1/3 left-0 w-full h-[1px] bg-slate-200"></div>
+<!-- Engine Section -->
+<div class="absolute -bottom-4 left-1/2 -translate-x-1/2 w-16 h-12 bg-slate-300 rounded-b-lg"></div>
+<!-- Coral Engine Flame -->
+<div class="absolute -bottom-16 left-1/2 -translate-x-1/2 w-12 h-24 bg-coral-engine rounded-b-full blur-[2px] opacity-90">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-12 bg-white/40 rounded-b-full"></div>
+</div>
+</div>
+<!-- Fins -->
+<div class="absolute -bottom-4 -left-8 w-10 h-16 bg-magenta-highlight skew-x-[20deg] rounded-bl-xl"></div>
+<div class="absolute -bottom-4 -right-8 w-10 h-16 bg-magenta-highlight -skew-x-[20deg] rounded-br-xl"></div>
+</div>
+</div>
+<div class="text-center">
+<h1 class="text-4xl font-bold text-white tracking-tight mb-2">Launch Leader</h1>
+<div class="flex items-center justify-center gap-3">
+<span class="bg-primary px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-widest">Commander Class</span>
+<span class="text-slate-300 text-sm">Official ShipSpace Achievement</span>
+</div>
+<p class="text-slate-300 max-w-lg mt-6 text-lg leading-relaxed">
+                        Awarded for reaching the stratospheric peak of the ShipSpace charts with engineering-grade code and sustained community traction.
+                    </p>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left Side: Mission Control Data Modules -->
+<div class="lg:col-span-2 flex flex-col gap-6">
+<div class="bg-slate-200/50 dark:bg-steel-blue/20 border border-slate-300 dark:border-steel-blue rounded-xl p-8">
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-primary">analytics</span>
+<h2 class="text-xl font-bold text-slate-900 dark:text-white">Mission Logistics</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Stat Card 1 -->
+<div class="bg-white dark:bg-steel-blue rounded-lg p-6 shadow-sm border border-slate-200 dark:border-white/10 transition-transform hover:-translate-y-1">
+<div class="flex justify-between items-start mb-4">
+<p class="text-slate-500 dark:text-slate-300 text-sm font-medium uppercase tracking-wider">Trending Duration</p>
+<span class="material-symbols-outlined text-coral-engine">timer</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold leading-tight">14 Days in Orbit</p>
+<div class="flex items-center gap-2 mt-4">
+<span class="bg-emerald-500/10 text-emerald-500 text-xs font-bold px-2 py-1 rounded">+12% vs last cycle</span>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-white dark:bg-steel-blue rounded-lg p-6 shadow-sm border border-slate-200 dark:border-white/10 transition-transform hover:-translate-y-1">
+<div class="flex justify-between items-start mb-4">
+<p class="text-slate-500 dark:text-slate-300 text-sm font-medium uppercase tracking-wider">Mission Impact Factor</p>
+<span class="material-symbols-outlined text-magenta-highlight">query_stats</span>
+</div>
+<p class="text-slate-900 dark:text-white text-3xl font-bold leading-tight">9.8 / 10</p>
+<div class="flex items-center gap-2 mt-4">
+<span class="bg-primary/10 text-primary text-xs font-bold px-2 py-1 rounded">Top 0.5% of Builders</span>
+</div>
+</div>
+</div>
+<div class="mt-8 p-6 bg-slate-100 dark:bg-black/20 rounded-lg border border-dashed border-slate-300 dark:border-white/10">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary !text-4xl mt-1">verified</span>
+<div>
+<p class="text-slate-900 dark:text-white font-bold text-lg mb-1">Achievement Context</p>
+<p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                                    Earned by <span class="text-primary font-bold">@alex_dev</span> for the project <span class="text-primary font-bold">"QuantumFlow SDK"</span>. The badge was issued following a 14-day streak at #1 on the Global Mission Board.
+                                </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Technical Specs Module -->
+<div class="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl p-8">
+<h3 class="text-slate-900 dark:text-white font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">settings_input_component</span> Engineering Specs
+                    </h3>
+<div class="space-y-4">
+<div class="flex justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+<span class="text-slate-500">Badge Rarity</span>
+<span class="text-slate-900 dark:text-white font-medium">Mythic Class</span>
+</div>
+<div class="flex justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+<span class="text-slate-500">Asset High-Res</span>
+<span class="text-slate-900 dark:text-white font-medium">Available (4K Vector)</span>
+</div>
+<div class="flex justify-between py-3 border-b border-slate-100 dark:border-slate-800">
+<span class="text-slate-500">Metadata Hash</span>
+<span class="text-slate-400 font-mono text-xs">8f92a...c23e</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Side: Sidebar Actions/Social Proof -->
+<div class="flex flex-col gap-6">
+<!-- Action Bar -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+<h3 class="text-slate-900 dark:text-white font-bold mb-4">Command Actions</h3>
+<div class="flex flex-col gap-3">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined !text-xl">share</span> Share Achievement
+                        </button>
+<button class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined !text-xl">download</span> Download Assets
+                        </button>
+</div>
+</div>
+<!-- Recent Earners -->
+<div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+<h3 class="text-slate-900 dark:text-white font-bold mb-4 flex items-center justify-between">
+                        Recent Achievers
+                        <span class="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500">Live</span>
+</h3>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-center bg-cover border border-primary" data-alt="User avatar 1" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCrZmUnZklpbjULqi0pcCeZsZX_DOTaq_d5D87Bs-0aCsIFkie3Sdm6k1YLH3CorDHln2HUTyse08F0QhFq0mJJsxbr2dA5PmwZWzsnMM1FeVjQvcqOtX7tIsweNtp0bxgjakp4L_suxqzoeu83HqAyLESy5QeqSBeTTnWCs62B3rXJo-lQM8RQo9ZJQk0A7lg4JAm30llfCRvg9F5eyDQUb1b0A_wXA1RO0C9Vwh-3h788sBBxhLT_-aAxCqCbCPz49e8sqMOh828");'></div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white">@code_commander</p>
+<p class="text-xs text-slate-500">3 hours ago</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-center bg-cover border border-slate-700" data-alt="User avatar 2" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCi--V0DPPu6Xh5ruKtVTQTCg5Nao1QuvCVoxv4cr9byeWYBvpG7DdkUuvp3ncfBMLB7jf_SujwF2qbKKO4EYSiH09QHxuBMNigLcnkKYhhow_9pZ8Fx8IVd_H2faXyhjjkVFeg1tjz7tpKnWWwV9LWEFdgs1iBwcV7wjh3SO8cMQgxlt9hAkL7z5DB3h93akcTESsAieTBzEgvKf93q5dyjcf087P5RLCisKE6WMUjAAfsok7-EjgEdWKqljgYsVLaFgqg3Tk1yNI");'></div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white">@sarah_labs</p>
+<p class="text-xs text-slate-500">Yesterday</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="size-10 rounded-full bg-center bg-cover border border-slate-700" data-alt="User avatar 3" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDEbPeAVbBItmM45OsF8h-YD6UYtVyPBSuIS_CiZDzGgpo4763V3Fbhu02CvhJKD6wxxgtbmP5iIm-uNb3OaZsMdgamzah5eZIEpRGaLSNd_jEJtVOXAtH1rBH_3VVS73oFJHtV-N4uHyKYnoumntwcgYXCfIrquPI3age27mITYOJR7T8IEfnx7F2tF0sqnoc8VpVp3jdQ3mLvBaXDtxaHcTXsGFiMafFLulzJWfLQ1SzslPkKfNyqRMlku_jUp6qOaA2Tb33FpSI");'></div>
+<div>
+<p class="text-sm font-bold text-slate-900 dark:text-white">@nexus_builder</p>
+<p class="text-xs text-slate-500">2 days ago</p>
+</div>
+</div>
+<button class="text-primary text-sm font-bold mt-2 hover:underline">View All Achievers</button>
+</div>
+</div>
+<!-- Rarity Indicator -->
+<div class="bg-gradient-to-br from-magenta-highlight/20 to-primary/20 border border-white/10 rounded-xl p-6 relative overflow-hidden">
+<div class="relative z-10">
+<p class="text-magenta-highlight dark:text-magenta-highlight font-bold text-xs uppercase tracking-widest mb-1">Elite Rarity</p>
+<p class="text-slate-900 dark:text-white text-2xl font-bold">Only 0.5%</p>
+<p class="text-slate-600 dark:text-slate-400 text-sm mt-1">of builders have reached this orbit in the last quarter.</p>
+</div>
+<span class="material-symbols-outlined absolute -bottom-4 -right-4 !text-8xl opacity-10 rotate-12">auto_awesome</span>
+</div>
+</div>
+</div>
+</main>
+<footer class="mt-12 py-10 border-t border-slate-200 dark:border-slate-800 px-6 bg-white dark:bg-background-dark">
+<div class="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-3 opacity-60">
+<span class="material-symbols-outlined text-primary">rocket_launch</span>
+<span class="font-bold tracking-tight">SHIPSPACE</span>
+<span class="text-xs text-slate-500">© 2024 Terminal Engineering Inc.</span>
+</div>
+<div class="flex gap-8">
+<a class="text-slate-500 hover:text-primary text-sm" href="#">System Status</a>
+<a class="text-slate-500 hover:text-primary text-sm" href="#">API Docs</a>
+<a class="text-slate-500 hover:text-primary text-sm" href="#">Privacy Orbit</a>
+</div>
+</div>
+</footer>
+</body></html>

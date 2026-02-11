@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Orbit Contributor Badge | ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --bg-deep-purple: #412653;
+            --magenta-glow: #D174D2;
+            --coral-orbit: #E0563F;
+            --steel-blue: #3F567F;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep-purple);
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .badge-glow {
+            filter: drop-shadow(0 0 25px rgba(209, 116, 210, 0.4));
+        }
+        .orbit-animation {
+            border: 2px dashed #E0563F;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen selection:bg-[#D174D2] selection:text-white">
+<header class="w-full border-b border-white/10 bg-[#412653]/80 backdrop-blur-md sticky top-0 z-50">
+<div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-2 text-[#D174D2]">
+<div class="size-8 bg-[#D174D2] rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<h2 class="text-xl font-bold tracking-tight text-white">ShipSpace</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-white/60 hover:text-white text-sm font-medium transition-colors" href="#">Projects</a>
+<a class="text-white/60 hover:text-white text-sm font-medium transition-colors" href="#">Explore</a>
+<a class="text-white/60 hover:text-white text-sm font-medium transition-colors" href="#">Collaborate</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-lg bg-white/5 text-white/60 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-white/10 overflow-hidden border border-white/20">
+<img alt="User avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdtm1OA_Kx1-vRD9sAAfyYF7ipavuvU1Jc6NI8v7r7CyJ9VnNE75fLnDWol2ec6zsuDNSxcfT5YM7ljtFHKiKgakJ92RR6m_vuzRJdzWqkmVPy5SsWos2rDoYUI33QLaU-NI0Oh_1LKYauklp8LBLQ2qGD6obqIl4Kh-KsetQS52qNzm4MMrt9IlmeSXHztdxg4s3jAz50J8qP8MG3P6PUgr97Or-422yA6Z_NrDv8nH8SKM9EAU_DCRUuhJOny9pHKOlOM2Upf_U"/>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto px-6 py-12">
+<div class="mb-12">
+<div class="flex items-center gap-2 text-white/40 text-sm mb-4">
+<span>Profile</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span>Badges</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="text-white">Orbit Contributor</span>
+</div>
+<h1 class="text-4xl font-black tracking-tighter uppercase italic">Orbit Contributor</h1>
+<p class="text-[#D174D2] font-mono mt-2 tracking-widest text-sm">RECOGNITION CLASS: EXCELLENCE</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center mb-16">
+<div class="lg:col-span-3 space-y-8 order-2 lg:order-1">
+<div class="p-6 border-l-2 border-[#D174D2] bg-white/5 rounded-r-xl">
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Feedback Count</p>
+<p class="text-3xl font-black italic">142</p>
+<p class="text-xs text-[#D174D2] mt-1 font-medium">Top 2% of community</p>
+</div>
+<div class="p-6 border-l-2 border-[#E0563F] bg-white/5 rounded-r-xl">
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Impact Factor</p>
+<p class="text-3xl font-black italic">8.4x</p>
+<p class="text-xs text-[#E0563F] mt-1 font-medium">Iteration accelerator</p>
+</div>
+</div>
+<div class="lg:col-span-6 flex items-center justify-center order-1 lg:order-2">
+<div class="relative size-80 lg:size-96 flex items-center justify-center">
+<div class="absolute inset-0 border border-white/5 rounded-full"></div>
+<div class="absolute inset-8 border border-white/10 rounded-full"></div>
+<div class="absolute inset-20 border border-white/20 rounded-full"></div>
+<div class="relative z-10 flex items-center justify-center">
+<div class="size-32 bg-gradient-to-br from-[#412653] to-[#23152d] rounded-full border-2 border-[#D174D2] flex items-center justify-center shadow-[0_0_50px_rgba(209,116,210,0.3)] badge-glow">
+<span class="material-symbols-outlined text-6xl text-[#D174D2]" style="font-variation-settings: 'FILL' 1">public</span>
+</div>
+<div class="absolute size-64 border-2 border-[#E0563F]/30 border-dashed rounded-full rotate-45"></div>
+<div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45">
+<div class="size-14 bg-[#E0563F] rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(224,86,63,0.5)] border-2 border-white/20">
+<span class="material-symbols-outlined text-white text-3xl">rocket</span>
+</div>
+</div>
+</div>
+<div class="absolute inset-0 pointer-events-none opacity-20">
+<div class="absolute top-0 left-1/2 h-full w-px bg-white/50"></div>
+<div class="absolute left-0 top-1/2 w-full h-px bg-white/50"></div>
+<div class="absolute inset-0 border border-dashed border-white/10 rounded-full animate-spin-slow" style="animation-duration: 40s"></div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-3 space-y-8 order-3">
+<div class="p-6 border-r-2 border-[#D174D2] bg-white/5 rounded-l-xl text-right">
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Trust Score</p>
+<p class="text-3xl font-black italic">98.2%</p>
+<p class="text-xs text-[#D174D2] mt-1 font-medium">High reliability rating</p>
+</div>
+<div class="p-6 border-r-2 border-[#E0563F] bg-white/5 rounded-l-xl text-right">
+<p class="text-white/40 text-xs font-bold uppercase tracking-widest mb-1">Projects Guided</p>
+<p class="text-3xl font-black italic">12</p>
+<p class="text-xs text-[#E0563F] mt-1 font-medium">Community mentor</p>
+</div>
+</div>
+</div>
+<div class="bg-[#3F567F] rounded-2xl overflow-hidden shadow-2xl">
+<div class="px-8 py-6 border-b border-white/10 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white/60">terminal</span>
+<h3 class="font-bold text-lg tracking-tight uppercase">Mission Log: Orbit Achievement</h3>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-xs mono text-white/50">ENCRYPTION: AES-256</span>
+<span class="px-3 py-1 bg-white/10 rounded-full text-[10px] font-bold tracking-widest">STATUS: VERIFIED</span>
+</div>
+</div>
+<div class="p-8">
+<div class="space-y-6">
+<div class="flex gap-6 items-start">
+<div class="flex flex-col items-center">
+<div class="size-3 bg-[#D174D2] rounded-full ring-4 ring-[#D174D2]/20"></div>
+<div class="w-px h-full bg-white/10 mt-2 min-h-[40px]"></div>
+</div>
+<div class="flex-1 pb-6">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-white uppercase tracking-wide">First Orbit Established</h4>
+<span class="text-xs mono text-white/40">2024.03.12</span>
+</div>
+<p class="text-white/70 text-sm leading-relaxed max-w-2xl">Successfully provided 50 pieces of high-quality technical feedback on open-source projects within the platform, meeting the core requirements for orbit establishment.</p>
+</div>
+</div>
+<div class="flex gap-6 items-start">
+<div class="flex flex-col items-center">
+<div class="size-3 bg-[#D174D2] rounded-full ring-4 ring-[#D174D2]/20"></div>
+<div class="w-px h-full bg-white/10 mt-2 min-h-[40px]"></div>
+</div>
+<div class="flex-1 pb-6">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-white uppercase tracking-wide">Iteration Acceleration Protocol</h4>
+<span class="text-xs mono text-white/40">2024.05.28</span>
+</div>
+<p class="text-white/70 text-sm leading-relaxed max-w-2xl">Guided three major projects through significant architectural shifts. Impact score calculated based on the reduction of technical debt and improvement in deployment velocity.</p>
+</div>
+</div>
+<div class="flex gap-6 items-start">
+<div class="flex flex-col items-center">
+<div class="size-3 bg-[#E0563F] rounded-full ring-4 ring-[#E0563F]/20"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-2">
+<h4 class="font-bold text-white uppercase tracking-wide">Community Trust Peak reached</h4>
+<span class="text-xs mono text-white/40">2024.08.15</span>
+</div>
+<p class="text-white/70 text-sm leading-relaxed max-w-2xl">Attained a 95%+ positive endorsement rate from project leads. The 'Orbit Contributor' badge is officially bestowed and permanently added to the developer's credentials.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-black/20 p-4 flex justify-center">
+<button class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+                Export Certificate (PDF)
+            </button>
+</div>
+</div>
+<div class="mt-12 flex flex-col md:flex-row justify-between items-center gap-6 text-white/40 border-t border-white/5 pt-8">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-lg">info</span>
+<p class="text-xs italic uppercase tracking-wider">This badge is soul-bound and cannot be transferred between accounts.</p>
+</div>
+<div class="flex gap-6">
+<button class="text-xs font-bold text-[#D174D2] hover:underline uppercase tracking-widest">Share Achievement</button>
+<button class="text-xs font-bold text-white/60 hover:text-white uppercase tracking-widest">Badge FAQ</button>
+</div>
+</div>
+</main>
+<footer class="border-t border-white/10 py-12 mt-12 bg-black/20">
+<div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="flex items-center gap-2 text-white/30">
+<span class="material-symbols-outlined text-lg">rocket_launch</span>
+<p class="text-xs uppercase tracking-widest">© 2024 ShipSpace Platform. All rights reserved.</p>
+</div>
+<div class="flex gap-8">
+<a class="text-xs uppercase tracking-widest text-white/40 hover:text-[#D174D2] transition-colors" href="#">Manifesto</a>
+<a class="text-xs uppercase tracking-widest text-white/40 hover:text-[#D174D2] transition-colors" href="#">Protocols</a>
+<a class="text-xs uppercase tracking-widest text-white/40 hover:text-[#D174D2] transition-colors" href="#">Hardware</a>
+</div>
+</div>
+</footer>
+
+</body></html>

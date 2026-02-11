@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShipSpace - Crew Recruitment Board</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f56e3d",
+                        "background-light": "#f8f6f5",
+                        "background-dark": "#221510",
+                        "accent-magenta": "#E11D48",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#1c110d] transition-colors duration-300">
+<!-- Navigation -->
+<header class="sticky top-0 z-50 bg-background-light/80 backdrop-blur-md border-b border-[#e8d5ce] px-6 lg:px-40 py-3">
+<div class="max-w-[1200px] mx-auto flex items-center justify-between gap-8">
+<div class="flex items-center gap-8 flex-1">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-3xl font-bold">rocket_launch</span>
+<h2 class="text-[#1c110d] text-xl font-extrabold tracking-tight">ShipSpace</h2>
+</div>
+<label class="hidden md:flex flex-col min-w-40 h-10 max-w-64 flex-1">
+<div class="flex w-full items-stretch rounded-full bg-[#f4eae7] px-4">
+<div class="flex items-center justify-center text-[#9c5f49]">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="w-full border-none bg-transparent focus:ring-0 text-sm placeholder:text-[#9c5f49]" placeholder="Search missions or tech stack..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden lg:flex items-center gap-8">
+<a class="text-[#1c110d] text-sm font-semibold hover:text-primary transition-colors" href="#">Discover</a>
+<a class="text-primary text-sm font-bold border-b-2 border-primary pb-0.5" href="#">Missions</a>
+<a class="text-[#1c110d] text-sm font-semibold hover:text-primary transition-colors" href="#">The Crew</a>
+<a class="text-[#1c110d] text-sm font-semibold hover:text-primary transition-colors" href="#">Inbox</a>
+</nav>
+<div class="h-6 w-px bg-[#e8d5ce] hidden lg:block"></div>
+<button class="flex min-w-[120px] items-center justify-center rounded-full h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-opacity-90 transition-all shadow-lg shadow-primary/20">
+                    Post a Mission
+                </button>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-center bg-cover shadow-sm cursor-pointer" data-alt="User profile avatar with friendly face" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBk7tXI9BytzXEymssdWpPOSIFKeaEMxvR3p_P_aKIoPZlSHI-BZRQR1sxvA8JjzSiCv67CqL7lbVV6PCxDQmpWjTlh84cWDDQ2tjrCLS5KOZazU1zRxcgZpzyE9sseTJs7tkiMuvbXjyTaWHaHVSRnu3z_XzuQgz3O9OKp-LTgmiBx8byxcGnZqY0z5hR77iTeUsDbcAlleqkr_7QFg2w1HJT2Rtf2Jyu4m8EQOsCwAKvDIjUPGSW2D3mG7IDaImVRU22M7zKLrto");'>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-[1200px] mx-auto px-6 lg:px-10 py-8">
+<!-- Hero Heading -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div class="max-w-2xl">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider mb-4">
+<span class="material-symbols-outlined text-sm">groups</span>
+                    Crew Recruitment
+                </div>
+<h1 class="text-4xl md:text-5xl font-black text-[#1c110d] leading-tight tracking-tight mb-4">
+                    Build your dream team. <br/>
+<span class="text-primary">Ship greatness.</span>
+</h1>
+<p class="text-[#9c5f49] text-lg font-medium leading-relaxed">
+                    A builder-first marketplace to find high-impact collaborators for your next big project.
+                </p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-6 py-3 rounded-full bg-[#f4eae7] text-[#1c110d] text-sm font-bold hover:bg-[#ebdcd7] transition-all">
+<span class="material-symbols-outlined text-lg">tune</span>
+                    Filter Boards
+                </button>
+</div>
+</div>
+<!-- Filter Tabs -->
+<div class="mb-8 border-b border-[#e8d5ce]">
+<div class="flex gap-8 overflow-x-auto no-scrollbar">
+<a class="flex items-center gap-2 border-b-2 border-primary text-[#1c110d] pb-4 px-1" href="#">
+<span class="material-symbols-outlined text-primary">local_fire_department</span>
+<span class="text-sm font-bold whitespace-nowrap">Trending Missions</span>
+</a>
+<a class="flex items-center gap-2 border-b-2 border-transparent text-[#9c5f49] pb-4 px-1 hover:text-[#1c110d] transition-all" href="#">
+<span class="material-symbols-outlined">schedule</span>
+<span class="text-sm font-bold whitespace-nowrap">Newest</span>
+</a>
+<a class="flex items-center gap-2 border-b-2 border-transparent text-[#9c5f49] pb-4 px-1 hover:text-[#1c110d] transition-all" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="text-sm font-bold whitespace-nowrap">High Bounty</span>
+</a>
+<a class="flex items-center gap-2 border-b-2 border-transparent text-[#9c5f49] pb-4 px-1 hover:text-[#1c110d] transition-all" href="#">
+<span class="material-symbols-outlined">verified</span>
+<span class="text-sm font-bold whitespace-nowrap">Verified Crews</span>
+</a>
+</div>
+</div>
+<!-- Category Chips -->
+<div class="flex flex-wrap gap-2 mb-10">
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-primary text-white text-sm font-bold shadow-md shadow-primary/20">
+<span class="material-symbols-outlined text-lg">public</span>
+                All Missions
+            </button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#e8d5ce] text-[#1c110d] text-sm font-bold hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg text-primary">code</span>
+                React
+            </button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#e8d5ce] text-[#1c110d] text-sm font-bold hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg text-primary">settings</span>
+                Rust
+            </button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#e8d5ce] text-[#1c110d] text-sm font-bold hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg text-primary">database</span>
+                Backend
+            </button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#e8d5ce] text-[#1c110d] text-sm font-bold hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg text-primary">palette</span>
+                UI/UX
+            </button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-full bg-white border border-[#e8d5ce] text-[#1c110d] text-sm font-bold hover:border-primary transition-all">
+<span class="material-symbols-outlined text-lg text-primary">smartphone</span>
+                Mobile
+            </button>
+</div>
+<!-- Mission Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card 1 -->
+<div class="bg-white rounded-lg p-6 flex flex-col gap-4 border border-[#e8d5ce] card-shadow card-hover transition-all cursor-pointer group">
+<div class="w-full h-40 rounded-xl bg-center bg-cover mb-2 overflow-hidden" data-alt="Abstract futuristic neural network visualization" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuABJgMTbtZnhfHajDUeY4wMgfj6lAsv8YIM6XV4sC3ayCl1nG2zIvYmnUGDcbK4JVKMjS5nSxQ-R9ALTyMlrBG4YBzBKdX2deBzLQPxBnB2B3kVbt4Y_4tz569MW-8vPds_OdRmAZSwfxMYF6I_804me6LgEnDz6miCGi1nFlcF8-fyiLtyWYV9r9YbQLl41eesr2HSsmmCAdvNvq9xSrSXes0efNbBQ2dg2_ryaohnBNr5Toe2Uf5kT_xhfELBmTMGg4ZMJCcv11s");'>
+<div class="w-full h-full bg-black/20 group-hover:bg-transparent transition-all"></div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-accent-magenta/10 text-accent-magenta text-[10px] font-black uppercase tracking-widest">Need Backend</span>
+<span class="px-2.5 py-0.5 rounded-full bg-[#f4eae7] text-[#9c5f49] text-[10px] font-black uppercase tracking-widest">Deep Tech</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-[#1c110d] group-hover:text-primary transition-colors">AI-Driven Task Orchestrator</h3>
+<p class="text-[#9c5f49] text-sm mt-2 leading-relaxed line-clamp-2">Building a multi-agent system for complex devops workflows and cloud provisioning automation.</p>
+</div>
+<div class="flex items-center justify-between py-3 border-y border-[#f4eae7] my-1">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB3Lqi0lD_wU8Xm1jvLAWlFmZFjlOsAwhmKU-mINZZYWcjNRE5j4bzsU9B6BWjxz19Kr01hVSnua6fz8quUF0ZmZjkVqJpe0wL_4y67IXAPjcT1aQrYNn5OXACY3iFtIjCtmuYjEUfn6-tJ62iilHxtudtPPhMl0E2_ZNUjadTrHpoVBCfrwdZYNh3ZK2RueCzHHHLvZoEoNytHfjvkYnbTiWBYYbJoyKlcN4GWV4bggbuKxkBnc6ZXrG0UeNt7KzH-FEDgsOnv02o");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCFhuAwL2HinSkxMqDiewN7TVhs8QVMt4Rei627BPC4P-A2YlSgqqBa_1ufnjs_CuCaOZvEHTfttA0kFD_2gvQidBLQFMQ-TbnSuOJvXpFDM6RaCdSY8pWsI9aawdQCVMMx-aOHZcRX7idJPzw9w36I6Ois84Cqo3ou5ccMYthaqbvCXFtCnCeu_H0XSGw5c70RT_wvMUNKyyO8qhKH8ODCkjwXbm-P92HcbB2xz_9CXjShhlJj-pyN21GqTRyJgZuIkFkMBoD9KgA");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-[#f4eae7] flex items-center justify-center text-[10px] font-bold text-[#9c5f49]">+3</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-black text-[#9c5f49] uppercase block mb-0.5 tracking-tighter">Slots Filled</span>
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between gap-4 mt-auto">
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">deployed_code</span>
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">terminal</span>
+</div>
+<button class="flex-1 px-4 py-2.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-105 transition-all">Apply to Crew</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white rounded-lg p-6 flex flex-col gap-4 border border-[#e8d5ce] card-shadow card-hover transition-all cursor-pointer group">
+<div class="w-full h-40 rounded-xl bg-center bg-cover mb-2 overflow-hidden" data-alt="Abstract blocky data structure visualization" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAQ7R4p0ZyJ1CkpEA1OC1_9HEg0oQV0t-joHKnclOj9Zt_R-kLYIRXVPudAibaTK2bQTvkj6pfnqEt4V9TBoiH-8sKdtvxUxDhTddtzy-qpQ75JpM7zkXfDmAkQY5UjK8eOiVjwo5VWgCuf-4__XAT441L1HgngLw6P6BO_qxLF2fqKudqfOYI__ydQPDHq3IIAbR3LiS5TuQTj7PQUM6n6QdXyDxyVmOED20uK0BBmryYgeee1yMjQgct2L6dONace4opZkftFNqM");'>
+<div class="w-full h-full bg-black/20 group-hover:bg-transparent transition-all"></div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-accent-magenta/10 text-accent-magenta text-[10px] font-black uppercase tracking-widest">Need UI/UX</span>
+<span class="px-2.5 py-0.5 rounded-full bg-[#f4eae7] text-[#9c5f49] text-[10px] font-black uppercase tracking-widest">Long-term Build</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-[#1c110d] group-hover:text-primary transition-colors">Web3 Social Graph</h3>
+<p class="text-[#9c5f49] text-sm mt-2 leading-relaxed line-clamp-2">Building a decentralized protocol for identity-verified professional networks on Ethereum.</p>
+</div>
+<div class="flex items-center justify-between py-3 border-y border-[#f4eae7] my-1">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAcTepA8J_Jgy1QoACjAygFZq30CPKiic3LhK_OI9zchNkfWxsFSk7-FHbIHc8W2tHLeXnJe06cYaB445Wn5n8s3do14Q42nZzVP3T8CyEtIY1cPJ-RWvQc9jf3sDlZvUFsoYTltt4wqUQutmos9dFTohkevclTcoDcBrr81_I225l6hpZwmUHWJ4PR5M6WwxJu9gRCSibPTFAM-Tx7W6krC1hFdhmJXWax42VYPln6fHkjbXlhElj9YDnoK-1Rf3DS15aHnm5-Kjg");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-[#f4eae7] flex items-center justify-center text-[10px] font-bold text-[#9c5f49]">+2</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-black text-[#9c5f49] uppercase block mb-0.5 tracking-tighter">Slots Filled</span>
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between gap-4 mt-auto">
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">diamond</span>
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">layers</span>
+</div>
+<button class="flex-1 px-4 py-2.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-105 transition-all">Apply to Crew</button>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white rounded-lg p-6 flex flex-col gap-4 border border-[#e8d5ce] card-shadow card-hover transition-all cursor-pointer group">
+<div class="w-full h-40 rounded-xl bg-center bg-cover mb-2 overflow-hidden" data-alt="Fluid dynamic particle simulation" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD0YKGKE_HR30JA2XPNYllAw8kyKLGo14ru6JBD3njanrspVBXu5cRzKGccgXTlgbhhU3mIgECYg7oS-PjIacHpH3pQoGQ4Lfz-S9GVs7qEiHaUiz61JpKh7yluP6Z-N7jWLuCWiWzRWt83RxooH5-NN8EV8WuhB2ICXCEt2qOS0o7qGWlH9r39pG7nSLDUEOXVtH6MqUFwpjlVv5y-HuR_O8-Z5MTSGZGt89l8hyOZxfjSn7MUihYg2r4qamJIjL4MMtjzWxUSXsU");'>
+<div class="w-full h-full bg-black/20 group-hover:bg-transparent transition-all"></div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-accent-magenta/10 text-accent-magenta text-[10px] font-black uppercase tracking-widest">Need WebGL</span>
+<span class="px-2.5 py-0.5 rounded-full bg-[#f4eae7] text-[#9c5f49] text-[10px] font-black uppercase tracking-widest">Quick Sprint</span>
+</div>
+<div>
+<h3 class="text-xl font-bold text-[#1c110d] group-hover:text-primary transition-colors">Real-time Physics Engine</h3>
+<p class="text-[#9c5f49] text-sm mt-2 leading-relaxed line-clamp-2">High-performance engine for browser-based 3D simulations using Rust and WASM.</p>
+</div>
+<div class="flex items-center justify-between py-3 border-y border-[#f4eae7] my-1">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA-OsCVn1KGYOm-a2PFBaIjka22J1AWpmE_UhLuKXRc9ymYVTaZd7HHRp_PRcoQC8A6vRPMPcjn96b-epW9waQLb5A2gDdpuANhs8mGZgJX7pQzbGicAM8PvltD5xdtW8xp1C-pcQL0zDo9sqMDRYaWqJ6IcjROCmGzQy4RC-hrRfrk_WNMMDl64GYw_DZfleedC_shB4rymdDaS-N-dDSzioQwMxlwzio_2WQfZy26ZCqQ69i45pUf1WF9_hc544L8hbQFt5TIYK4");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDFPIFqepFWwKnDwEBztyRUCRUXkLyxEElmzOYM_ZexScZik7jp2x9Pa87sVfN2p-q0oTBD7WZqTTUBZYIAj4XbB4jRdOorPtBGCvvxjIAa0Oz_ywlR5Xnn_Wkjpd8UeZscWEOKX2ABN6sQP-ZAHQprHbIu0GQgNNeXaaczh-m6mFR-ulLYbgXvtftTV_CrHoNGGGWstwTIZx8ZJdY6aIrhBJ8TKak0HdL-ejscNohOtVq0HlLdGGXhc5Vji8IW6LbEC6DqiP7chTw");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-cover" data-alt="Team member avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuClMKHhZGrPms8x5clj3t51JvgJlFZdFoDdiQZlc3ne1eHoVThhOHFQrl3CdBABfa6wQt3aLAA5MWTY4SbNBfBm92mPAwUtezGwrw3FTO8M-N58rnBzzQb2-ZR6kmSwOfWUwf1q9I_PR0C0GfKE6_oFr2g1N6_mh5zmaQuCj1KvQdFaTS5PDT2TGQVGg42u_-cqxVelsou7q7UyHATEkmMzKs79PWfOyxqpslnPll8bySZJaKMQwPByLZYTHkzWWSOdLhPmqbQy8Oo");'></div>
+<div class="w-8 h-8 rounded-full border-2 border-white bg-[#f4eae7] flex items-center justify-center text-[10px] font-bold text-[#9c5f49]">+1</div>
+</div>
+<div class="text-right">
+<span class="text-[10px] font-black text-[#9c5f49] uppercase block mb-0.5 tracking-tighter">Slots Filled</span>
+<div class="flex gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-[#e8d5ce]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between gap-4 mt-auto">
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">precision_manufacturing</span>
+<span class="material-symbols-outlined text-lg text-[#9c5f49]">speed</span>
+</div>
+<button class="flex-1 px-4 py-2.5 rounded-full bg-primary text-white text-xs font-black uppercase tracking-widest hover:brightness-105 transition-all">Apply to Crew</button>
+</div>
+</div>
+</div>
+<!-- Pagination / Load More -->
+<div class="mt-16 flex flex-col items-center gap-6">
+<p class="text-[#9c5f49] text-sm font-bold uppercase tracking-widest">Showing 3 of 124 active missions</p>
+<button class="flex items-center gap-2 px-10 py-4 rounded-full border-2 border-[#e8d5ce] text-[#1c110d] font-bold hover:bg-white hover:border-primary transition-all group">
+                Load More Missions
+                <span class="material-symbols-outlined group-hover:translate-y-1 transition-transform">expand_more</span>
+</button>
+</div>
+</main>
+<!-- Footer Area -->
+<footer class="mt-20 border-t border-[#e8d5ce] bg-white py-12">
+<div class="max-w-[1200px] mx-auto px-10 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-2 text-primary opacity-50 grayscale hover:grayscale-0 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-2xl">rocket_launch</span>
+<span class="font-extrabold text-lg">ShipSpace</span>
+</div>
+<div class="flex gap-8">
+<a class="text-sm font-bold text-[#9c5f49] hover:text-[#1c110d]" href="#">Terms</a>
+<a class="text-sm font-bold text-[#9c5f49] hover:text-[#1c110d]" href="#">Privacy</a>
+<a class="text-sm font-bold text-[#9c5f49] hover:text-[#1c110d]" href="#">Guidelines</a>
+<a class="text-sm font-bold text-[#9c5f49] hover:text-[#1c110d]" href="#">Help</a>
+</div>
+<div class="text-[#9c5f49] text-xs font-medium">
+                © 2024 ShipSpace Labs. Built for builders.
+            </div>
+</div>
+</footer>
+</body></html>

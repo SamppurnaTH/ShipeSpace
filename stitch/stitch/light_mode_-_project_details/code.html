@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShipSpace - Developer OS Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f56e3d",
+                        "background-light": "#f8f6f5",
+                        "background-dark": "#221510",
+                        "steel-blue": "#f0f4f8",
+                        "prompt-magenta": "#d12e67",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-[#1c110d] transition-colors duration-200">
+<!-- Top Navigation Bar -->
+<header class="sticky top-0 z-50 w-full border-b border-[#e5e7eb] bg-white/80 backdrop-blur-md px-6 md:px-10 lg:px-40 py-3">
+<div class="flex items-center justify-between max-w-[1280px] mx-auto">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<div class="text-primary">
+<svg class="size-8" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M39.5563 34.1455V13.8546C39.5563 15.708 36.8773 17.3437 32.7927 18.3189C30.2914 18.916 27.263 19.2655 24 19.2655C20.737 19.2655 17.7086 18.916 15.2073 18.3189C11.1227 17.3437 8.44365 15.708 8.44365 13.8546V34.1455C8.44365 35.9988 11.1227 37.6346 15.2073 38.6098C17.7086 39.2069 20.737 39.5564 24 39.5564C27.263 39.5564 30.2914 39.2069 32.7927 38.6098C36.8773 37.6346 39.5563 35.9988 39.5563 34.1455Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-xl font-bold tracking-tight">ShipSpace</h2>
+</div>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Explore</a>
+<a class="text-sm font-semibold text-primary" href="#">Projects</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Builders</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+<input class="bg-gray-100 border-none rounded-lg pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search projects..." type="text"/>
+</div>
+<button class="bg-primary text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-opacity-90 transition-all">Profile</button>
+</div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-6 md:px-10 lg:px-40 py-8">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-2 mb-8 text-sm font-medium text-gray-500">
+<a class="hover:text-primary transition-colors" href="#">Explore</a>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<a class="hover:text-primary transition-colors" href="#">Open Source</a>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span class="text-gray-900">Developer OS</span>
+</nav>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+<!-- Left Panel: Content Showcase (Pure White) -->
+<div class="lg:col-span-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+<!-- Project Header Section -->
+<div class="p-8 border-b border-gray-50">
+<div class="flex flex-col md:flex-row gap-6 items-start">
+<div class="size-24 rounded-xl bg-gradient-to-br from-primary to-orange-300 flex items-center justify-center text-white shadow-lg shrink-0">
+<span class="material-symbols-outlined text-4xl">terminal</span>
+</div>
+<div class="flex-1">
+<div class="flex flex-wrap items-center justify-between gap-4 mb-2">
+<h1 class="text-3xl font-extrabold text-[#1c110d]">Developer OS</h1>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-bold transition-all border border-gray-100">
+<span class="material-symbols-outlined text-lg">public</span> Live Demo
+                                    </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white hover:bg-black rounded-lg text-sm font-bold transition-all">
+<span class="material-symbols-outlined text-lg">code</span> View Repo
+                                    </button>
+</div>
+</div>
+<p class="text-lg text-gray-600 leading-relaxed mb-4">A professional builder-first social platform for developers focused on proof of ship.</p>
+<!-- Chips -->
+<div class="flex flex-wrap gap-2">
+<span class="bg-steel-blue px-3 py-1 rounded-full text-xs font-bold text-gray-700">React 18</span>
+<span class="bg-steel-blue px-3 py-1 rounded-full text-xs font-bold text-gray-700">Rust</span>
+<span class="bg-steel-blue px-3 py-1 rounded-full text-xs font-bold text-gray-700">Tailwind CSS</span>
+<span class="bg-steel-blue px-3 py-1 rounded-full text-xs font-bold text-gray-700">PostgreSQL</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Content Body -->
+<div class="p-8 space-y-8">
+<div class="aspect-video w-full rounded-xl overflow-hidden bg-gray-100 border border-gray-100 relative group">
+<img class="w-full h-full object-cover" data-alt="Sleek dark mode coding environment interface screenshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLcjtpgyGTaxT2uesE6wHem8VWIijeU8Z1TzvsF_Q4thnLMaNlhORNEotebDYDtkH5lopWU4qJRlk8uYTo0ZBsmnva9xANCk0yQUtCgkuUEzqSH79NahJaFhpCydthXFa98jWdXIjbSlmgRy3K4-410FjjF-qLJJKouOeE1OYLWUBz4UfNz5ljJ6aRwfFkrnjMNizoY5rkQh8yyVkbEFteroHImkJFxzdjHEVkdDC28Ip40vGf98_dEqwM2pAwqJ-fbXoLLOHJ2_U"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors pointer-events-none"></div>
+<button class="absolute top-1/2 left-4 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="absolute top-1/2 right-4 -translate-y-1/2 bg-white/90 p-2 rounded-full shadow-lg">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+<article class="prose prose-slate max-w-none">
+<h3 class="text-xl font-bold mb-4">About the Project</h3>
+<p class="text-gray-600 leading-relaxed">
+                            Developer OS is an open-source initiative designed to bridge the gap between high-level project management and granular code execution. We believe that builders need a space that respects their workflow and provides tangible metrics for their contributions.
+                        </p>
+<h4 class="text-lg font-semibold mt-6 mb-3">Key Features</h4>
+<ul class="grid grid-cols-1 md:grid-cols-2 gap-3 list-none p-0">
+<li class="flex items-center gap-2 text-gray-600">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span> 
+                                Real-time collaboration modules
+                            </li>
+<li class="flex items-center gap-2 text-gray-600">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span> 
+                                Native Rust performance core
+                            </li>
+<li class="flex items-center gap-2 text-gray-600">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span> 
+                                Customizable builder dashboards
+                            </li>
+<li class="flex items-center gap-2 text-gray-600">
+<span class="material-symbols-outlined text-primary text-lg">check_circle</span> 
+                                Automated 'Ship' certification
+                            </li>
+</ul>
+</article>
+<!-- Feedback Stream (Below description on mobile, mirrors main content) -->
+<div class="pt-8 border-t border-gray-100">
+<h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                            Feedback Loop <span class="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">14</span>
+</h3>
+<div class="space-y-6">
+<!-- Comment 1 -->
+<div class="flex gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+<div class="size-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-bold text-sm">Alex Rivera</span>
+<span class="text-xs text-gray-400">• 2h ago</span>
+<span class="bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded">Core Builder</span>
+</div>
+<p class="text-sm text-gray-600 mb-3">The way you integrated the Rust backend with the React frontend is super clean. I particularly love the state management architecture.</p>
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">thumb_up</span> 12
+                                        </button>
+<button class="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">reply</span> Reply
+                                        </button>
+</div>
+</div>
+</div>
+<hr class="border-gray-50"/>
+<!-- Comment 2 -->
+<div class="flex gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+<div class="size-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 shrink-0">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center gap-2 mb-1">
+<span class="font-bold text-sm">Sarah Chen</span>
+<span class="text-xs text-gray-400">• 5h ago</span>
+</div>
+<p class="text-sm text-gray-600 mb-2">Have you considered adding a mobile-specific PWA manifest? The dashboard looks a bit cramped on smaller viewports.</p>
+<div class="bg-steel-blue/50 p-3 rounded-lg border-l-2 border-prompt-magenta mb-3">
+<p class="text-[11px] font-bold text-prompt-magenta uppercase tracking-wider mb-1">UX Improvement</p>
+<p class="text-xs italic text-gray-500">"Needs better responsive breakpoints for the builder-stats module."</p>
+</div>
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">thumb_up</span> 4
+                                        </button>
+<button class="flex items-center gap-1 text-xs text-gray-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">reply</span> Reply
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Feedback Engine (Steel Blue) -->
+<aside class="lg:col-span-4 sticky top-24 space-y-6">
+<!-- Project Stats Card -->
+<div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm grid grid-cols-3 gap-4 text-center">
+<div>
+<p class="text-2xl font-bold text-[#1c110d]">842</p>
+<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ships</p>
+</div>
+<div class="border-x border-gray-100">
+<p class="text-2xl font-bold text-[#1c110d]">12k</p>
+<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Views</p>
+</div>
+<div>
+<p class="text-2xl font-bold text-primary">56</p>
+<p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Feedback</p>
+</div>
+</div>
+<!-- Structured Feedback Form -->
+<div class="bg-steel-blue rounded-xl p-6 shadow-sm border border-blue-100">
+<h2 class="text-lg font-bold mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">campaign</span>
+                        Critique this Ship
+                    </h2>
+<form class="space-y-5">
+<div class="space-y-2">
+<label class="text-xs font-bold text-prompt-magenta uppercase tracking-wider">What to improve?</label>
+<textarea class="w-full bg-white border-blue-100 rounded-lg text-sm p-3 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-300 min-h-[80px]" placeholder="Specific design or code bottlenecks..."></textarea>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-prompt-magenta uppercase tracking-wider">Favorite feature?</label>
+<input class="w-full bg-white border-blue-100 rounded-lg text-sm p-3 focus:ring-primary focus:border-primary transition-all placeholder:text-gray-300" placeholder="The Rust core, the UI, etc." type="text"/>
+</div>
+<div class="space-y-3">
+<label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Feedback Category</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 rounded-md bg-white border border-blue-100 text-xs font-semibold hover:border-primary transition-colors" type="button">UI/UX</button>
+<button class="px-3 py-1.5 rounded-md bg-white border border-blue-100 text-xs font-semibold hover:border-primary transition-colors" type="button">Perf</button>
+<button class="px-3 py-1.5 rounded-md bg-white border border-blue-100 text-xs font-semibold hover:border-primary transition-colors" type="button">Architecture</button>
+<button class="px-3 py-1.5 rounded-md bg-white border border-blue-100 text-xs font-semibold hover:border-primary transition-colors" type="button">DX</button>
+</div>
+</div>
+<button class="w-full bg-primary text-white py-4 rounded-lg font-extrabold text-sm shadow-md shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 uppercase tracking-widest" type="button">
+<span class="material-symbols-outlined">rocket_launch</span>
+                            Ship Feedback
+                        </button>
+</form>
+</div>
+<!-- Builder Profile Card -->
+<div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">The Builder</h3>
+<div class="flex items-center gap-4">
+<div class="size-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+<img class="w-full h-full object-cover" data-alt="Profile headshot of the project creator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJfq1nZnrd585mQ5veEG-P8meCoQlq4xG1yV6JhiW-2A0HgjLrwAVirdb9U2dBRZi2zhtDmVXRkRHn4FdqsoYLhB-LmI_uMliH23Tec_xJHJ-cLcZ-MBqwQwaqnLwnZSMwAQ02Qbe4MCXc98oMYqTg8oaTQKlFC9Jkc_202biY4gWwx1vG4wOVGzw3e_74me3d4AGWucf1W2DviLkwljaWg5ht_Fr09N21xhfUUDM7gExAS598S6H-BdgX5ZLp9f2xT6wPMGfOIxg"/>
+</div>
+<div>
+<p class="font-bold text-sm">Marcus Thorne</p>
+<p class="text-xs text-gray-500">Staff Engineer @ NexaTech</p>
+</div>
+</div>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 py-2 text-xs font-bold bg-gray-50 hover:bg-gray-100 rounded-md transition-colors">Follow</button>
+<button class="px-3 py-2 text-xs font-bold bg-gray-50 hover:bg-gray-100 rounded-md transition-colors">
+<span class="material-symbols-outlined text-sm">mail</span>
+</button>
+</div>
+</div>
+<!-- Project Tags/Metadata -->
+<div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-gray-400 uppercase tracking-widest">License</span>
+<span class="text-xs font-bold px-2 py-0.5 bg-gray-100 rounded">MIT</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Last Shipped</span>
+<span class="text-xs font-bold text-gray-600">3 days ago</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Status</span>
+<span class="flex items-center gap-1.5 text-xs font-bold text-green-600">
+<span class="size-1.5 rounded-full bg-green-500"></span> Live
+                        </span>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- Footer -->
+<footer class="max-w-[1280px] mx-auto px-6 md:px-10 lg:px-40 py-12 border-t border-gray-100 mt-20">
+<div class="flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">sailing</span>
+<p class="text-sm font-bold text-gray-600">ShipSpace © 2024</p>
+</div>
+<div class="flex gap-8 text-sm font-medium text-gray-400">
+<a class="hover:text-primary" href="#">Guidelines</a>
+<a class="hover:text-primary" href="#">API</a>
+<a class="hover:text-primary" href="#">Changelog</a>
+<a class="hover:text-primary" href="#">Privacy</a>
+</div>
+</div>
+</footer>
+</body></html>

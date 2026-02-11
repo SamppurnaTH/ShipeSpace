@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShipSpace - Mission Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#1f86db",
+                "background-light": "#f6f7f8",
+                "background-dark": "#111a21",
+                "steelblue": "#507695",
+                "coral": "#FF7F50",
+                "magenta": "#FF00FF",
+              },
+              fontFamily: {
+                "display": ["Manrope", "sans-serif"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Manrope', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-[#0e151b]">
+<div class="flex min-h-screen">
+<!-- Sidebar Navigation -->
+<aside class="w-64 border-r border-[#e8eef3] bg-white flex flex-col justify-between p-4 h-screen sticky top-0">
+<div class="flex flex-col gap-6">
+<!-- Logo -->
+<div class="flex items-center gap-3 px-2">
+<div class="bg-primary flex items-center justify-center rounded-lg size-10 text-white">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-[#0e151b] text-base font-bold leading-none">ShipSpace</h1>
+<p class="text-steelblue text-xs font-medium">Builder Platform</p>
+</div>
+</div>
+<!-- Nav Links -->
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-steelblue hover:bg-[#f0f4f8] transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<p class="text-sm font-semibold">Dashboard</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-steelblue hover:bg-[#f0f4f8] transition-colors" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<p class="text-sm font-semibold">Missions</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">monitoring</span>
+<p class="text-sm font-bold">Analytics</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-steelblue hover:bg-[#f0f4f8] transition-colors" href="#">
+<span class="material-symbols-outlined">groups</span>
+<p class="text-sm font-semibold">Collaborators</p>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-steelblue hover:bg-[#f0f4f8] transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-semibold">Settings</p>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-4">
+<button class="flex w-full cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold tracking-[0.015em] hover:bg-primary/90">
+<span class="truncate">New Mission</span>
+</button>
+<div class="flex items-center gap-3 px-2">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="User profile avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDrA57CgSgr91XxAuShhEhjMMW8KzX53U56CaAgFqef94bhWqCJmUdj9lBQGyztAtgLvHQ2hoMUqADI142ttF_5XQcsY3zwDyNQ5KttvlgNw4_vXRd24vZ1vhAGtr7KqmYYpOUw-LJZCb5oWrWhiyefeBWu3_dGdcn4K26JVesMlfyxSCklAyU6I2RIRJNgZ-BIWWa9c8KgN71yUhULeoBpocqM7n2prk1BnvxghaqYkfNciArCy4bCdIG79l0aLN2ximHor41C2vU");'></div>
+<div class="flex flex-col overflow-hidden">
+<p class="text-[#0e151b] text-xs font-bold truncate">Alex Chen</p>
+<p class="text-steelblue text-[10px] truncate">Lead Developer</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col">
+<!-- Top Header -->
+<header class="flex items-center justify-between whitespace-nowrap bg-white border-b border-[#e8eef3] px-8 py-4 sticky top-0 z-10">
+<div class="flex items-center gap-8">
+<h2 class="text-[#0e151b] text-xl font-extrabold tracking-tight">Mission Analytics</h2>
+<label class="flex flex-col min-w-64 h-10">
+<div class="flex w-full flex-1 items-stretch rounded-lg bg-[#f0f4f8]">
+<div class="text-steelblue flex items-center justify-center pl-4 rounded-l-lg border-r-0">
+<span class="material-symbols-outlined">search</span>
+</div>
+<input class="form-input flex w-full min-w-0 flex-1 border-none bg-transparent focus:ring-0 text-[#0e151b] h-full placeholder:text-steelblue px-3 text-sm font-medium" placeholder="Search repositories..." value=""/>
+</div>
+</label>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-[#f0f4f8] text-steelblue hover:bg-[#e8eef3]">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="flex items-center justify-center rounded-lg h-10 w-10 bg-[#f0f4f8] text-steelblue hover:bg-[#e8eef3]">
+<span class="material-symbols-outlined">cloud_download</span>
+</button>
+</div>
+<button class="flex items-center justify-center rounded-lg h-10 px-4 bg-primary/10 text-primary gap-2 text-sm font-bold hover:bg-primary/20">
+<span class="material-symbols-outlined">share</span>
+<span>Export Report</span>
+</button>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-8 flex flex-col gap-6 max-w-[1200px] mx-auto w-full">
+<!-- Filters -->
+<div class="flex items-center justify-between">
+<div class="flex gap-2 p-1 bg-[#e8eef3] rounded-xl w-fit">
+<button class="px-4 py-1.5 rounded-lg text-sm font-bold bg-white text-primary shadow-sm">Last 7 Days</button>
+<button class="px-4 py-1.5 rounded-lg text-sm font-bold text-steelblue hover:text-primary">Last 30 Days</button>
+<button class="px-4 py-1.5 rounded-lg text-sm font-bold text-steelblue hover:text-primary">Last 90 Days</button>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-white border border-[#e8eef3] rounded-lg text-steelblue text-sm font-bold shadow-sm">
+<span>All Repositories</span>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</div>
+<!-- Stats Summary -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-white rounded-xl p-6 border border-[#e8eef3] shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<p class="text-steelblue text-sm font-bold uppercase tracking-wider">Launch Velocity</p>
+<span class="bg-[#eefcf3] text-[#078838] px-2 py-1 rounded text-xs font-bold font-mono">-1.2d</span>
+</div>
+<p class="text-[#0e151b] text-3xl font-extrabold leading-tight">4.2 days</p>
+<p class="text-steelblue/60 text-xs mt-2 font-medium">Avg. time from commit to prod</p>
+</div>
+<div class="bg-white rounded-xl p-6 border border-[#e8eef3] shadow-sm hover:shadow-md transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<p class="text-steelblue text-sm font-bold uppercase tracking-wider">Active Missions</p>
+<span class="bg-[#f0f4f8] text-primary px-2 py-1 rounded text-xs font-bold font-mono">+18%</span>
+</div>
+<p class="text-[#0e151b] text-3xl font-extrabold leading-tight">12</p>
+<p class="text-steelblue/60 text-xs mt-2 font-medium">Ongoing development streams</p>
+</div>
+<div class="bg-white rounded-xl p-6 border border-[#e8eef3] shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-primary">
+<div class="flex justify-between items-start mb-4">
+<p class="text-steelblue text-sm font-bold uppercase tracking-wider">Collaborator Impact</p>
+<span class="bg-[#eefcf3] text-[#078838] px-2 py-1 rounded text-xs font-bold font-mono">+5.4%</span>
+</div>
+<p class="text-[#0e151b] text-3xl font-extrabold leading-tight">88.5%</p>
+<p class="text-steelblue/60 text-xs mt-2 font-medium">Based on PR reviews and mentorship</p>
+</div>
+</div>
+<!-- Main Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Deployment Frequency Chart -->
+<div class="bg-white rounded-xl border border-[#e8eef3] p-6 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="text-[#0e151b] text-lg font-bold">Deployment Frequency</h3>
+<p class="text-steelblue text-xs font-medium">System stability over time</p>
+</div>
+<div class="text-right">
+<p class="text-2xl font-bold text-[#0e151b]">142 <span class="text-sm font-medium text-steelblue">deploys</span></p>
+<p class="text-[#078838] text-xs font-bold">+14% vs last week</p>
+</div>
+</div>
+<div class="relative h-48 w-full mt-4">
+<!-- Line Chart with Coral Color -->
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+<path d="M0 35 Q 10 32, 20 25 T 40 15 T 60 20 T 80 5 T 100 12" fill="none" stroke="#FF7F50" stroke-linecap="round" stroke-width="2"></path>
+<path d="M0 35 Q 10 32, 20 25 T 40 15 T 60 20 T 80 5 T 100 12 V 40 H 0 Z" fill="url(#coral-gradient)" opacity="0.1"></path>
+<defs>
+<lineargradient id="coral-gradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#FF7F50"></stop>
+<stop offset="100%" stop-color="#FF7F50" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="flex justify-between mt-4 border-t border-[#f0f4f8] pt-2">
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Mon</span>
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Wed</span>
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Fri</span>
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Sun</span>
+</div>
+</div>
+</div>
+<!-- Repository Growth Chart -->
+<div class="bg-white rounded-xl border border-[#e8eef3] p-6 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<div>
+<h3 class="text-[#0e151b] text-lg font-bold">Repository Growth</h3>
+<p class="text-steelblue text-xs font-medium">New stars and contributors</p>
+</div>
+<div class="text-right">
+<p class="text-2xl font-bold text-[#0e151b]">+2.4k <span class="text-sm font-medium text-steelblue">stars</span></p>
+<p class="text-magenta text-xs font-bold">-2% vs peak</p>
+</div>
+</div>
+<div class="h-48 flex items-end justify-between gap-2 mt-4 px-2">
+<!-- Magenta Bar Chart -->
+<div class="w-full bg-magenta/10 rounded-t-sm h-[40%] hover:bg-magenta/30 transition-colors"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[70%] hover:bg-magenta/30 transition-colors"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[55%] hover:bg-magenta/30 transition-colors"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[90%] hover:bg-magenta/30 transition-colors border-t-2 border-magenta"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[65%] hover:bg-magenta/30 transition-colors"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[45%] hover:bg-magenta/30 transition-colors"></div>
+<div class="w-full bg-magenta/10 rounded-t-sm h-[80%] hover:bg-magenta/30 transition-colors"></div>
+</div>
+<div class="flex justify-between mt-4 border-t border-[#f0f4f8] pt-2">
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Day 01</span>
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Day 15</span>
+<span class="text-[10px] font-bold text-steelblue uppercase tracking-tighter">Day 30</span>
+</div>
+</div>
+</div>
+<!-- Detailed Metrics Table -->
+<div class="bg-white rounded-xl border border-[#e8eef3] overflow-hidden shadow-sm mb-12">
+<div class="px-6 py-4 border-b border-[#e8eef3] flex justify-between items-center bg-[#fafbfc]">
+<h3 class="text-[#0e151b] font-bold">Collaborator Impact Matrix</h3>
+<button class="text-primary text-xs font-bold hover:underline">View All Members</button>
+</div>
+<table class="w-full text-left">
+<thead>
+<tr class="bg-white border-b border-[#e8eef3]">
+<th class="px-6 py-4 text-xs font-bold text-steelblue uppercase tracking-widest">Collaborator</th>
+<th class="px-6 py-4 text-xs font-bold text-steelblue uppercase tracking-widest">PR Status</th>
+<th class="px-6 py-4 text-xs font-bold text-steelblue uppercase tracking-widest">Mentorship</th>
+<th class="px-6 py-4 text-xs font-bold text-steelblue uppercase tracking-widest">Efficiency</th>
+<th class="px-6 py-4 text-xs font-bold text-steelblue uppercase tracking-widest text-right">Impact Score</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-[#f0f4f8]">
+<tr class="hover:bg-[#f8fafb] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-steelblue/20 flex items-center justify-center font-bold text-steelblue text-[10px]">JD</div>
+<div>
+<p class="text-sm font-bold text-[#0e151b]">Jane Doe</p>
+<p class="text-[10px] text-steelblue">Senior Architect</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<div class="size-1.5 rounded-full bg-[#078838]"></div>
+<div class="size-1.5 rounded-full bg-[#078838]"></div>
+<div class="size-1.5 rounded-full bg-primary"></div>
+<div class="size-1.5 rounded-full bg-[#e8eef3]"></div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs font-semibold text-[#0e151b]">12 Tokens</span>
+</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-[#e8eef3] rounded-full overflow-hidden">
+<div class="h-full bg-coral" style="width: 92%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="font-bold text-sm text-[#0e151b]">98.2</span>
+</td>
+</tr>
+<tr class="hover:bg-[#f8fafb] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-[10px]">ML</div>
+<div>
+<p class="text-sm font-bold text-[#0e151b]">Marcus Lee</p>
+<p class="text-[10px] text-steelblue">Frontend Lead</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<div class="size-1.5 rounded-full bg-magenta"></div>
+<div class="size-1.5 rounded-full bg-magenta"></div>
+<div class="size-1.5 rounded-full bg-[#e8eef3]"></div>
+<div class="size-1.5 rounded-full bg-[#e8eef3]"></div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs font-semibold text-[#0e151b]">8 Tokens</span>
+</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-[#e8eef3] rounded-full overflow-hidden">
+<div class="h-full bg-magenta" style="width: 76%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="font-bold text-sm text-[#0e151b]">84.5</span>
+</td>
+</tr>
+<tr class="hover:bg-[#f8fafb] transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-[10px]">SW</div>
+<div>
+<p class="text-sm font-bold text-[#0e151b]">Sarah Wong</p>
+<p class="text-[10px] text-steelblue">DevOps Engineer</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex gap-1">
+<div class="size-1.5 rounded-full bg-steelblue"></div>
+<div class="size-1.5 rounded-full bg-steelblue"></div>
+<div class="size-1.5 rounded-full bg-steelblue"></div>
+<div class="size-1.5 rounded-full bg-steelblue"></div>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs font-semibold text-[#0e151b]">15 Tokens</span>
+</td>
+<td class="px-6 py-4">
+<div class="w-24 h-1.5 bg-[#e8eef3] rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 88%"></div>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="font-bold text-sm text-[#0e151b]">92.1</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+</body></html>

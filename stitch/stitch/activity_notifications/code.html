@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Activity Notifications | ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#135bec",
+                "background-light": "#f6f6f8",
+                "background-dark": "#101622",
+              },
+              fontFamily: {
+                "display": ["Inter"]
+              },
+              borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .unread-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #135bec;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 antialiased">
+<div class="flex h-screen overflow-hidden">
+<!-- Side Navigation Bar -->
+<aside class="w-64 border-r border-slate-200 dark:border-[#232f48] bg-white dark:bg-[#111722] flex flex-col justify-between p-4 shrink-0">
+<div class="flex flex-col gap-8">
+<div class="flex items-center gap-3 px-2">
+<div class="bg-primary rounded-lg p-1.5 text-white">
+<span class="material-symbols-outlined text-2xl">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-base font-bold leading-none tracking-tight">ShipSpace</h1>
+<p class="text-slate-500 dark:text-[#92a4c9] text-[10px] uppercase font-bold tracking-widest mt-1">Dev Workspace</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#232f48] rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-sm font-medium">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#232f48] rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="text-sm font-medium">Explore</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#232f48] rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">rocket_launch</span>
+<span class="text-sm font-medium">Ships</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary dark:bg-[#232f48] dark:text-white rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+<span class="text-sm font-bold">Notifications</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#232f48] rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<div class="flex flex-col gap-4 mt-auto">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Ship</span>
+</button>
+<div class="flex items-center gap-3 p-2 border-t border-slate-200 dark:border-[#232f48] pt-4">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-8" data-alt="Profile picture of a developer" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuC7NL8rxXVStG6c6Lb8CXvCLsTKAMJF1wETa1DP1Cluaz35Z1OUzFKvT8XZBqzHm_tHOYxHTTVOKR7umYKvN7XoNxDsP3WbhoZDuvwtgKsH4_17yLrC2hMdQs7oRxMs7ytbKuG78JXSt2THWmm7sJXhhW4ytOGHwe98nUGPMTqXyaSmkSrnuGeGkKMkqfFyWf0xaNYkuz-cML0lQb3hSVbKXbt2lSZy9swYZXZS2zh7fgsCCAuswyjpeSQ4yYCSnpUeRnrKjzsu3cI");'></div>
+<div class="flex flex-col min-w-0">
+<p class="text-sm font-bold truncate">Alex Rivera</p>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Pro Plan</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- Top Nav Bar -->
+<header class="flex items-center justify-between border-b border-slate-200 dark:border-[#232f48] px-8 py-4 bg-white/80 dark:bg-[#111722]/80 backdrop-blur-md z-10">
+<div class="flex items-center gap-6">
+<h2 class="text-xl font-bold tracking-tight">Activity Center</h2>
+<div class="h-4 w-[1px] bg-slate-200 dark:bg-[#232f48]"></div>
+<div class="relative w-72">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-slate-400 text-lg">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-2 border-none rounded-lg bg-slate-100 dark:bg-[#232f48] text-sm placeholder-slate-400 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search activities..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center -space-x-2">
+<div class="h-8 w-8 rounded-full border-2 border-white dark:border-[#111722] bg-slate-200" data-alt="User avatar small" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuASHyrhPlaEc4fOp_UOdPMteQTFaBmJcNCcLRcOzApFB0jk935fFwVYbcj3imnuTgByjTmarCKmOw3MB0mEVM7Iw30NdKtLbmgiYqbTTMoqzwmX6I_VRI9cKRXhO0n-d5gz59qEokSv49raZT44NB1urd4ZGeJhrZNhmLadFvO2M9Lv9WOwhC9y7EkSohj8wfnTHaDkXBkDvjT5yA2oRcR-LGi_UlpGQEaMDBr0RRYrik895WbN58T3bGtKoMEA1lgykrfR4QREDw0");'></div>
+<div class="h-8 w-8 rounded-full border-2 border-white dark:border-[#111722] bg-slate-300" data-alt="User avatar small" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDqczrUGCH3KUt8-mOWPR0g6VdG9mb93rUOoVNLx7o8Olyu03y8L4SWsqPUs9QaVvZoL8mqtqOzxZ-_gfOyDrmQNTMt8MQLk0m379_rvid7YifcXFDzD8Q72ShRFy4bT66rtQsLfTaxNKbDauYNpQ_Qh2x5Vhz8z0WPV2L8JPyhSbh2QlHj6f171qU-HEfBW3J9uO0hAj8TkRpultq4Vr1vt5vNkXjWKjCUM90OXt33SRXruy775WVVlkjwLSoBz21u22OgGHtfvnE");'></div>
+<div class="h-8 w-8 flex items-center justify-center rounded-full border-2 border-white dark:border-[#111722] bg-slate-100 dark:bg-[#232f48] text-[10px] font-bold">+12</div>
+</div>
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-[#232f48] rounded-lg transition-colors">
+<span class="material-symbols-outlined">tune</span>
+</button>
+</div>
+</header>
+<!-- Categorized Tabs & Actions -->
+<div class="bg-white dark:bg-[#111722] px-8 border-b border-slate-200 dark:border-[#232f48]">
+<div class="flex items-center justify-between">
+<nav class="flex gap-8">
+<a class="relative flex flex-col items-center justify-center py-4 text-sm font-bold text-primary" href="#">
+                            All <span class="absolute bottom-0 left-0 right-0 h-[3px] bg-primary rounded-t-full"></span>
+</a>
+<a class="flex flex-col items-center justify-center py-4 text-sm font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">
+                            Feedback <span class="ml-1 text-[10px] py-0.5 px-1.5 bg-slate-100 dark:bg-[#232f48] rounded">12</span>
+</a>
+<a class="flex flex-col items-center justify-center py-4 text-sm font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">
+                            Ships
+                        </a>
+<a class="flex flex-col items-center justify-center py-4 text-sm font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors" href="#">
+                            System
+                        </a>
+</nav>
+<div class="flex gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-primary dark:text-[#92a4c9] hover:bg-primary/5 rounded-lg transition-all">
+<span class="material-symbols-outlined text-lg">check_circle</span>
+                            Mark all as read
+                        </button>
+<button class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-red-500 dark:text-[#92a4c9] hover:bg-red-50 rounded-lg transition-all">
+<span class="material-symbols-outlined text-lg">delete</span>
+                            Clear all
+                        </button>
+</div>
+</div>
+</div>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto bg-slate-50 dark:bg-background-dark p-8">
+<div class="max-w-4xl mx-auto space-y-4">
+<!-- Notification Group: Today -->
+<div>
+<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Today</h3>
+<div class="space-y-3">
+<!-- List Item: Feedback (Unread) -->
+<div class="group relative flex items-start gap-4 bg-white dark:bg-[#111722] p-4 rounded-xl border border-slate-200 dark:border-[#232f48] hover:shadow-md transition-shadow cursor-pointer">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 -ml-1.5 unread-dot"></div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 shrink-0 border border-slate-100 dark:border-slate-800" data-alt="Avatar of Sarah Chen" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCa79b9GFduBQ9ducR1l2qH72_Xy7NaUtjdXPiZhtDrNaXrniUt-5exZGSqJiubJVzUqq9-WL3iecuYQzIcul3N0fEPaziQslRW2ORpyPEiadIOzShKi5VgPCfArvwxIDtHsbQa9VSqZPaZ3jOhflHIlLxQ8C7VGE-P94ZR6ec3yv-5Gn01e8KsxQt7Lx_EW4zodNSX3Y2VGIpvL-NaezoyEZvDVWS5plVQ171plDQBNPUzI8Nf_vTVjxn-QSKWqGnwQ5qELkvJhzc");'></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Sarah Chen <span class="font-normal text-slate-500 dark:text-slate-400">commented on your project</span> <span class="text-primary hover:underline">Aether UI</span></p>
+<span class="text-[11px] font-medium text-slate-400">2m ago</span>
+</div>
+<p class="text-sm text-slate-600 dark:text-[#92a4c9] line-clamp-2 leading-relaxed italic border-l-2 border-slate-200 dark:border-slate-700 pl-3 mt-2">
+                                        "The accessibility documentation here is top-notch! Have you considered adding a high-contrast mode section for the color system?"
+                                    </p>
+<div class="flex gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-4 py-1.5 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">reply</span> Reply
+                                        </button>
+<button class="px-4 py-1.5 bg-slate-100 dark:bg-[#232f48] text-slate-600 dark:text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">visibility</span> View Thread
+                                        </button>
+</div>
+</div>
+</div>
+<!-- List Item: New Ship -->
+<div class="group flex items-start gap-4 bg-white dark:bg-[#111722] p-4 rounded-xl border border-slate-200 dark:border-[#232f48] hover:shadow-md transition-shadow cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 shrink-0 border border-slate-100 dark:border-slate-800" data-alt="Avatar of Marcus Aurel" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCQsrgbrmEBMDpoaHu48xd3flmlECaavP3ea8qhRTd2FS5Rto1CfCwn9l2RSaWPmID0uEgL9Fm6xInMoInWZJRMv_ryZaDr04h7Y_gI2-z3yUNrVIb5lUc8qPQpFtnSZ4HzN5UXSYFYlDMhZ1l1lWaDewDq1bVYqfgfRQZYN469DfEv8xOUfjI37ejM8P8b22A1gyKx6SNdY5hPHvoOIaqhLALvJgO2rMwo-2ztV-bfMOEEnjUR3vlu_31ea1Xae2LX70L4H706jdg");'></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Marcus Aurel <span class="font-normal text-slate-500 dark:text-slate-400">just shipped</span> <span class="text-primary hover:underline">CodeCanvas v2.0</span></p>
+<span class="text-[11px] font-medium text-slate-400">1h ago</span>
+</div>
+<div class="mt-3 flex gap-3 items-center bg-slate-50 dark:bg-[#1c263a] p-3 rounded-lg border border-slate-100 dark:border-[#2a3a5a]">
+<div class="h-14 w-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex-shrink-0" data-alt="Project thumbnail gradient preview"></div>
+<div class="min-w-0">
+<p class="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">CodeCanvas v2.0 - Realtime Collaboration</p>
+<p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">Redesigned canvas engine with support for 100+ file formats.</p>
+</div>
+</div>
+<div class="flex gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-4 py-1.5 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">rocket_launch</span> Explore Ship
+                                        </button>
+<button class="px-4 py-1.5 bg-slate-100 dark:bg-[#232f48] text-slate-600 dark:text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">thumb_up</span> Congratulate
+                                        </button>
+</div>
+</div>
+</div>
+<!-- List Item: System Notification (Badge) -->
+<div class="group flex items-start gap-4 bg-white dark:bg-[#111722] p-4 rounded-xl border border-slate-200 dark:border-[#232f48] hover:shadow-md transition-shadow cursor-pointer">
+<div class="h-12 w-12 shrink-0 bg-yellow-400/10 text-yellow-500 rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">System <span class="font-normal text-slate-500 dark:text-slate-400">Achievement Unlocked</span></p>
+<span class="text-[11px] font-medium text-slate-400">4h ago</span>
+</div>
+<p class="text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">"The Lighthouse Keep" Badge</p>
+<p class="text-[13px] text-slate-500 dark:text-slate-400">You've reached 100 stars across all your published Ships. Keep up the great work!</p>
+<div class="flex gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="px-4 py-1.5 bg-slate-100 dark:bg-[#232f48] text-slate-600 dark:text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">share</span> Share Achievement
+                                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Notification Group: Yesterday -->
+<div class="pt-6">
+<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Yesterday</h3>
+<div class="space-y-3">
+<!-- List Item: Collaboration Request -->
+<div class="group flex items-start gap-4 bg-white dark:bg-[#111722] p-4 rounded-xl border border-slate-200 dark:border-[#232f48] hover:shadow-md transition-shadow cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 shrink-0 border border-slate-100 dark:border-slate-800" data-alt="Avatar of Jamie Doe" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAujpqIhU_QxOkJPhK4c07jXgKtk2xPLORUqvmQpXzbug33gYGDfx9gZJBC5s-OgUX7bwzYibansm4dpPzoZmibTkwfpzVxFwsWZq5oRIPvCidgm44iYYR83QbS9rPXD9_P98V-fNEl1vGGc2_UTlLdLhTaykou8o6BxQbjBoPcfFUSwTtDFH8S65LigWzy9NgrEvNVHeoL_UdIcx_J4DNIldi5mziY6VwxZaH2fUGNXfE_LmWU8X6XvybUF-LEn7pTKL8uZGs889U");'></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">Jamie Doe <span class="font-normal text-slate-500 dark:text-slate-400">requested to collaborate on</span> <span class="text-primary hover:underline">Nexus Engine</span></p>
+<span class="text-[11px] font-medium text-slate-400">1d ago</span>
+</div>
+<div class="flex gap-3 mt-4">
+<button class="px-4 py-1.5 bg-primary text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+                                            Accept
+                                        </button>
+<button class="px-4 py-1.5 bg-slate-100 dark:bg-[#232f48] text-slate-600 dark:text-white text-[11px] font-bold rounded-lg flex items-center gap-2">
+                                            Decline
+                                        </button>
+</div>
+</div>
+</div>
+<!-- List Item: Mention -->
+<div class="group flex items-start gap-4 bg-white dark:bg-[#111722] p-4 rounded-xl border border-slate-200 dark:border-[#232f48] hover:shadow-md transition-shadow cursor-pointer">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-12 w-12 shrink-0 border border-slate-100 dark:border-slate-800" data-alt="Avatar of Developer X" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB6b3OYMzo-bFjwYtxGRtJ8n6i7e2Gkxa3eOhIRVGUglPSCV3_QzCZt8K-D_Mpy22GdMFMkFlpdgpM_n0nrfGfx3noqnMw_crm1668hlZUugQAvvUcriwa-ihje_uJ3RDeGamgQ3vD51TYkUVuULFlR_EkEk0CicSVnspUHno-T8LXqV3NcKx54iS5gwK00UZgH-wPtN0nSI71vegAqOqwhdJcY8glm5Ffr6QYzO2dMI0IlJbgwJNq2ElDm5Y75wzZmLlJVbyYCjYs");'></div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between mb-1">
+<p class="text-sm font-bold text-slate-900 dark:text-white">dev_rocket <span class="font-normal text-slate-500 dark:text-slate-400">mentioned you in a discussion</span></p>
+<span class="text-[11px] font-medium text-slate-400">1d ago</span>
+</div>
+<p class="text-[13px] text-slate-600 dark:text-[#92a4c9] line-clamp-2 mt-1">
+                                        "@arivera have you looked at the performance benchmarks for the new Rust parser? It seems..."
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Load More -->
+<div class="flex justify-center py-8">
+<button class="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-[#111722] border border-slate-200 dark:border-[#232f48] rounded-full text-xs font-bold text-slate-500 dark:text-slate-300 hover:border-primary hover:text-primary transition-all shadow-sm">
+<span class="material-symbols-outlined text-lg">history</span>
+                            Load Older Activity
+                        </button>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual Preview Side Panel (Visible on Desktop/Wide) -->
+<aside class="hidden xl:flex w-80 border-l border-slate-200 dark:border-[#232f48] bg-white dark:bg-[#111722] flex-col overflow-y-auto">
+<div class="p-6">
+<h3 class="text-sm font-bold mb-6">Achievement Showcase</h3>
+<div class="grid grid-cols-2 gap-3">
+<div class="aspect-square bg-slate-50 dark:bg-[#1c263a] rounded-xl border border-slate-100 dark:border-[#2a3a5a] flex flex-col items-center justify-center p-2 text-center">
+<span class="material-symbols-outlined text-3xl text-primary mb-2">military_tech</span>
+<p class="text-[10px] font-bold">First Ship</p>
+</div>
+<div class="aspect-square bg-slate-50 dark:bg-[#1c263a] rounded-xl border border-slate-100 dark:border-[#2a3a5a] flex flex-col items-center justify-center p-2 text-center opacity-50">
+<span class="material-symbols-outlined text-3xl text-slate-400 mb-2">auto_awesome</span>
+<p class="text-[10px] font-bold">1k Stars</p>
+</div>
+<div class="aspect-square bg-slate-50 dark:bg-[#1c263a] rounded-xl border border-slate-100 dark:border-[#2a3a5a] flex flex-col items-center justify-center p-2 text-center">
+<span class="material-symbols-outlined text-3xl text-green-500 mb-2">terminal</span>
+<p class="text-[10px] font-bold">Contributor</p>
+</div>
+<div class="aspect-square bg-slate-50 dark:bg-[#1c263a] rounded-xl border border-slate-100 dark:border-[#2a3a5a] flex flex-col items-center justify-center p-2 text-center">
+<span class="material-symbols-outlined text-3xl text-orange-400 mb-2">local_fire_department</span>
+<p class="text-[10px] font-bold">7 Day Streak</p>
+</div>
+</div>
+<div class="mt-8">
+<h3 class="text-sm font-bold mb-4">Notification Settings</h3>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500 dark:text-slate-400">Email Updates</span>
+<div class="w-8 h-4 bg-primary rounded-full relative">
+<div class="absolute right-0.5 top-0.5 h-3 w-3 bg-white rounded-full"></div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-slate-500 dark:text-slate-400">Browser Pushes</span>
+<div class="w-8 h-4 bg-slate-300 dark:bg-slate-700 rounded-full relative">
+<div class="absolute left-0.5 top-0.5 h-3 w-3 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Featured Community Activity -->
+<div class="mt-12 p-4 bg-primary/5 rounded-xl border border-primary/10">
+<p class="text-[11px] font-bold text-primary uppercase tracking-wider mb-2">Trending Ship</p>
+<p class="text-sm font-bold dark:text-white leading-tight">Vortex: A high-speed GPU-based compiler</p>
+<p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">Built by @luna_codes - Trending with 1.2k stars this week.</p>
+<button class="w-full mt-4 py-2 bg-primary text-white text-xs font-bold rounded-lg">Explore</button>
+</div>
+</div>
+</aside>
+</div>
+</body></html>

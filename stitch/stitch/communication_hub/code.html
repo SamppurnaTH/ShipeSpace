@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Communication Hub | ShipSpace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#101622",
+                        "surface-dark": "#161f2e",
+                        "border-dark": "#232f48"
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #232f48;
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #324467;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex flex-col border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
+<div class="p-4 flex items-center gap-3">
+<div class="bg-primary rounded-lg p-2 text-white">
+<span class="material-symbols-outlined block">rocket_launch</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-base font-bold leading-tight">ShipSpace</h1>
+<p class="text-slate-500 dark:text-[#92a4c9] text-xs font-medium uppercase tracking-wider">Developer Hub</p>
+</div>
+</div>
+<nav class="flex-1 px-3 space-y-1 mt-4">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary dark:bg-primary/20 dark:text-white transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">chat_bubble</span>
+<span class="text-sm font-medium">Communication</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">code</span>
+<span class="text-sm font-medium">Projects</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span class="text-sm font-medium">Marketplace</span>
+</a>
+<div class="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">System</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 dark:text-[#92a4c9] hover:bg-slate-100 dark:hover:bg-surface-dark transition-colors" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="text-sm font-medium">Support</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-border-dark flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 overflow-hidden">
+<img class="h-full w-full object-cover" data-alt="User profile avatar showing a developer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIszC837k1Kn7o26QOCr1VtnmFZ-szapZgobG5T8ghD3Uy5ajMEHCXQ14onXQBGzxFgT9QQj722aZMS1oggf68EJDjH6-NbhEUw4814_Ii0E9HjT7AkOADI9dPFnt2K9ykNrM4hKgQz5jP--hpymJVxAGGl14Eyor63RdbXXlwqofK2Oibys3V6K5xSXStkq24Bv9vF3N7w3ZL_PrbBUM-It5fnnoRs1HPfjLQIRyExINTULksM2LfT3Evve0gXRrqG5TlrlHyA4Y"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-sm font-semibold truncate">Alex Rivera</p>
+<p class="text-xs text-slate-500 dark:text-[#92a4c9] truncate">Fullstack Engineer</p>
+</div>
+<span class="material-symbols-outlined text-slate-400 text-sm">more_vert</span>
+</div>
+</aside>
+<!-- Thread List Pane -->
+<main class="w-80 flex flex-col border-r border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-[#0d121c]">
+<div class="p-4 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-bold">Messages</h2>
+<button class="p-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+<span class="material-symbols-outlined text-sm">edit_square</span>
+</button>
+</div>
+<!-- SearchBar Component -->
+<div class="relative">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+<span class="material-symbols-outlined text-xl">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-2 border-none bg-slate-200/50 dark:bg-border-dark dark:text-white rounded-lg text-sm placeholder-slate-500 focus:ring-2 focus:ring-primary/50 transition-all" placeholder="Search crews or builders..." type="text"/>
+</div>
+</div>
+<!-- Tabs Component -->
+<div class="px-4 border-b border-slate-200 dark:border-border-dark">
+<div class="flex gap-4">
+<button class="pb-3 text-sm font-bold border-b-2 border-primary text-primary dark:text-white">Active Crews</button>
+<button class="pb-3 text-sm font-medium text-slate-500 dark:text-[#92a4c9] hover:text-slate-700 dark:hover:text-white transition-colors">Builders</button>
+</div>
+</div>
+<!-- List Items -->
+<div class="flex-1 overflow-y-auto custom-scrollbar">
+<!-- Active Crew Item -->
+<div class="flex items-center gap-3 p-4 bg-white dark:bg-primary/10 border-l-4 border-primary cursor-pointer hover:bg-slate-100 dark:hover:bg-primary/20 transition-all">
+<div class="relative h-12 w-12 shrink-0">
+<img class="h-full w-full rounded-lg object-cover" data-alt="Project team logo for ShipSpace Core" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBc_e962gicfN5Sk796XEymhVNJFozumhyoSXREfm-3YVVyVP7gVBEBml9LKcrVEXx7cJ7UNtggPay9T7nYYnEIJKLYYDOAIag8vnu5gieELfAF1YsmMcSZ7GH7UVPvOMKtSKTOlXVrSMXdPG2mFK42WVNxqPxeZMof4gUN9JkAQKMbcPRZKRx0T-FxbkfiagrBXkVwToP9Uo16G1YtDohpneahLj1_xziD8s5XYzoj19UpL5PJNYx83SV5eiEDng9H5EGY2JmwrKk"/>
+<div class="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 border-2 border-white dark:border-[#0d121c] rounded-full"></div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-sm font-bold truncate">ShipSpace Core</h3>
+<span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">2m</span>
+</div>
+<p class="text-xs text-slate-600 dark:text-slate-300 font-semibold truncate">Alice: Check the new API docs...</p>
+</div>
+</div>
+<!-- Regular Crew Item -->
+<div class="flex items-center gap-3 p-4 border-b border-slate-100 dark:border-border-dark/50 cursor-pointer hover:bg-slate-100 dark:hover:bg-surface-dark transition-all">
+<div class="h-12 w-12 shrink-0">
+<img class="h-full w-full rounded-lg object-cover" data-alt="Rust Parser library group icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdh_8gEXNiMDpLuAEGDVOZgrhgEvpBMp-gVQTZLjsrBM05PHmgk-BrfIMWc4rxslkqkboQho2nYd0lOB0DnpNIfW-CZiAyg4HEP9TSQ4RN_iPO4qIPRNeXl_W8sCbOpDssePq9-f9z5K6LrWkSvnOGPL782y0bN8M40QbqJulSSgxgb3Q7vPNy7Ru2J8asajFVgCxLvsBDeJawTjlg7JIKY62L0CUO51sdDuvp5XwcH68hCA5hPVLHQ2hkn3_LdSdspibPoSbEMuU"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 truncate">Rust-Parser-Lib</h3>
+<span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">1h</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-[#92a4c9] truncate">Marco: Merged the PR for AST node traversal</p>
+</div>
+</div>
+<!-- Regular Builder Item -->
+<div class="flex items-center gap-3 p-4 border-b border-slate-100 dark:border-border-dark/50 cursor-pointer hover:bg-slate-100 dark:hover:bg-surface-dark transition-all">
+<div class="relative h-12 w-12 shrink-0">
+<img class="h-full w-full rounded-full object-cover" data-alt="Avatar of senior developer Sarah" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEnA4tUFlp1PORNUkD6hg562gTmX1T1nHDydpSO80eMrpi6lFskpMNpITKsUXTqbH7d7sLC5VDcPwXUFpRTDeUtCWMIQdGcmKBqh14T0enkA-N-TzUGlZyBiMQxrglIHGvj86ulnTim1fZydnFKU6sB5vViJoDXt_q2o9OG9BocH8u78pkRrs_bdc7wjG-hpw7uM8HZoG1XBcYCIuLp8hevd8Fgm8jcEk124-knyf91d7hhwyFYznrn3F4dvWQ92UqM7sRmvG-oq0"/>
+<div class="absolute -bottom-1 -right-1 h-4 w-4 bg-slate-400 border-2 border-white dark:border-[#0d121c] rounded-full"></div>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 truncate">Sarah Chen</h3>
+<span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">3h</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-[#92a4c9] truncate">Sent a snippet for the Auth provider</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-4 border-b border-slate-100 dark:border-border-dark/50 cursor-pointer hover:bg-slate-100 dark:hover:bg-surface-dark transition-all">
+<div class="h-12 w-12 shrink-0">
+<img class="h-full w-full rounded-lg object-cover" data-alt="Webhooks integration project icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJOYo4ApaL-bbZAZj-GHFBR7cEkz02FdqHoZkSuv9NgxtYIJBdX2bsRtdjqHWmWYXH3wTF7trbL22QJx5bMfX9uZ6jPHKPj5kRgL_z7IJwqg0WxEaxZPfnSPEdZCm1aDPANC7OC6fBNo5chLwTliJHGaOHFEOfZvNsqmdj0y9kGkCz_q77P8-c0KtNveo_t9NbDVMUciWwZKqHhIrfvfJrAzLlqANKbLz2u1ykfw8R0uoxubJdZrXkb8AVeE8YDOonBN5Ku0PjQGk"/>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="text-sm font-bold text-slate-700 dark:text-slate-300 truncate">Discord-Webhook-Tool</h3>
+<span class="text-[10px] text-slate-400 dark:text-slate-500 font-medium">Yesterday</span>
+</div>
+<p class="text-xs text-slate-500 dark:text-[#92a4c9] truncate">System: New commit pushed by 4 users</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Chat View Pane -->
+<section class="flex-1 flex flex-col bg-white dark:bg-background-dark relative">
+<!-- TopNavBar Component (Modified for Chat) -->
+<header class="h-16 flex items-center justify-between border-b border-slate-200 dark:border-border-dark px-6">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3">
+<img class="size-10 rounded-lg" data-alt="ShipSpace Core project logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAo4z5npXbOeFlmTdD-SqBmlwX2_BAl0fp2DMcm_c04A2TFTcUhWGC2lE8xZnfXWapl9GM6g4j_llG7gS5aFrEBYd9Y3gaUio3Hl8WgqaCuzkPrjZEQySHjAxOyFEIOPywuS1vE4Tqf1PXN-fgSW5kLh0EZRGeomFr5pAgo3-fhGH-sTnTiBPBaZGSkvAB9hs6X-au4ZeHcwoC-QFOi-jAoRwqsW5atZoNHByC6oWBNVa9hiyE22nK-VFXn0DDjJT_S0Pj6zUcNukw"/>
+<div>
+<h2 class="text-base font-bold leading-tight">ShipSpace Core</h2>
+<p class="text-[10px] text-green-500 font-bold uppercase tracking-wide flex items-center gap-1">
+<span class="h-1.5 w-1.5 bg-green-500 rounded-full"></span> 12 Builders Active
+                            </p>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-border-dark hover:bg-slate-50 dark:hover:bg-surface-dark transition-colors">
+<span class="material-symbols-outlined text-lg">visibility</span>
+<span class="text-xs font-bold">View Project</span>
+</button>
+<div class="h-6 w-px bg-slate-200 dark:bg-border-dark mx-1"></div>
+<button class="p-2 text-slate-500 hover:text-slate-800 dark:text-[#92a4c9] dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">person_add</span>
+</button>
+<button class="p-2 text-slate-500 hover:text-slate-800 dark:text-[#92a4c9] dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-slate-500 hover:text-slate-800 dark:text-[#92a4c9] dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+</header>
+<!-- Chat Message Area -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+<!-- System Message -->
+<div class="flex justify-center">
+<div class="px-3 py-1 bg-slate-100 dark:bg-surface-dark rounded-full text-[10px] font-bold text-slate-500 dark:text-[#92a4c9] uppercase tracking-wider">
+                        Today, October 24
+                    </div>
+</div>
+<!-- Message Left -->
+<div class="flex gap-4 max-w-2xl">
+<img class="h-9 w-9 rounded-full shrink-0 mt-1" data-alt="Sarah Chen's avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0Y51caieQUpsyAtg0yPF43_Pu5jKLlTessz75htsl2OtYqIkeNj2MlS6qxQzWjmOkFY-YxbbSF0wV-paQQnNFe5A24MAid4Ahs-asjasGF8QzSBK8y362-6V154T2wSb9BeOe2p4PSs_NrM4t4hm6HcyHDfnq4vRoT5ak8gucfxByXonVIVjBarQdnOHDwFlJe0qj2BilfVRtldi6BQZShg956JEbNFX0cfjkI7bZOUn1nJ4P6xCRx9cnNQVzI7x8PlkMmf5OZkQ"/>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">Sarah Chen</span>
+<span class="text-[10px] text-slate-400">10:42 AM</span>
+</div>
+<div class="bg-slate-100 dark:bg-surface-dark px-4 py-2.5 rounded-xl rounded-tl-none">
+<p class="text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                                Hey team, I've finished the initial draft for the API response schemas. Can someone take a look at the TypeScript interfaces below? I want to make sure the generic types for pagination make sense.
+                            </p>
+</div>
+</div>
+</div>
+<!-- Message with Code Snippet -->
+<div class="flex gap-4 max-w-3xl">
+<img class="h-9 w-9 rounded-full shrink-0 mt-1" data-alt="Sarah Chen's avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqGj2f1kdyKXOUfcWlMmyQOcYSGIEojt2zq_FiHgnDrsrgZ2hgXvN8nfZz99MMAnDKN7lVMuXfp_ajHQvAbx70866lIAZgbT8enrX_b5mNHuMydOi5l1Zi_B_itidGa9Qs5s0XHppKgHEF-2M13ZRAeU_nEAYgqeDebNKLatf8xvBPyfnKS5TpGnTL0iGYJLx8GfApqE4Jj0jjz3FxvIaLWzY6MjfmYd3021kvIfgmEes27IY6RJTB6X-wJXZ5HBA7VY93N2QxH0Y"/>
+<div class="flex flex-col gap-2 w-full">
+<div class="flex items-center gap-2">
+<span class="text-sm font-bold">Sarah Chen</span>
+<span class="text-[10px] text-slate-400">10:43 AM</span>
+</div>
+<div class="bg-slate-100 dark:bg-surface-dark rounded-xl overflow-hidden border border-slate-200 dark:border-border-dark">
+<div class="flex items-center justify-between px-4 py-2 bg-slate-200 dark:bg-border-dark/50 border-b border-slate-300 dark:border-border-dark">
+<span class="text-[10px] font-mono font-bold text-slate-500 dark:text-[#92a4c9]">types/api.ts</span>
+<button class="flex items-center gap-1 text-[10px] font-bold hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">content_copy</span> Copy
+                                </button>
+</div>
+<pre class="p-4 overflow-x-auto font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-300"><code><span class="text-primary">interface</span> <span class="text-yellow-600 dark:text-yellow-400">PaginatedResponse</span>&lt;<span class="text-primary">T</span>&gt; {
+  data: <span class="text-primary">T</span>[];
+  meta: {
+    total: <span class="text-primary">number</span>;
+    page: <span class="text-primary">number</span>;
+    hasMore: <span class="text-primary">boolean</span>;
+  };
+}
+
+<span class="text-primary">export type</span> <span class="text-yellow-600 dark:text-yellow-400">BuilderResponse</span> = <span class="text-yellow-600 dark:text-yellow-400">PaginatedResponse</span>&lt;<span class="text-yellow-600 dark:text-yellow-400">BuilderProfile</span>&gt;;</code></pre>
+</div>
+</div>
+</div>
+<!-- Message Right (Self) -->
+<div class="flex flex-row-reverse gap-4 max-w-2xl ml-auto">
+<div class="h-9 w-9 rounded-full bg-primary/20 shrink-0 mt-1 flex items-center justify-center overflow-hidden border border-primary/30">
+<img class="h-full w-full object-cover" data-alt="Self avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI2cnqE6s3ulgxNBU5GhZ2q_phI4HZgi1ip9vMLbLwpxVXv_FjDqQ6nMs_zhnpRKYomzjwme0ImRklpMx5r8vFE12DVpxs9ydbOHqAtQiwuMVcXmxUB6pAPglbh1OrQpEBjRzwxFQ_VNGLPH3vrAZiRxli8-ALVzNdcxTWbvRRufoaFVuFUskOBgEAb3eYIGKre5wVhtYg0sKp7u_wA_ZAsxmk0PrHxtzTygsAwihScVxk__VyGWkBY80Hf2hGdlbQUpB4PPLjV4s"/>
+</div>
+<div class="flex flex-col gap-1 items-end">
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-slate-400">10:45 AM</span>
+<span class="text-sm font-bold">Alex Rivera</span>
+</div>
+<div class="bg-primary px-4 py-2.5 rounded-xl rounded-tr-none text-white shadow-lg shadow-primary/20">
+<p class="text-sm leading-relaxed">
+                                This looks solid, Sarah! The generic approach is exactly what we need for the Dashboard views. I'll merge this into the <span class="underline decoration-white/50 cursor-pointer">feature/core-api</span> branch.
+                            </p>
+</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[12px] text-primary" style="font-variation-settings: 'FILL' 1">done_all</span>
+<span class="text-[10px] text-slate-400">Read</span>
+</div>
+</div>
+</div>
+<!-- Notification -->
+<div class="flex justify-center py-2">
+<div class="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg">
+<span class="material-symbols-outlined text-primary text-lg">merge</span>
+<p class="text-[11px] font-medium text-slate-600 dark:text-[#92a4c9]">
+<span class="font-bold text-slate-900 dark:text-white">Alex Rivera</span> merged PR <span class="text-primary font-bold">#42</span> into <span class="font-mono bg-slate-200 dark:bg-border-dark px-1 rounded">main</span>
+</p>
+</div>
+</div>
+</div>
+<!-- Chat Input Area -->
+<div class="p-4 border-t border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark">
+<div class="max-w-4xl mx-auto">
+<div class="relative bg-slate-100 dark:bg-surface-dark rounded-xl border-2 border-transparent focus-within:border-primary/30 transition-all p-2">
+<div class="flex items-center gap-1 px-2 pb-2 mb-2 border-b border-slate-200 dark:border-border-dark/50">
+<button class="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-border-dark rounded transition-colors" title="Bold">
+<span class="material-symbols-outlined text-lg">format_bold</span>
+</button>
+<button class="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-border-dark rounded transition-colors" title="Italic">
+<span class="material-symbols-outlined text-lg">format_italic</span>
+</button>
+<button class="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-border-dark rounded transition-colors" title="Code Block">
+<span class="material-symbols-outlined text-lg">code_blocks</span>
+</button>
+<div class="h-4 w-px bg-slate-300 dark:bg-border-dark mx-1"></div>
+<button class="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-border-dark rounded transition-colors" title="Add Image">
+<span class="material-symbols-outlined text-lg">image</span>
+</button>
+<button class="p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-border-dark rounded transition-colors" title="Attach File">
+<span class="material-symbols-outlined text-lg">attach_file</span>
+</button>
+</div>
+<div class="flex items-end gap-3 px-2">
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-slate-800 dark:text-white placeholder-slate-500 py-2 resize-none max-h-48 custom-scrollbar" placeholder="Message ShipSpace Core..." rows="1"></textarea>
+<div class="flex items-center gap-2 pb-1">
+<button class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+<span class="material-symbols-outlined">mood</span>
+</button>
+<button class="h-9 w-9 bg-primary text-white rounded-lg flex items-center justify-center hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all">
+<span class="material-symbols-outlined text-xl">send</span>
+</button>
+</div>
+</div>
+</div>
+<div class="mt-2 flex justify-center">
+<p class="text-[10px] text-slate-400 font-medium">
+                            Press <kbd class="px-1 bg-slate-100 dark:bg-border-dark rounded border border-slate-300 dark:border-slate-700">Enter</kbd> to send, <kbd class="px-1 bg-slate-100 dark:bg-border-dark rounded border border-slate-300 dark:border-slate-700">Shift + Enter</kbd> for new line
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Detail Panel (Collapsible) -->
+<aside class="w-72 border-l border-slate-200 dark:border-border-dark bg-slate-50 dark:bg-[#0d121c] hidden xl:flex flex-col">
+<div class="p-6">
+<h3 class="text-sm font-bold text-slate-800 dark:text-white mb-6">Crew Details</h3>
+<div class="space-y-6">
+<div>
+<p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Project Link</p>
+<div class="bg-white dark:bg-surface-dark p-3 rounded-xl border border-slate-200 dark:border-border-dark">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 bg-slate-100 dark:bg-border-dark rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">shipspace-v2-monorepo</p>
+<p class="text-[10px] text-slate-400">github.com/shipspace/core</p>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between mb-3">
+<p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Shared Files</p>
+<a class="text-[10px] font-bold text-primary hover:underline" href="#">See all</a>
+</div>
+<div class="space-y-2">
+<div class="flex items-center gap-3 p-2 hover:bg-slate-200 dark:hover:bg-surface-dark rounded-lg transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-orange-500">description</span>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-medium truncate">architecture_v2.pdf</p>
+<p class="text-[9px] text-slate-500">1.2 MB • Oct 22</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 hover:bg-slate-200 dark:hover:bg-surface-dark rounded-lg transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-blue-500">terminal</span>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-medium truncate">deploy_script.sh</p>
+<p class="text-[9px] text-slate-500">4 KB • Oct 20</p>
+</div>
+</div>
+</div>
+</div>
+<div>
+<p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Online Builders (4)</p>
+<div class="flex -space-x-2">
+<img class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#0d121c]" data-alt="Team member 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdsGxeVA9KO4DUnzcMh4yVKktMnpL08SHSrgdVgbXgPKtqc24HoDOLWlojFDh0gjjLCxVqvuN441__Kvcj0lKkNIDfHWUcGBbmTDFlXmZKUMI0ZrOyTFo2LvWx0t3721qmNONM7H2iFysGVunvc7fxeg9SUtaKQPLyIjGaxX0_PvZ3Yhd4QU0Mq1eFF4WdIKHU4NSUFSyxlbAkQi2Bhn3LWlZvChmo5XMWo0IfgwylvPiOyTzvlXbXh7GU07BDgQD0AlAW3WSVf6g"/>
+<img class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#0d121c]" data-alt="Team member 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkPZEPDHcS-CtBlICXadykCzMKgrmrCJsmOVqJC56RIt_thAXr6_b-ICBBkuN2MZvsHImmlDTCU3ZMzdUU7ylmAquqIsUK7_2zMaqDDpD5iR9es6Xq0KP9Np-jANCiRTGV9FYvaa4caz5gKdB6H_0fmwQ0GEcegN5FDvssfsUOd7jWMyd2cayltvNamn3eFUaRUOXh6UZMFHXyKEUvhctEN7Gl1ZaHLDWkqE0DTSrsl0qHytUU5b-RcKBS0RG2CXT18qS1taIvGYc"/>
+<img class="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#0d121c]" data-alt="Team member 3" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxG-mAoFOIU5rSejw5tL26jT-Cpf8-vf3FfT5yCk8MqcNebb23FUnXTmTkb9HpjgXeTBg6kQKB0OO9r6G4Bq3ys9yagtr3CTFLH0mo9Tyrh4kcWfSzJDGtT22vJ2jH0cNVcvxjJxIfLgzQ1YmtbE1UxlwxRc3iNgEirmFASHouwiyHRN3o8Xk5SbMHGU2pOFOciIcYJseSXDn7KgjzAotl7mtsbgd3Oer2lcYV_GNhxSoZwokoTlLd7i0XuuPSwpQSZU8vqf7wbp0"/>
+<div class="flex items-center justify-center h-8 w-8 rounded-full ring-2 ring-white dark:ring-[#0d121c] bg-slate-200 dark:bg-border-dark text-[10px] font-bold text-slate-500">+8</div>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto p-6">
+<button class="w-full py-2.5 rounded-lg border-2 border-dashed border-slate-300 dark:border-border-dark text-slate-500 dark:text-[#92a4c9] hover:border-primary hover:text-primary transition-all text-xs font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                    Add to Workspace
+                </button>
+</div>
+</aside>
+</div>
+</body></html>
