@@ -1,0 +1,245 @@
+package com.shipspace.service;
+
+import com.shipspace.dto.ProjectCreateRequest;
+import com.shipspace.dto.ProjectResponse;
+import com.shipspace.dto.ProjectUpdateRequest;
+import com.shipspace.exception.ForbiddenException;
+import com.shipspace.exception.ResourceNotFoundException;
+import com.shipspace.model.Project;
+import com.shipspace.model.Ship;
+import com.shipspace.repository.ProjectRepository;
+import com.shipspace.repository.ShipRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+
+/**
+ * Service for project management operations.
+ * Handles project CRUD operations, ownership validation, and metadata aggregation.
+ * 
+ * Implements Requirements 3.1, 3.2, 3.3, 3.4, 3.5:
+ * - Project creation with validation
+ * - Project retrieval with metadata
+ * - Project updates with ownership validation
+ * - Project ship history in chronological order
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ProjectService {
+
+    private final ProjectRepository projectRepository;
+    private final ShipRepository shipRepository;
+    private final UserService userService;
+
+    /**
+     * Creates a new project for the authenticated user.
+     * Validates input data and initializes project metadata.
+     * 
+     * @param userId the ID of the user creating the project
+     * @param request the project creation request with metadata
+     * @return the created project response
+     */
+    @Transactional
+    public ProjectResponse createProject(String userId, ProjectCreateRequest request) {
+        log.info("Creating project for user ID: {}", userId);
+        
+        // Verify user exists
+        userService.getUserById(userId);
+        
+        // Create project entity
+        Project project = Project.builder()
+                .userId(userId)
+                .name(request.getName())
+                .description(request.getDescription())
+                .techTags(request.getTechTags())
+                .externalLinks(request.getExternalLinks())
+                .shipCount(0)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        
+        // Save project
+        Project savedProject = projectRepository.save(project);
+        log.info("Successfully created project with ID: {} for user: {}", savedProject.getId(), userId);
+        
+        // Update user's project count
+        userService.updateProjectCount(userId);
+        
+        return mapToResponse(savedProject);
+    }
+
+    /**
+     * Retrieves a project by its ID.
+     * Includes project metadata and ship count.
+     * 
+     * @param projectId the ID of the project to retrieve
+     * @return the project response with metadata
+     * @throws ResourceNotFoundException if project is not found
+     */
+    public ProjectResponse getProjectById(String projectId) {
+        log.debug("Retrieving project with ID: {}", projectId);
+        
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        
+        return mapToResponse(project);
+    }
+
+    /**
+     * Updates a project's metadata.
+     * Only the project owner can update the project.
+     * Only provided fields will be updated (null fields are ignored).
+     * 
+     * @param projectId the ID of the project to update
+     * @param userId the ID of the user attempting the update
+     * @param request the update request with new metadata
+     * @return the updated project response
+     * @throws ResourceNotFoundException if project is not found
+     * @throws ForbiddenException if user is not the project owner
+     */
+    @Transactional
+    public ProjectResponse updateProject(String projectId, String userId, ProjectUpdateRequest request) {
+        log.info("Updating project ID: {} by user ID: {}", projectId, userId);
+        
+        // Retrieve project
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        
+        // Verify ownership
+        if (!project.getUserId().equals(userId)) {
+            log.warn("User {} attempted to update project {} owned by {}", 
+                    userId, projectId, project.getUserId());
+            throw new ForbiddenException("update", "project");
+        }
+        
+        // Update only provided fields
+        if (request.getName() != null) {
+            project.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+        if (request.getTechTags() != null) {
+            project.setTechTags(request.getTechTags());
+        }
+        if (request.getExternalLinks() != null) {
+            project.setExternalLinks(request.getExternalLinks());
+        }
+        
+        project.setUpdatedAt(Instant.now());
+        
+        // Save updated project
+        Project updatedProject = projectRepository.save(project);
+        log.info("Successfully updated project ID: {}", projectId);
+        
+        return mapToResponse(updatedProject);
+    }
+
+    /**
+     * Retrieves all ships associated with a project in chronological order.
+     * Returns ships sorted by creation date (most recent first).
+     * 
+     * @param projectId the ID of the project
+     * @param page the page number (0-indexed)
+     * @param size the page size
+     * @return page of ships for the project
+     * @throws ResourceNotFoundException if project is not found
+     */
+    public Page<Ship> getProjectShips(String projectId, int page, int size) {
+        log.debug("Retrieving ships for project ID: {} (page: {}, size: {})", projectId, page, size);
+        
+        // Verify project exists
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        
+        // Get ships sorted by creation date (most recent first)
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Ship> ships = shipRepository.findByProjectId(projectId, pageable);
+        
+        log.debug("Found {} ships for project ID: {}", ships.getTotalElements(), projectId);
+        
+        return ships;
+    }
+
+    /**
+     * Retrieves all ships associated with a project with default pagination.
+     * 
+     * @param projectId the ID of the project
+     * @return page of ships for the project (first 20 ships)
+     * @throws ResourceNotFoundException if project is not found
+     */
+    public Page<Ship> getProjectShips(String projectId) {
+        return getProjectShips(projectId, 0, 20);
+    }
+
+    /**
+     * Updates project metadata when a new ship is created.
+     * Increments ship count and updates lastShipAt timestamp.
+     * 
+     * @param projectId the ID of the project
+     */
+    @Transactional
+    public void updateProjectShipMetadata(String projectId) {
+        log.debug("Updating ship metadata for project ID: {}", projectId);
+        
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        
+        // Update ship count
+        long shipCount = shipRepository.countByProjectId(projectId);
+        project.setShipCount((int) shipCount);
+        
+        // Update last ship timestamp
+        project.setLastShipAt(Instant.now());
+        project.setUpdatedAt(Instant.now());
+        
+        projectRepository.save(project);
+        log.debug("Updated project {} ship count to {}", projectId, shipCount);
+    }
+
+    /**
+     * Verifies that a project exists and is owned by the specified user.
+     * 
+     * @param projectId the ID of the project
+     * @param userId the ID of the user
+     * @throws ResourceNotFoundException if project is not found
+     * @throws ForbiddenException if user is not the project owner
+     */
+    public void verifyProjectOwnership(String projectId, String userId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+        
+        if (!project.getUserId().equals(userId)) {
+            throw new ForbiddenException("access", "project");
+        }
+    }
+
+    /**
+     * Maps a Project entity to a ProjectResponse DTO.
+     * 
+     * @param project the project entity
+     * @return the project response DTO
+     */
+    private ProjectResponse mapToResponse(Project project) {
+        return ProjectResponse.builder()
+                .id(project.getId())
+                .userId(project.getUserId())
+                .name(project.getName())
+                .description(project.getDescription())
+                .techTags(project.getTechTags())
+                .externalLinks(project.getExternalLinks())
+                .shipCount(project.getShipCount())
+                .lastShipAt(project.getLastShipAt())
+                .createdAt(project.getCreatedAt())
+                .updatedAt(project.getUpdatedAt())
+                .build();
+    }
+}

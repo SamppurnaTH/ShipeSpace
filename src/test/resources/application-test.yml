@@ -1,0 +1,28 @@
+spring:
+  data:
+    mongodb:
+      # Embedded MongoDB will be used for tests
+      auto-index-creation: true
+  
+  # Allow bean definition overriding for tests
+  main:
+    allow-bean-definition-overriding: true
+  
+  # Disable Redis for tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+# Embedded MongoDB version
+de:
+  flapdoodle:
+    mongodb:
+      embedded:
+        version: 6.0.6
+
+# Test-specific configuration
+logging:
+  level:
+    root: INFO
+    com.shipspace: DEBUG
+    org.springframework.data.mongodb: DEBUG

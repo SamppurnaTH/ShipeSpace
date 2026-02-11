@@ -1,0 +1,265 @@
+spring:
+  application:
+    name: shipspace-mvp
+  
+  # MongoDB Configuration with Connection Pooling
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/shipspace}
+      auto-index-creation: true
+      database: shipspace
+      # Connection pool settings for production
+      connection-per-host: 50
+      min-connections-per-host: 10
+      max-connections-idle-time: 60000
+      max-wait-time: 30000
+  
+  # Redis Configuration
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 5000
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 8
+        min-idle: 2
+        max-wait: 5000
+  
+  # Jackson Configuration
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    deserialization:
+      fail-on-unknown-properties: false
+    parser:
+      allow-unquoted-control-chars: true
+
+# Server Configuration
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: never
+  servlet:
+    context-path: /api
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    min-response-size: 1024
+  http2:
+    enabled: true
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:your-secret-key-change-this-in-production-minimum-256-bits}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+
+# GitHub OAuth Configuration
+github:
+  oauth:
+    client-id: ${GITHUB_CLIENT_ID:your-github-client-id}
+    client-secret: ${GITHUB_CLIENT_SECRET:your-github-client-secret}
+    redirect-uri: ${GITHUB_REDIRECT_URI:http://localhost:3000/auth/callback}
+    token-url: https://github.com/login/oauth/access_token
+    user-url: https://api.github.com/user
+
+# Multibase Configuration
+multibase:
+  api-url: ${MULTIBASE_API_URL:http://localhost:5001}
+  api-key: ${MULTIBASE_API_KEY:your-multibase-api-key}
+  timeout: 30000
+  retry:
+    max-attempts: 3
+    delay: 1000
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600
+  exposed-headers: X-RateLimit-Limit,X-RateLimit-Remaining,X-RateLimit-Reset
+
+# Rate Limiting Configuration
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+  requests-per-minute: ${RATE_LIMIT_RPM:60}
+  # Per-user rate limiting
+  per-user:
+    enabled: ${RATE_LIMIT_PER_USER:true}
+    requests-per-minute: 120
+    burst-capacity: 150
+
+# Ship Edit Window Configuration
+ship:
+  edit-window-minutes: 10
+
+# Feed Configuration
+feed:
+  page-size: 20
+  trending:
+    cache-ttl-minutes: 15
+    time-windows:
+      - 24h
+      - 7d
+      - 30d
+
+# Rank Progression Configuration
+rank-progression:
+  # Score thresholds per level
+  score-per-level: 40
+  max-level: 30
+  # Decay settings
+  decay:
+    enabled: ${DECAY_ENABLED:true}
+    threshold-days: 60
+    decay-percentage: 10
+    scheduled-cron: "0 0 2 * * *"
+  # Daily caps per event type
+  daily-caps:
+    PROJECT_CREATED: -1  # No limit
+    PROJECT_UPDATED: 5
+    COLLAB_ACCEPTED: -1  # No limit
+    QUALITY_COMMENT: -1  # No limit
+
+# Cache Configuration
+cache:
+  enabled: ${CACHE_ENABLED:true}
+  ttl-seconds: 300
+  rank-summary:
+    ttl-seconds: 60
+  user-profile:
+    ttl-seconds: 120
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,circuitbreakers
+  endpoint:
+    health:
+      show-details: when-authorized
+      group:
+        readiness:
+          include: db,redis,mongodb
+        liveness:
+          include: ping
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: shipspace-mvp
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      type: w3c
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      mongodb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60000
+        failureRateThreshold: 50
+        recordExceptions:
+          - org.springframework.dao.DataAccessException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+      redis:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 30000
+        failureRateThreshold: 50
+  retry:
+    instances:
+      mongodb:
+        maxAttempts: 3
+        waitDuration: 500
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.dao.DataAccessException
+          - java.io.IOException
+      external-api:
+        maxAttempts: 3
+        waitDuration: 1000
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+  bulkhead:
+    instances:
+      external-api:
+        maxConcurrentCalls: 10
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.shipspace: DEBUG
+    org.springframework.data.mongodb: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/shipspace.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 1GB
+  logback:
+    encoder:
+      pattern: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Audit Logging Configuration
+audit:
+  enabled: ${AUDIT_ENABLED:true}
+  events:
+    - RANK_CHANGED
+    - LEVEL_CHANGED
+    - SCORE_APPLIED
+    - USER_LOGIN
+    - USER_REGISTER
+  retention-days: 365
+
+# OpenAPI/Swagger Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    filter: true
+  show-actuator: true
+  enable-spring-security: true
+
+# Security Configuration
+security:
+  headers:
+    hsts: strict
+    content-type-options: nosniff
+    xss-protection: 1;mode=block
+    frame-options: DENY
+    referrer-policy: strict-origin-when-cross-origin
+    permissions-policy: accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),payment=(),usb=()
+  cors:
+    allow-origin: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
