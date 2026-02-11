@@ -9,10 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/SamppurnaTH/ShipeSpace/stargazers"><img src="https://img.shields.io/github/stars/SamppurnaTH/ShipeSpace?style=for-the-badge" alt="Stars" /></a>
-  <a href="https://github.com/SamppurnaTH/ShipeSpace/network/members"><img src="https://img.shields.io/github/forks/SamppurnaTH/ShipeSpace?style=for-the-badge" alt="Forks" /></a>
-  <a href="https://github.com/SamppurnaTH/ShipeSpace/issues"><img src="https://img.shields.io/github/issues/SamppurnaTH/ShipeSpace?style=for-the-badge" alt="Issues" /></a>
-  <a href="https://github.com/SamppurnaTH/ShipeSpace/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SamppurnaTH/ShipeSpace?style=for-the-badge" alt="License" /></a>
+  <a href="https://github.com/SamppurnaTH/ShipeSpace/stargazers"><img src="https://img.shields.io/github/stars/SamppurnaTH/ShipeSpace?style=for-the-badge&color=blue" alt="Stars" /></a>
+  <a href="https://github.com/SamppurnaTH/ShipeSpace/network/members"><img src="https://img.shields.io/github/forks/SamppurnaTH/ShipeSpace?style=for-the-badge&color=blue" alt="Forks" /></a>
+  <a href="https://github.com/SamppurnaTH/ShipeSpace/issues"><img src="https://img.shields.io/github/issues/SamppurnaTH/ShipeSpace?style=for-the-badge&color=red" alt="Issues" /></a>
+  <a href="https://github.com/SamppurnaTH/ShipeSpace/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SamppurnaTH/ShipeSpace?style=for-the-badge&color=green" alt="License" /></a>
 </p>
 
 ---
