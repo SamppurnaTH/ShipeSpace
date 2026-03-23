@@ -19,7 +19,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
@@ -177,13 +176,13 @@ class RankSummaryControllerPropertyTest {
     @Provide
     Arbitrary<User> validUserWithRank() {
         return Combinators.combine(
-            Arbitaries.of(RankTier.values()).flat(),
-            Arbitaries.integers().between(1, 30)
-        ).flatMap((rankTier, level) -> {
+            Arbitraries.of(RankTier.values()),
+            Arbitraries.integers().between(1, 30)
+        ).flatAs((rankTier, level) -> {
             // Calculate appropriate shipScore for the level
-            int shipScore = (level - 1) * 40 + Arbitaries.integers().between(0, 39).sample();
+            int shipScore = (level - 1) * 40;
             
-            return Arbitaries.strings().alpha().ofMinLength(10).map(id -> {
+            return Arbitraries.strings().alpha().ofMinLength(10).map(id -> {
                 User user = new User();
                 user.setId(id);
                 user.setShipScore(shipScore);
@@ -203,16 +202,16 @@ class RankSummaryControllerPropertyTest {
     @Provide
     Arbitrary<User> validUser() {
         return Combinators.combine(
-            Arbitaries.integers().between(0, 2000),
-            Arbitaries.integers().between(1, 30)
-        ).flatMap((shipScore, level) -> {
+            Arbitraries.integers().between(0, 2000),
+            Arbitraries.integers().between(1, 30)
+        ).flatAs((shipScore, level) -> {
             // Calculate expected level from shipScore
             int expectedLevel = Math.min(30, (shipScore / 40) + 1);
             
             // Calculate appropriate rank from level
             RankTier rank = RankTier.fromLevel(expectedLevel);
             
-            return Arbitaries.strings().alpha().ofMinLength(10).map(id -> {
+            return Arbitraries.strings().alpha().ofMinLength(10).map(id -> {
                 User user = new User();
                 user.setId(id);
                 user.setShipScore(shipScore);

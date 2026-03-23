@@ -2,10 +2,10 @@ package com.shipspace.controller;
 
 import com.shipspace.dto.AuthRequest;
 import com.shipspace.dto.AuthResponse;
+import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.dto.RefreshTokenRequest;
 import com.shipspace.exception.GitHubOAuthException;
 import com.shipspace.exception.InvalidTokenException;
-import com.shipspace.model.User;
 import com.shipspace.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -162,39 +162,31 @@ class AuthControllerTest {
     void getCurrentUser_ValidAuthentication_ReturnsUserInfo() {
         // Arrange
         String userId = "user-id";
-        User expectedUser = User.builder()
+        when(userDetails.getUsername()).thenReturn(userId);
+        CurrentUserResponse expectedResponse = CurrentUserResponse.builder()
                 .id(userId)
-                .githubId("12345")
                 .username("testuser")
                 .email("test@example.com")
-                .avatarUrl("https://github.com/avatar.png")
-                .bio("Test bio")
-                .location("Test City")
-                .websiteUrl("https://test.com")
                 .followerCount(10)
                 .followingCount(5)
                 .projectCount(3)
                 .build();
-
-        when(authentication.getPrincipal()).thenReturn(userDetails);
-        when(userDetails.getUsername()).thenReturn(userId);
-        when(authService.getCurrentUser(userId)).thenReturn(expectedUser);
+        when(authService.getCurrentUserResponse(userId)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<User> response = authController.getCurrentUser(authentication);
+        ResponseEntity<CurrentUserResponse> response = authController.getCurrentUser(authentication);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getId()).isEqualTo(userId);
-        assertThat(response.getBody().getGithubId()).isEqualTo("12345");
         assertThat(response.getBody().getUsername()).isEqualTo("testuser");
         assertThat(response.getBody().getEmail()).isEqualTo("test@example.com");
         assertThat(response.getBody().getFollowerCount()).isEqualTo(10);
         assertThat(response.getBody().getFollowingCount()).isEqualTo(5);
         assertThat(response.getBody().getProjectCount()).isEqualTo(3);
 
-        verify(authService).getCurrentUser(userId);
+        verify(authService).getCurrentUserResponse(userId);
     }
 
     @Test
@@ -203,7 +195,7 @@ class AuthControllerTest {
         String userId = "non-existent-user-id";
         when(authentication.getPrincipal()).thenReturn(userDetails);
         when(userDetails.getUsername()).thenReturn(userId);
-        when(authService.getCurrentUser(userId))
+        when(authService.getCurrentUserResponse(userId))
                 .thenThrow(new InvalidTokenException("User not found"));
 
         // Act & Assert
@@ -211,6 +203,6 @@ class AuthControllerTest {
                 .isInstanceOf(InvalidTokenException.class)
                 .hasMessage("User not found");
 
-        verify(authService).getCurrentUser(userId);
+        verify(authService).getCurrentUserResponse(userId);
     }
 }

@@ -4,7 +4,6 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
-import org.springframework.http.HttpHeaders;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
@@ -63,16 +62,16 @@ public class SecurityHeadersConfig {
             ) throws ServletException, IOException {
                 
                 // X-Content-Type-Options
-                response.setHeader(HttpHeaders.X_CONTENT_TYPE_OPTIONS, "nosniff");
+                response.setHeader("X-Content-Type-Options", "nosniff");
                 
                 // X-Frame-Options
-                response.setHeader(HttpHeaders.X_FRAME_OPTIONS, "DENY");
+                response.setHeader("X-Frame-Options", "DENY");
                 
                 // X-XSS-Protection (legacy but still useful)
                 response.setHeader("X-XSS-Protection", "1; mode=block");
                 
                 // Referrer-Policy
-                response.setHeader(HttpHeaders.REFERRER_POLICY, "strict-origin-when-cross-origin");
+                response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
                 
                 // Permissions-Policy
                 response.setHeader("Permissions-Policy", 
@@ -82,7 +81,7 @@ public class SecurityHeadersConfig {
                 // Cache-Control for sensitive endpoints
                 if (request.getRequestURI().contains("/users/") && 
                     request.getRequestURI().contains("/rank-summary")) {
-                    response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-cache, no-store, must-revalidate");
+                    response.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
                     response.setHeader("Pragma", "no-cache");
                     response.setHeader("Expires", "0");
                 }

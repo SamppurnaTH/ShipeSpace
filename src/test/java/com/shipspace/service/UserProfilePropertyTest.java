@@ -1,5 +1,6 @@
 package com.shipspace.service;
 
+import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
 import com.shipspace.exception.ResourceNotFoundException;
@@ -7,6 +8,7 @@ import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.util.DtoMapper;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.StringLength;
@@ -40,7 +42,7 @@ class UserProfilePropertyTest {
         userRepository = mock(UserRepository.class);
         projectRepository = mock(ProjectRepository.class);
         shipRepository = mock(ShipRepository.class);
-        userService = new UserService(userRepository, projectRepository, shipRepository);
+        userService = new UserService(userRepository, projectRepository, shipRepository, new DtoMapper());
     }
 
     /**
@@ -146,7 +148,7 @@ class UserProfilePropertyTest {
                 .location(newLocation)
                 .build();
         
-        User updatedUser = userService.updateUserProfile(userId, updateRequest);
+        CurrentUserResponse updatedUser = userService.updateUserProfile(userId, updateRequest);
 
         // Then: The changes should be persisted
         assertThat(updatedUser).isNotNull();
@@ -189,7 +191,7 @@ class UserProfilePropertyTest {
                 .bio(newBio)
                 .build();
         
-        User updatedUser = userService.updateUserProfile(userId, updateRequest);
+        CurrentUserResponse updatedUser = userService.updateUserProfile(userId, updateRequest);
 
         // Then: Only bio should be updated, location should remain unchanged
         assertThat(updatedUser.getBio()).isEqualTo(newBio);
@@ -223,7 +225,7 @@ class UserProfilePropertyTest {
                 .email(newEmail)
                 .build();
         
-        User updatedUser = userService.updateUserProfile(userId, updateRequest);
+        CurrentUserResponse updatedUser = userService.updateUserProfile(userId, updateRequest);
 
         // Then: The email should be updated
         assertThat(updatedUser.getEmail()).isEqualTo(newEmail);
@@ -400,10 +402,9 @@ class UserProfilePropertyTest {
                 .bio(newBio)
                 .build();
         
-        User updatedUser = userService.updateUserProfile(userId, updateRequest);
+        CurrentUserResponse updatedUser = userService.updateUserProfile(userId, updateRequest);
 
-        // Then: Immutable fields should remain unchanged
-        assertThat(updatedUser.getGithubId()).isEqualTo(originalGithubId);
+        // Then: Immutable fields should remain unchanged (CurrentUserResponse has no githubId)
         assertThat(updatedUser.getUsername()).isEqualTo(username);
         assertThat(updatedUser.getCreatedAt()).isEqualTo(originalCreatedAt);
         

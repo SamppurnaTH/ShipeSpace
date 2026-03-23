@@ -1,7 +1,9 @@
 spring:
   application:
     name: shipspace-mvp
-  
+  main:
+    allow-bean-definition-overriding: true
+
   # MongoDB Configuration with Connection Pooling
   data:
     mongodb:
@@ -13,7 +15,7 @@ spring:
       min-connections-per-host: 10
       max-connections-idle-time: 60000
       max-wait-time: 30000
-  
+
   # Redis Configuration
   redis:
     host: ${REDIS_HOST:localhost}
@@ -26,7 +28,7 @@ spring:
         max-idle: 8
         min-idle: 2
         max-wait: 5000
-  
+
   # Jackson Configuration
   jackson:
     default-property-inclusion: non_null
@@ -124,10 +126,10 @@ rank-progression:
     scheduled-cron: "0 0 2 * * *"
   # Daily caps per event type
   daily-caps:
-    PROJECT_CREATED: -1  # No limit
+    PROJECT_CREATED: -1 # No limit
     PROJECT_UPDATED: 5
-    COLLAB_ACCEPTED: -1  # No limit
-    QUALITY_COMMENT: -1  # No limit
+    COLLAB_ACCEPTED: -1 # No limit
+    QUALITY_COMMENT: -1 # No limit
 
 # Cache Configuration
 cache:
@@ -149,7 +151,7 @@ management:
       show-details: when-authorized
       group:
         readiness:
-          include: db,redis,mongodb
+          include: mongo,redis
         liveness:
           include: ping
   metrics:

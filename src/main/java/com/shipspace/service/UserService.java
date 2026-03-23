@@ -1,5 +1,8 @@
 package com.shipspace.service;
 
+import com.shipspace.dto.CurrentUserResponse;
+import com.shipspace.dto.ProjectResponse;
+import com.shipspace.dto.ShipResponse;
 import com.shipspace.dto.UserActivityResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
@@ -10,6 +13,7 @@ import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.util.DtoMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +43,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ShipRepository shipRepository;
+    private final DtoMapper dtoMapper;
 
     /**
      * Retrieves a user by their ID.
@@ -87,11 +92,11 @@ public class UserService {
      * 
      * @param userId the ID of the user to update
      * @param updateRequest the update request with new profile data
-     * @return the updated user entity
+     * @return the updated user as CurrentUserResponse DTO
      * @throws ResourceNotFoundException if user is not found
      */
     @Transactional
-    public User updateUserProfile(String userId, UserUpdateRequest updateRequest) {
+    public CurrentUserResponse updateUserProfile(String userId, UserUpdateRequest updateRequest) {
         log.info("Updating profile for user ID: {}", userId);
         
         User user = getUserById(userId);
@@ -118,24 +123,21 @@ public class UserService {
         User updatedUser = userRepository.save(user);
         log.info("Successfully updated profile for user: {}", updatedUser.getUsername());
         
-        return updatedUser;
+        return toCurrentUserResponse(updatedUser);
     }
 
     /**
-     * Retrieves all projects owned by a user.
+     * Retrieves all projects owned by a user as ProjectResponse DTOs.
      * 
      * @param userId the ID of the user
-     * @return list of projects owned by the user
+     * @return list of project responses
      * @throws ResourceNotFoundException if user is not found
      */
-    public List<Project> getUserProjects(String userId) {
+    public List<ProjectResponse> getUserProjects(String userId) {
         log.debug("Retrieving projects for user ID: {}", userId);
-        
-        // Verify user exists
         getUserById(userId);
-        
-        // Get all projects for the user, sorted by most recent first
-        return projectRepository.findByUserId(userId);
+        List<Project> projects = projectRepository.findByUserId(userId);
+        return projects.stream().map(dtoMapper::toProjectResponse).toList();
     }
 
     /**
@@ -168,10 +170,37 @@ public class UserService {
         log.debug("Found {} recent ships and {} total ships for user ID: {}", 
                 recentShips.size(), totalShips, userId);
         
+        List<ShipResponse> shipResponses = recentShips.stream()
+                .map(dtoMapper::toShipResponse)
+                .toList();
+        
         return UserActivityResponse.builder()
-                .recentShips(recentShips)
+                .recentShips(shipResponses)
                 .totalShips(totalShips)
                 .totalEngagement(totalEngagement)
+                .build();
+    }
+
+    /**
+     * Maps User entity to CurrentUserResponse DTO.
+     */
+    private CurrentUserResponse toCurrentUserResponse(User user) {
+        return CurrentUserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .location(user.getLocation())
+                .websiteUrl(user.getWebsiteUrl())
+                .followerCount(user.getFollowerCount())
+                .followingCount(user.getFollowingCount())
+                .projectCount(user.getProjectCount())
+                .shipScore(user.getShipScore())
+                .level(user.getLevel())
+                .rank(user.getRank())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
                 .build();
     }
 

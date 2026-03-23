@@ -155,8 +155,9 @@ class ErrorResponseTest {
         details.put("field", "error");
         Instant timestamp = Instant.now();
 
-        // Act
+        // Act - ErrorResponse has: success, code, message, timestamp, path, requestId, details
         ErrorResponse response = new ErrorResponse(
+                false,
                 "ALL_ARGS_ERROR",
                 "Error via all-args constructor",
                 timestamp,

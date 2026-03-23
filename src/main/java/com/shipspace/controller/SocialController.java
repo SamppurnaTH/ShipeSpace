@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/social")
+@RequestMapping("/social")
 @RequiredArgsConstructor
 @Tag(name = "Social Following", description = "Social following and relationship management endpoints")
 public class SocialController {

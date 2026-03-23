@@ -1,6 +1,5 @@
 package com.shipspace.dto;
 
-import com.shipspace.model.Ship;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +20,7 @@ public class UserActivityResponse {
     /**
      * List of recent ships created by the user.
      */
-    private List<Ship> recentShips;
+    private List<ShipResponse> recentShips;
 
     /**
      * Total number of ships created by the user.

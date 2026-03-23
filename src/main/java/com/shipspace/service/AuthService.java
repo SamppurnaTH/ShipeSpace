@@ -1,6 +1,7 @@
 package com.shipspace.service;
 
 import com.shipspace.dto.AuthResponse;
+import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.exception.InvalidTokenException;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
@@ -111,6 +112,34 @@ public class AuthService {
                     log.error("User not found for ID: {}", userId);
                     return new InvalidTokenException("User not found");
                 });
+    }
+
+    /**
+     * Gets the current authenticated user as CurrentUserResponse DTO.
+     *
+     * @param userId the user ID from the JWT token
+     * @return the current user response DTO
+     * @throws InvalidTokenException if the user is not found
+     */
+    public CurrentUserResponse getCurrentUserResponse(String userId) {
+        User user = getCurrentUser(userId);
+        return CurrentUserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .avatarUrl(user.getAvatarUrl())
+                .bio(user.getBio())
+                .location(user.getLocation())
+                .websiteUrl(user.getWebsiteUrl())
+                .followerCount(user.getFollowerCount())
+                .followingCount(user.getFollowingCount())
+                .projectCount(user.getProjectCount())
+                .shipScore(user.getShipScore())
+                .level(user.getLevel())
+                .rank(user.getRank())
+                .createdAt(user.getCreatedAt())
+                .updatedAt(user.getUpdatedAt())
+                .build();
     }
 
     /**

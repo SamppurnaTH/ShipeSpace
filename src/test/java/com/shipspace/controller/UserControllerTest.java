@@ -1,13 +1,13 @@
 package com.shipspace.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shipspace.dto.CurrentUserResponse;
+import com.shipspace.dto.ProjectResponse;
+import com.shipspace.dto.ShipResponse;
 import com.shipspace.dto.UserActivityResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
 import com.shipspace.exception.ResourceNotFoundException;
-import com.shipspace.model.Project;
-import com.shipspace.model.Ship;
-import com.shipspace.model.User;
 import com.shipspace.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,7 +51,6 @@ class UserControllerTest {
     private UserService userService;
 
     private UserProfileResponse testProfile;
-    private User testUser;
     private String testUserId;
 
     @BeforeEach
@@ -69,22 +68,6 @@ class UserControllerTest {
                 .followingCount(5)
                 .projectCount(3)
                 .createdAt(Instant.now())
-                .build();
-
-        testUser = User.builder()
-                .id(testUserId)
-                .githubId("github123")
-                .username("testuser")
-                .email("test@example.com")
-                .avatarUrl("https://example.com/avatar.jpg")
-                .bio("Test bio")
-                .location("Test City")
-                .websiteUrl("https://example.com")
-                .followerCount(10)
-                .followingCount(5)
-                .projectCount(3)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
                 .build();
     }
 
@@ -135,7 +118,7 @@ class UserControllerTest {
                 .location("New City")
                 .build();
 
-        User updatedUser = User.builder()
+        CurrentUserResponse updatedUser = CurrentUserResponse.builder()
                 .id(testUserId)
                 .username("testuser")
                 .bio("Updated bio")
@@ -200,9 +183,9 @@ class UserControllerTest {
     @DisplayName("GET /api/users/me/projects - Should return current user's projects")
     void getCurrentUserProjects_Success() throws Exception {
         // Arrange
-        List<Project> projects = Arrays.asList(
-                Project.builder().id("proj1").userId(testUserId).name("Project 1").build(),
-                Project.builder().id("proj2").userId(testUserId).name("Project 2").build()
+        List<ProjectResponse> projects = Arrays.asList(
+                ProjectResponse.builder().id("proj1").userId(testUserId).name("Project 1").build(),
+                ProjectResponse.builder().id("proj2").userId(testUserId).name("Project 2").build()
         );
 
         when(userService.getUserProjects(testUserId)).thenReturn(projects);
@@ -235,15 +218,15 @@ class UserControllerTest {
     @DisplayName("GET /api/users/me/activity - Should return current user's activity")
     void getCurrentUserActivity_Success() throws Exception {
         // Arrange
-        List<Ship> recentShips = Arrays.asList(
-                Ship.builder()
+        List<ShipResponse> recentShips = Arrays.asList(
+                ShipResponse.builder()
                         .id("ship1")
                         .userId(testUserId)
                         .content("Ship 1")
                         .likeCount(5)
                         .commentCount(3)
                         .build(),
-                Ship.builder()
+                ShipResponse.builder()
                         .id("ship2")
                         .userId(testUserId)
                         .content("Ship 2")

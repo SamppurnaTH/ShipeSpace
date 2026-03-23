@@ -33,7 +33,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/ships")
+@RequestMapping("/ships")
 @RequiredArgsConstructor
 @Tag(name = "Ship Content Management", description = "Ship creation, updates, and image upload endpoints")
 public class ShipController {

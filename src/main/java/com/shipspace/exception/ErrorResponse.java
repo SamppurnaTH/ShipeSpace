@@ -26,6 +26,12 @@ import java.util.UUID;
 public class ErrorResponse {
 
     /**
+     * Always false for error responses. Enables consistent client-side checking.
+     */
+    @Builder.Default
+    private boolean success = false;
+
+    /**
      * Error code identifying the type of error.
      * Examples: VALIDATION_ERROR, RESOURCE_NOT_FOUND, AUTHENTICATION_ERROR
      */

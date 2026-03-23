@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/projects")
+@RequestMapping("/projects")
 @RequiredArgsConstructor
 @Tag(name = "Project Management", description = "Project CRUD and ship history endpoints")
 public class ProjectController {

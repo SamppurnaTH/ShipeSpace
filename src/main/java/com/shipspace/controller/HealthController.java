@@ -15,7 +15,7 @@ import java.util.Map;
  * Health check controller for monitoring and deployment verification.
  */
 @RestController
-@RequestMapping("/api/health")
+@RequestMapping("/health")
 @Tag(name = "Health", description = "Health check and monitoring endpoints")
 public class HealthController {
 

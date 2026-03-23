@@ -76,7 +76,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/collaborations")
+@RequestMapping("/collaborations")
 @RequiredArgsConstructor
 public class CollaborationController {
 

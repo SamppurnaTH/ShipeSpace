@@ -177,7 +177,7 @@ public class RateLimitingService {
     private long getSecondsUntilMidnight() {
         java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
         java.time.LocalDateTime midnight = now.toLocalDate().plusDays(1)
-                .atStartOfDay(java.time.ZoneOffset.UTC);
+                .atStartOfDay();
         return Duration.between(now, midnight).getSeconds();
     }
 

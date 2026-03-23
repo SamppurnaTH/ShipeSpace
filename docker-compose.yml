@@ -1,0 +1,77 @@
+
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: shipspace-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=shipspace
+    networks:
+      - shipspace-network
+
+  redis:
+    image: redis:alpine
+    container_name: shipspace-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - shipspace-network
+
+  backend:
+    build: .
+    container_name: shipspace-backend
+    ports:
+      - "8086:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - MONGODB_URI=mongodb://mongodb:27017/shipspace
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CORS_ALLOWED_ORIGINS=http://localhost:3005,http://frontend:3000,http://localhost:8085
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+  frontend:
+    build: ./web
+    container_name: shipspace-frontend
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8080/api
+    depends_on:
+      - backend
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: shipspace-nginx
+    ports:
+      - "8085:80"
+      - "8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  shipspace-network:
+    driver: bridge

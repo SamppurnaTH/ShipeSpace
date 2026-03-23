@@ -2,8 +2,8 @@ package com.shipspace.controller;
 
 import com.shipspace.dto.AuthRequest;
 import com.shipspace.dto.AuthResponse;
+import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.dto.RefreshTokenRequest;
-import com.shipspace.model.User;
 import com.shipspace.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Authentication and authorization endpoints")
 public class AuthController {
@@ -87,14 +87,14 @@ public class AuthController {
         description = "Retrieve information about the currently authenticated user",
         security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<CurrentUserResponse> getCurrentUser(Authentication authentication) {
         log.debug("Received request for current user information");
         
         // Extract user ID from authentication
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String userId = userDetails.getUsername(); // We store userId in username field
         
-        User user = authService.getCurrentUser(userId);
+        CurrentUserResponse user = authService.getCurrentUserResponse(userId);
         
         log.debug("Returning current user information for: {}", user.getUsername());
         return ResponseEntity.ok(user);

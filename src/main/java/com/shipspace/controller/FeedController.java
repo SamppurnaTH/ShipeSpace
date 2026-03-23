@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.*;
  * Provides following feed and trending feed functionality.
  */
 @RestController
-@RequestMapping("/api/feeds")
+@RequestMapping("/feeds")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Feed", description = "Feed generation and content discovery endpoints")

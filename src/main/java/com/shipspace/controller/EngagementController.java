@@ -31,7 +31,7 @@ import org.springframework.web.bind.annotation.*;
  * Provides endpoints for toggling likes, creating comments, and retrieving engagement data.
  */
 @RestController
-@RequestMapping("/api/ships")
+@RequestMapping("/ships")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Engagement", description = "Engagement management endpoints for likes and comments")

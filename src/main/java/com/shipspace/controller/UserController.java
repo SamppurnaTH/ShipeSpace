@@ -1,10 +1,10 @@
 package com.shipspace.controller;
 
+import com.shipspace.dto.CurrentUserResponse;
+import com.shipspace.dto.ProjectResponse;
 import com.shipspace.dto.UserActivityResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
-import com.shipspace.model.Project;
-import com.shipspace.model.User;
 import com.shipspace.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,7 +31,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "User profile and activity endpoints")
 public class UserController {
@@ -73,7 +73,7 @@ public class UserController {
         description = "Update the authenticated user's profile information",
         security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<User> updateCurrentUserProfile(
+    public ResponseEntity<CurrentUserResponse> updateCurrentUserProfile(
             Authentication authentication,
             @Valid @RequestBody UserUpdateRequest updateRequest) {
         log.info("Received profile update request");
@@ -82,7 +82,7 @@ public class UserController {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String userId = userDetails.getUsername(); // We store userId in username field
         
-        User updatedUser = userService.updateUserProfile(userId, updateRequest);
+        CurrentUserResponse updatedUser = userService.updateUserProfile(userId, updateRequest);
         
         log.info("Successfully updated profile for user: {}", updatedUser.getUsername());
         return ResponseEntity.ok(updatedUser);
@@ -100,14 +100,14 @@ public class UserController {
         description = "Retrieve all projects owned by the authenticated user",
         security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<List<Project>> getCurrentUserProjects(Authentication authentication) {
+    public ResponseEntity<List<ProjectResponse>> getCurrentUserProjects(Authentication authentication) {
         log.debug("Received request for current user's projects");
         
         // Extract user ID from authentication
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String userId = userDetails.getUsername(); // We store userId in username field
         
-        List<Project> projects = userService.getUserProjects(userId);
+        List<ProjectResponse> projects = userService.getUserProjects(userId);
         
         log.debug("Returning {} projects for current user", projects.size());
         return ResponseEntity.ok(projects);

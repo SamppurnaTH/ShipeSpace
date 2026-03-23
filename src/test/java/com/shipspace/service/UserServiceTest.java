@@ -1,5 +1,8 @@
 package com.shipspace.service;
 
+import com.shipspace.dto.CurrentUserResponse;
+import com.shipspace.dto.ProjectResponse;
+import com.shipspace.dto.ShipResponse;
 import com.shipspace.dto.UserActivityResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
@@ -10,6 +13,7 @@ import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.util.DtoMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +33,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -49,6 +52,9 @@ class UserServiceTest {
 
     @Mock
     private ShipRepository shipRepository;
+
+    @Mock
+    private DtoMapper dtoMapper;
 
     @InjectMocks
     private UserService userService;
@@ -143,7 +149,7 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        User result = userService.updateUserProfile(testUserId, updateRequest);
+        CurrentUserResponse result = userService.updateUserProfile(testUserId, updateRequest);
 
         // Assert
         assertThat(result).isNotNull();
@@ -168,7 +174,7 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        User result = userService.updateUserProfile(testUserId, updateRequest);
+        CurrentUserResponse result = userService.updateUserProfile(testUserId, updateRequest);
 
         // Assert
         assertThat(result).isNotNull();
@@ -190,9 +196,13 @@ class UserServiceTest {
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
         when(projectRepository.findByUserId(testUserId)).thenReturn(projects);
+        when(dtoMapper.toProjectResponse(any(Project.class))).thenAnswer(inv -> {
+            Project p = inv.getArgument(0);
+            return ProjectResponse.builder().id(p.getId()).userId(p.getUserId()).name(p.getName()).build();
+        });
 
         // Act
-        List<Project> result = userService.getUserProjects(testUserId);
+        List<ProjectResponse> result = userService.getUserProjects(testUserId);
 
         // Assert
         assertThat(result).isNotNull();
@@ -227,6 +237,11 @@ class UserServiceTest {
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
         when(shipRepository.findByUserId(eq(testUserId), any(Pageable.class))).thenReturn(shipPage);
+        when(dtoMapper.toShipResponse(any(Ship.class))).thenAnswer(inv -> {
+            Ship s = inv.getArgument(0);
+            return ShipResponse.builder().id(s.getId()).userId(s.getUserId()).content(s.getContent())
+                    .likeCount(s.getLikeCount()).commentCount(s.getCommentCount()).build();
+        });
 
         // Act
         UserActivityResponse result = userService.getUserActivity(testUserId);
@@ -289,7 +304,7 @@ class UserServiceTest {
         when(projectRepository.findByUserId(testUserId)).thenReturn(Arrays.asList());
 
         // Act
-        List<Project> result = userService.getUserProjects(testUserId);
+        List<ProjectResponse> result = userService.getUserProjects(testUserId);
 
         // Assert
         assertThat(result).isNotNull();
