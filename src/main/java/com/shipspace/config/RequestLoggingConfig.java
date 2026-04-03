@@ -1,12 +1,10 @@
 package com.shipspace.config;
 
-import com.shipspace.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -89,14 +87,14 @@ public class RequestLoggingConfig {
             // Get client IP
             String clientIp = getClientIp(request);
             
-            // Log request
-            String logMessage = String.format(
-                    "%s %s %s %s %d %dms %s",
+            // Log request — structured format: METHOD PATH STATUS USER_ID RESPONSE_TIME CLIENT_IP
+            String logMessage = String.format("[%s] %s %s -> %d (%dms) user=%s ip=%s",
+                    requestId,
                     request.getMethod(),
                     request.getRequestURI(),
                     status,
-                    userId,
                     responseTime,
+                    userId,
                     clientIp
             );
             

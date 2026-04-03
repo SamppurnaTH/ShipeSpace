@@ -12,6 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -34,6 +40,7 @@ public class FeedService {
 
     private final ShipRepository shipRepository;
     private final FollowingRepository followingRepository;
+    private final MongoTemplate mongoTemplate;
 
     /**
      * Generate a chronological feed of ships from users that the authenticated user follows.
@@ -48,11 +55,13 @@ public class FeedService {
     public Page<Ship> getFollowingFeed(String userId, Pageable pageable) {
         log.debug("Generating following feed for user: {}", userId);
         
-        // Get list of users that the authenticated user follows
-        List<Following> followingList = followingRepository.findByFollowerId(userId);
-        
-        // Extract followee IDs
-        List<String> followeeIds = followingList.stream()
+        // Get list of users that the authenticated user follows — capped at 500 to prevent heap blow-up.
+        // Users following more than 500 people are rare; if needed, paginate this in a future iteration.
+        org.springframework.data.domain.Pageable followingCap =
+                PageRequest.of(0, 500, Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<String> followeeIds = followingRepository.findByFollowerId(userId, followingCap)
+                .getContent()
+                .stream()
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
         
@@ -149,42 +158,61 @@ public class FeedService {
     }
 
     /**
-     * Calculate trending scores for all ships based on engagement metrics.
-     * Uses a scoring algorithm that considers likes, comments, and recency.
-     * 
-     * The algorithm uses the following formula:
-     * score = (likes * 1.0 + comments * 2.0) / (age_in_hours + 2)^1.5
-     * 
-     * This gives more weight to:
-     * - Comments over likes (comments indicate deeper engagement)
-     * - Recent content (decay factor based on age)
-     * 
-     * After recalculating scores, this method invalidates all trending feed caches
-     * to ensure subsequent requests get fresh data.
-     * 
-     * Requirements: 7.1, 7.2, 7.5, 11.1
+     * Calculate trending scores for all ships in batches of 200.
+     * Avoids loading the entire collection into heap.
      */
     @CacheEvict(value = {"trendingFeed", "trendingFeedWithTimeWindow"}, allEntries = true)
     public void calculateTrendingScores() {
-        log.info("Starting trending score calculation for all ships");
-        
-        // Get all ships
-        List<Ship> allShips = shipRepository.findAll();
+        log.info("Starting trending score calculation");
+
         Instant now = Instant.now();
-        
+        int page = 0;
+        final int batchSize = 200;
         int updatedCount = 0;
-        for (Ship ship : allShips) {
-            double newScore = calculateEngagementScore(ship, now);
-            
-            // Only update if score has changed
-            if (Math.abs(ship.getTrendingScore() - newScore) > 0.001) {
-                ship.setTrendingScore(newScore);
-                shipRepository.save(ship);
-                updatedCount++;
+
+        Page<Ship> batch;
+        do {
+            batch = shipRepository.findAll(PageRequest.of(page, batchSize));
+            List<Ship> dirty = batch.getContent().stream()
+                    .filter(ship -> {
+                        double newScore = calculateEngagementScore(ship, now);
+                        if (Math.abs(ship.getTrendingScore() - newScore) > 0.001) {
+                            ship.setTrendingScore(newScore);
+                            return true;
+                        }
+                        return false;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+
+            if (!dirty.isEmpty()) {
+                // Bulk unordered writes — one round-trip per batch instead of N
+                BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Ship.class);
+                for (Ship ship : dirty) {
+                    Query q = new Query(Criteria.where("_id").is(ship.getId()));
+                    Update u = new Update().set("trendingScore", ship.getTrendingScore());
+                    bulkOps.updateOne(q, u);
+                }
+                bulkOps.execute();
+                updatedCount += dirty.size();
             }
-        }
-        
+            page++;
+        } while (batch.hasNext());
+
         log.info("Trending score calculation completed. Updated {} ships. Cache invalidated.", updatedCount);
+    }
+
+    /**
+     * Scheduled trending score recalculation — runs every 15 minutes.
+     * Idempotent: only updates ships whose score changed by > 0.001.
+     */
+    @Scheduled(fixedRateString = "${feed.trending.recalculation-interval-ms:900000}")
+    public void scheduledTrendingRecalculation() {
+        log.info("Scheduled trending score recalculation triggered");
+        try {
+            calculateTrendingScores();
+        } catch (Exception e) {
+            log.error("Scheduled trending recalculation failed: {}", e.getMessage(), e);
+        }
     }
 
     /**

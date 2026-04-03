@@ -16,4 +16,5 @@ public interface NotificationRepository extends MongoRepository<Notification, St
 
     long countByUserIdAndReadFalse(String userId);
 
+    // Used by bulk markAllAsRead — do NOT add Pageable.unpaged() calls here
 }

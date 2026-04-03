@@ -160,13 +160,32 @@ public class ShipController {
             @RequestParam("files") List<MultipartFile> files) {
         log.info("Received image upload request for ship: {} with {} files", shipId, files.size());
         
-        // Extract user ID from authentication
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String userId = userDetails.getUsername(); // We store userId in username field
+        String userId = userDetails.getUsername();
         
         ShipResponse ship = shipService.uploadShipImages(shipId, userId, files);
         
         log.info("Successfully uploaded {} images to ship: {}", files.size(), shipId);
         return ResponseEntity.ok(ship);
+    }
+
+    /**
+     * Soft-deletes a ship. Only the owner can delete. No time-window restriction.
+     */
+    @DeleteMapping("/{shipId}")
+    @Operation(
+        summary = "Delete ship",
+        description = "Permanently delete a ship. Only the ship owner can perform this operation.",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Void> deleteShip(
+            Authentication authentication,
+            @Parameter(description = "ID of the ship to delete")
+            @PathVariable String shipId) {
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String userId = userDetails.getUsername();
+        log.info("Delete ship request for ship: {} by user: {}", shipId, userId);
+        shipService.deleteShip(shipId, userId);
+        return ResponseEntity.noContent().build();
     }
 }

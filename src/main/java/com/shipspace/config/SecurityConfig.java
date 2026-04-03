@@ -2,6 +2,7 @@ package com.shipspace.config;
 
 import com.shipspace.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -13,7 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Security configuration for the ShipSpace API.
- * Configures JWT-based authentication and authorization.
+ * Swagger/OpenAPI endpoints are only permitted when SWAGGER_ENABLED=true.
  */
 @Configuration
 @EnableWebSecurity
@@ -23,28 +24,40 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Value("${SWAGGER_ENABLED:false}")
+    private boolean swaggerEnabled;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> 
+            .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/api/health",
-                    "/api/health/**",
-                    "/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/actuator/health",
-                    "/api/feeds/trending",
-                    "/api/feeds/trending/**"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                // Always-public endpoints
+                auth.requestMatchers(
+                        "/api/auth/github",
+                        "/api/auth/refresh",
+                        "/api/health",
+                        "/api/health/**",
+                        "/actuator/health",
+                        "/api/feeds/trending",
+                        "/api/feeds/trending/**"
+                ).permitAll();
+
+                // Swagger only when explicitly enabled (dev/staging)
+                if (swaggerEnabled) {
+                    auth.requestMatchers(
+                            "/api-docs/**",
+                            "/swagger-ui/**",
+                            "/swagger-ui.html"
+                    ).permitAll();
+                }
+
+                auth.anyRequest().authenticated();
+            })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 }

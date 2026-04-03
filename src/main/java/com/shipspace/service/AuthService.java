@@ -5,6 +5,7 @@ import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.exception.InvalidTokenException;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.security.TokenBlacklistService;
 import com.shipspace.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final GitHubOAuthService gitHubOAuthService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
@@ -50,33 +52,57 @@ public class AuthService {
 
     /**
      * Refreshes the JWT access token using a valid refresh token.
-     *
-     * @param refreshToken the refresh token
-     * @return AuthResponse containing new access token and refresh token
-     * @throws InvalidTokenException if the refresh token is invalid or expired
+     * The old refresh token is immediately blacklisted (token rotation).
      */
     public AuthResponse refreshToken(String refreshToken) {
         log.debug("Refreshing JWT token");
 
-        // Validate refresh token
         if (!jwtUtil.validateRefreshToken(refreshToken)) {
-            log.warn("Invalid or expired refresh token");
             throw new InvalidTokenException("Invalid or expired refresh token");
         }
 
-        // Extract user ID from refresh token
+        // Check blacklist — prevents replay of already-rotated tokens
+        String jti = jwtUtil.extractJti(refreshToken);
+        if (jti != null && tokenBlacklistService.isBlacklisted(jti)) {
+            throw new InvalidTokenException("Refresh token has been revoked");
+        }
+
         String userId = jwtUtil.extractUserId(refreshToken);
-
-        // Retrieve user from database
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> {
-                    log.error("User not found for ID: {}", userId);
-                    return new InvalidTokenException("User not found");
-                });
+                .orElseThrow(() -> new InvalidTokenException("User not found"));
 
-        // Generate new tokens
+        // Blacklist the consumed refresh token (rotation — one-time use)
+        if (jti != null) {
+            tokenBlacklistService.blacklist(jti, jwtUtil.extractExpiration(refreshToken));
+        }
+
         log.info("Successfully refreshed token for user: {}", user.getUsername());
         return generateAuthResponse(user);
+    }
+
+    /**
+     * Logs out a user by blacklisting both their current access and refresh tokens.
+     *
+     * @param accessToken  the current access token (from Authorization header, without "Bearer ")
+     * @param refreshToken the refresh token to revoke (optional — may be null)
+     */
+    public void logout(String accessToken, String refreshToken) {
+        // Blacklist access token
+        if (accessToken != null && jwtUtil.validateToken(accessToken)) {
+            String jti = jwtUtil.extractJti(accessToken);
+            if (jti != null) {
+                tokenBlacklistService.blacklist(jti, jwtUtil.extractExpiration(accessToken));
+                log.debug("Access token blacklisted on logout, jti={}", jti);
+            }
+        }
+        // Blacklist refresh token if provided
+        if (refreshToken != null && jwtUtil.validateRefreshToken(refreshToken)) {
+            String jti = jwtUtil.extractJti(refreshToken);
+            if (jti != null) {
+                tokenBlacklistService.blacklist(jti, jwtUtil.extractExpiration(refreshToken));
+                log.debug("Refresh token blacklisted on logout, jti={}", jti);
+            }
+        }
     }
 
     /**

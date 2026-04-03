@@ -76,6 +76,11 @@ public interface ShipRepository extends MongoRepository<Ship, String> {
     long countByProjectId(String projectId);
 
     /**
+     * Delete all ships for a project (used when deleting a project).
+     */
+    void deleteByProjectId(String projectId);
+
+    /**
      * Find ships with expired edit windows.
      * Used for cleanup or analytics.
      *

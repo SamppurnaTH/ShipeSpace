@@ -10,6 +10,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final MongoTemplate mongoTemplate;
 
     public Page<NotificationResponse> getNotifications(String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -47,14 +52,11 @@ public class NotificationService {
 
     @Transactional
     public void markAllAsRead(String userId) {
-        notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, Pageable.unpaged())
-                .getContent()
-                .stream()
-                .filter(n -> !n.isRead())
-                .forEach(n -> {
-                    n.setRead(true);
-                    notificationRepository.save(n);
-                });
+        // Single bulk updateMany — no heap allocation, no N individual saves
+        Query query = new Query(Criteria.where("userId").is(userId).and("read").is(false));
+        Update update = new Update().set("read", true);
+        mongoTemplate.updateMulti(query, update, Notification.class);
+        log.debug("Bulk marked all notifications as read for user {}", userId);
     }
 
     /**

@@ -4,10 +4,8 @@ import com.shipspace.dto.ProjectCreateRequest;
 import com.shipspace.dto.ProjectResponse;
 import com.shipspace.dto.ProjectUpdateRequest;
 import com.shipspace.dto.ShipResponse;
-import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.Ship;
 import com.shipspace.service.ProjectService;
-import com.shipspace.service.ShipScoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -40,7 +38,6 @@ import org.springframework.web.bind.annotation.*;
 public class ProjectController {
 
     private final ProjectService projectService;
-    private final ShipScoreService shipScoreService;
 
     /**
      * Creates a new project for the authenticated user.
@@ -66,23 +63,6 @@ public class ProjectController {
         String userId = userDetails.getUsername(); // We store userId in username field
         
         ProjectResponse project = projectService.createProject(userId, request);
-        
-        // Apply PROJECT_CREATED score event for rank progression
-        try {
-            boolean scoreApplied = shipScoreService.applyScoreEvent(
-                userId, 
-                ScoreEventType.PROJECT_CREATED, 
-                project.getId()
-            );
-            if (scoreApplied) {
-                log.debug("Successfully applied PROJECT_CREATED score event for user: {}", userId);
-            } else {
-                log.debug("PROJECT_CREATED score event was not applied (duplicate or cap reached) for user: {}", userId);
-            }
-        } catch (Exception e) {
-            // Log the error but don't fail the project creation
-            log.error("Failed to apply PROJECT_CREATED score event for user: {}", userId, e);
-        }
         
         log.info("Successfully created project with ID: {} for user: {}", project.getId(), userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(project);
@@ -140,23 +120,6 @@ public class ProjectController {
         
         ProjectResponse project = projectService.updateProject(projectId, userId, request);
         
-        // Apply PROJECT_UPDATED score event for rank progression
-        try {
-            boolean scoreApplied = shipScoreService.applyScoreEvent(
-                userId, 
-                ScoreEventType.PROJECT_UPDATED, 
-                projectId
-            );
-            if (scoreApplied) {
-                log.debug("Successfully applied PROJECT_UPDATED score event for user: {}", userId);
-            } else {
-                log.debug("PROJECT_UPDATED score event was not applied (duplicate or cap reached) for user: {}", userId);
-            }
-        } catch (Exception e) {
-            // Log the error but don't fail the project update
-            log.error("Failed to apply PROJECT_UPDATED score event for user: {}", userId, e);
-        }
-        
         log.info("Successfully updated project: {}", projectId);
         return ResponseEntity.ok(project);
     }
@@ -185,12 +148,31 @@ public class ProjectController {
         log.debug("Received request for ships of project: {} (page: {}, size: {})", projectId, page, size);
         
         Page<Ship> ships = projectService.getProjectShips(projectId, page, size);
-        
-        // Map Ship entities to ShipResponse DTOs
         Page<ShipResponse> shipResponses = ships.map(this::mapToShipResponse);
         
         log.debug("Returning {} ships for project: {}", shipResponses.getNumberOfElements(), projectId);
         return ResponseEntity.ok(shipResponses);
+    }
+
+    /**
+     * Deletes a project and all its associated ships.
+     * Only the project owner can delete.
+     */
+    @DeleteMapping("/{projectId}")
+    @Operation(
+        summary = "Delete project",
+        description = "Permanently delete a project and all its ships. Only the project owner can perform this operation.",
+        security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Void> deleteProject(
+            Authentication authentication,
+            @Parameter(description = "ID of the project to delete")
+            @PathVariable String projectId) {
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String userId = userDetails.getUsername();
+        log.info("Delete project request for project: {} by user: {}", projectId, userId);
+        projectService.deleteProject(projectId, userId);
+        return ResponseEntity.noContent().build();
     }
 
     /**

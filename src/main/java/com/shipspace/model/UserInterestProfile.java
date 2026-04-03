@@ -86,21 +86,15 @@ public class UserInterestProfile {
 
     /**
      * Increment the interest score for a specific tech tag.
-     * If the tag doesn't exist, it will be created with the given weight.
-     * If it exists, the weight will be added to the current score.
-     * Scores are capped at 1.0.
-     * 
-     * @param tag the tech tag to increment (e.g., "React", "Python")
-     * @param weight the weight to add (typically 0.5-3.0 based on signal type)
+     * Scores accumulate without a hard cap; time decay (30-day half-life)
+     * prevents unbounded growth and keeps recent signals more influential.
      */
     public void incrementTagScore(String tag, double weight) {
         if (tag == null || tag.trim().isEmpty()) {
             return;
         }
-        
         double currentScore = techTagScores.getOrDefault(tag, 0.0);
-        double newScore = Math.min(1.0, currentScore + weight);
-        techTagScores.put(tag, newScore);
+        techTagScores.put(tag, currentScore + weight);
     }
 
     /**

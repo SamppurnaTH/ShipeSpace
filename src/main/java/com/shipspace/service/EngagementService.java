@@ -15,22 +15,38 @@ import com.shipspace.model.User;
 import com.shipspace.repository.CommentRepository;
 import com.shipspace.repository.CommentUpvoteRepository;
 import com.shipspace.repository.LikeRepository;
+import com.shipspace.repository.ShipCountRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing engagement operations (likes and comments).
- * Handles like toggling with duplicate prevention and race condition handling,
- * and comment creation with validation and pagination.
+ *
+ * Counter updates (likeCount, commentCount, upvotes) use atomic MongoDB $inc
+ * via ShipCountRepository / direct MongoTemplate calls to eliminate
+ * read-modify-write race conditions.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,306 +57,265 @@ public class EngagementService {
     private final CommentRepository commentRepository;
     private final CommentUpvoteRepository commentUpvoteRepository;
     private final ShipRepository shipRepository;
+    private final ShipCountRepository shipCountRepository;
     private final UserRepository userRepository;
     private final CommentQualificationService commentQualificationService;
     private final ShipScoreService shipScoreService;
+    private final MongoTemplate mongoTemplate;
+    private final NotificationService notificationService;
 
     /**
      * Toggle like state for a ship.
-     * If the user has already liked the ship, the like is removed.
-     * If the user has not liked the ship, a like is added.
-     * Handles race conditions using database-level unique constraints.
-     *
-     * @param userId the ID of the user toggling the like
-     * @param shipId the ID of the ship to like/unlike
-     * @return LikeToggleResponse indicating the new state
-     * @throws ResourceNotFoundException if the ship or user does not exist
+     * Like document insert/delete is guarded by a unique compound index.
+     * Counter update uses atomic $inc — no read-modify-write race.
      */
     @Transactional
     public LikeToggleResponse toggleLike(String userId, String shipId) {
         log.debug("Toggling like for user {} on ship {}", userId, shipId);
 
-        // Verify ship exists
-        Ship ship = shipRepository.findById(shipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ship not found with id: " + shipId));
+        // Verify ship and user exist
+        if (!shipRepository.existsById(shipId)) {
+            throw new ResourceNotFoundException("Ship", shipId);
+        }
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
 
-        // Verify user exists
-        userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-
-        // Check if like already exists
         Optional<Like> existingLike = likeRepository.findByUserIdAndShipId(userId, shipId);
 
         if (existingLike.isPresent()) {
-            // Unlike: Remove the like and decrement count
             likeRepository.deleteByUserIdAndShipId(userId, shipId);
-            ship.setLikeCount(Math.max(0, ship.getLikeCount() - 1));
-            shipRepository.save(ship);
-
+            // Atomic decrement — floor at 0 handled by max(0, ...) in the $inc value
+            Ship updated = shipCountRepository.incrementLikeCount(shipId, -1);
             log.info("User {} unliked ship {}", userId, shipId);
             return LikeToggleResponse.builder()
                     .liked(false)
-                    .likeCount(ship.getLikeCount())
+                    .likeCount(Math.max(0, updated.getLikeCount()))
                     .message("Ship unliked successfully")
                     .build();
-        } else {
-            // Like: Add the like and increment count
-            try {
-                Like like = Like.builder()
-                        .userId(userId)
-                        .shipId(shipId)
-                        .createdAt(Instant.now())
-                        .build();
-                likeRepository.save(like);
+        }
 
-                ship.setLikeCount(ship.getLikeCount() + 1);
-                shipRepository.save(ship);
+        try {
+            likeRepository.save(Like.builder()
+                    .userId(userId)
+                    .shipId(shipId)
+                    .createdAt(Instant.now())
+                    .build());
+            // Atomic increment — returns the document with the new value
+            Ship updated = shipCountRepository.incrementLikeCount(shipId, 1);
+            log.info("User {} liked ship {}", userId, shipId);
 
-                log.info("User {} liked ship {}", userId, shipId);
-                return LikeToggleResponse.builder()
-                        .liked(true)
-                        .likeCount(ship.getLikeCount())
-                        .message("Ship liked successfully")
-                        .build();
-            } catch (org.springframework.dao.DuplicateKeyException e) {
-                // Race condition: Another thread created the like between our check and insert
-                // Treat this as if the like already existed and remove it
-                log.warn("Race condition detected while liking ship {} by user {}. Treating as unlike.", shipId, userId);
-                likeRepository.deleteByUserIdAndShipId(userId, shipId);
-                ship.setLikeCount(Math.max(0, ship.getLikeCount() - 1));
-                shipRepository.save(ship);
-
-                return LikeToggleResponse.builder()
-                        .liked(false)
-                        .likeCount(ship.getLikeCount())
-                        .message("Ship unliked successfully")
-                        .build();
+            // Notify ship owner asynchronously (skip self-like)
+            Ship ship = shipRepository.findById(shipId).orElse(null);
+            if (ship != null && !ship.getUserId().equals(userId)) {
+                User actor = userRepository.findById(userId).orElse(null);
+                notifyAsync(ship.getUserId(), "LIKE",
+                        (actor != null ? actor.getUsername() : "Someone") + " liked your ship",
+                        userId,
+                        actor != null ? actor.getAvatarUrl() : null,
+                        shipId, "/ships/" + shipId);
             }
+
+            return LikeToggleResponse.builder()
+                    .liked(true)
+                    .likeCount(updated.getLikeCount())
+                    .message("Ship liked successfully")
+                    .build();
+        } catch (DuplicateKeyException e) {
+            // Concurrent request already inserted the like — treat as unlike
+            log.warn("Race condition on like for ship {} by user {}, treating as unlike", shipId, userId);
+            likeRepository.deleteByUserIdAndShipId(userId, shipId);
+            Ship updated = shipCountRepository.incrementLikeCount(shipId, -1);
+            return LikeToggleResponse.builder()
+                    .liked(false)
+                    .likeCount(Math.max(0, updated.getLikeCount()))
+                    .message("Ship unliked successfully")
+                    .build();
         }
     }
 
     /**
      * Add a comment to a ship.
-     * Validates content and updates ship comment count.
-     *
-     * @param userId the ID of the user creating the comment
-     * @param shipId the ID of the ship to comment on
-     * @param request the comment creation request
-     * @return CommentResponse with commenter profile information
-     * @throws ResourceNotFoundException if the ship or user does not exist
+     * Counter update uses atomic $inc.
      */
     @Transactional
     public CommentResponse addComment(String userId, String shipId, CommentCreateRequest request) {
         log.debug("Adding comment to ship {} by user {}", shipId, userId);
 
-        // Verify ship exists
-        Ship ship = shipRepository.findById(shipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ship not found with id: " + shipId));
-
-        // Verify user exists and get profile
+        if (!shipRepository.existsById(shipId)) {
+            throw new ResourceNotFoundException("Ship", shipId);
+        }
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // Create and save comment
-        Comment comment = Comment.builder()
+        Comment comment = commentRepository.save(Comment.builder()
                 .userId(userId)
                 .shipId(shipId)
                 .content(request.getContent())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
-                .build();
+                .build());
 
-        comment = commentRepository.save(comment);
+        // Atomic increment — no read-modify-write
+        shipCountRepository.incrementCommentCount(shipId, 1);
 
-        // Update ship comment count
-        ship.setCommentCount(ship.getCommentCount() + 1);
-        shipRepository.save(ship);
+        // Notify ship owner asynchronously (skip self-comment)
+        Ship ship = shipRepository.findById(shipId).orElse(null);
+        if (ship != null && !ship.getUserId().equals(userId)) {
+            notifyAsync(ship.getUserId(), "COMMENT",
+                    user.getUsername() + " commented on your ship",
+                    userId, user.getAvatarUrl(),
+                    shipId, "/ships/" + shipId);
+        }
 
         log.info("Comment {} added to ship {} by user {}", comment.getId(), shipId, userId);
-
-        // Build response with commenter profile
         return buildCommentResponse(comment, user);
     }
 
     /**
-     * Toggle upvote state for a comment.
-     * If the user has already upvoted the comment, the upvote is removed.
-     * If the user has not upvoted the comment, an upvote is added.
-     * When a comment reaches qualification thresholds (>= 50 chars and >= 2 upvotes),
-     * triggers QUALITY_COMMENT scoring event.
-     * Handles race conditions using database-level unique constraints.
-     *
-     * @param userId the ID of the user toggling the upvote
-     * @param commentId the ID of the comment to upvote/remove upvote
-     * @return CommentUpvoteToggleResponse indicating the new state and qualification status
-     * @throws ResourceNotFoundException if the comment or user does not exist
+     * Toggle upvote on a comment.
+     * Upvote counter uses atomic $inc via MongoTemplate.
+     * QUALITY_COMMENT scoring fires only on the transition from unqualified → qualified.
      */
     @Transactional
     public CommentUpvoteToggleResponse toggleCommentUpvote(String userId, String commentId) {
         log.debug("Toggling upvote for user {} on comment {}", userId, commentId);
 
-        // Verify comment exists
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Comment not found with id: " + commentId));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
 
-        // Verify user exists
-        userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-
-        // Check if upvote already exists
-        Optional<CommentUpvote> existingUpvote = commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId);
+        Optional<CommentUpvote> existingUpvote =
+                commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId);
 
         if (existingUpvote.isPresent()) {
-            // Remove upvote: Remove the upvote and decrement count
             commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
-            comment.setUpvotes(Math.max(0, comment.getUpvotes() - 1));
-            commentRepository.save(comment);
-
+            // Atomic decrement
+            Comment updated = atomicIncrementUpvotes(commentId, -1);
             log.info("User {} removed upvote from comment {}", userId, commentId);
             return CommentUpvoteToggleResponse.builder()
                     .upvoted(false)
-                    .upvoteCount(comment.getUpvotes())
+                    .upvoteCount(Math.max(0, updated.getUpvotes()))
                     .qualifiedForScoring(false)
                     .build();
-        } else {
-            // Add upvote: Add the upvote and increment count
-            try {
-                CommentUpvote upvote = CommentUpvote.builder()
-                        .userId(userId)
-                        .commentId(commentId)
-                        .createdAt(Instant.now())
-                        .build();
-                commentUpvoteRepository.save(upvote);
+        }
 
-                // Store previous qualification status
-                boolean wasQualified = commentQualificationService.isQualified(comment);
+        try {
+            commentUpvoteRepository.save(CommentUpvote.builder()
+                    .userId(userId)
+                    .commentId(commentId)
+                    .createdAt(Instant.now())
+                    .build());
 
-                // Update upvote count
-                comment.setUpvotes(comment.getUpvotes() + 1);
-                commentRepository.save(comment);
+            // Capture qualification state BEFORE increment
+            boolean wasQualified = commentQualificationService.isQualified(comment);
 
-                // Check if comment now qualifies for QUALITY_COMMENT scoring
-                boolean isNowQualified = commentQualificationService.isQualified(comment);
-                boolean qualifiedForScoring = false;
+            // Atomic increment — returns updated document
+            Comment updated = atomicIncrementUpvotes(commentId, 1);
 
-                // If comment just became qualified (wasn't before, but is now), apply score event
-                if (!wasQualified && isNowQualified) {
-                    try {
-                        boolean scoreApplied = shipScoreService.applyScoreEvent(
-                                comment.getUserId(),
-                                ScoreEventType.QUALITY_COMMENT,
-                                commentId
-                        );
-                        if (scoreApplied) {
-                            log.info("Successfully applied QUALITY_COMMENT score event for comment {} by user {}",
-                                    commentId, comment.getUserId());
-                            qualifiedForScoring = true;
-                        } else {
-                            log.debug("QUALITY_COMMENT score event was not applied (duplicate or cap reached) for comment {}",
-                                    commentId);
-                        }
-                    } catch (Exception e) {
-                        // Log the error but don't fail the upvote operation
-                        log.error("Failed to apply QUALITY_COMMENT score event for comment {}", commentId, e);
-                    }
+            boolean isNowQualified = commentQualificationService.isQualified(updated);
+            boolean qualifiedForScoring = false;
+
+            if (!wasQualified && isNowQualified) {
+                try {
+                    qualifiedForScoring = shipScoreService.applyScoreEvent(
+                            comment.getUserId(), ScoreEventType.QUALITY_COMMENT, commentId);
+                } catch (Exception e) {
+                    log.error("Failed to apply QUALITY_COMMENT score for comment {}", commentId, e);
                 }
-
-                log.info("User {} upvoted comment {}", userId, commentId);
-                return CommentUpvoteToggleResponse.builder()
-                        .upvoted(true)
-                        .upvoteCount(comment.getUpvotes())
-                        .qualifiedForScoring(qualifiedForScoring)
-                        .build();
-            } catch (org.springframework.dao.DuplicateKeyException e) {
-                // Race condition: Another thread created the upvote between our check and insert
-                // Treat this as if the upvote already existed and remove it
-                log.warn("Race condition detected while upvoting comment {} by user {}. Treating as remove upvote.",
-                        commentId, userId);
-                commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
-                comment.setUpvotes(Math.max(0, comment.getUpvotes() - 1));
-                commentRepository.save(comment);
-
-                return CommentUpvoteToggleResponse.builder()
-                        .upvoted(false)
-                        .upvoteCount(comment.getUpvotes())
-                        .qualifiedForScoring(false)
-                        .build();
             }
+
+            log.info("User {} upvoted comment {}", userId, commentId);
+            return CommentUpvoteToggleResponse.builder()
+                    .upvoted(true)
+                    .upvoteCount(updated.getUpvotes())
+                    .qualifiedForScoring(qualifiedForScoring)
+                    .build();
+
+        } catch (DuplicateKeyException e) {
+            log.warn("Race condition on upvote for comment {} by user {}, treating as remove", commentId, userId);
+            commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+            Comment updated = atomicIncrementUpvotes(commentId, -1);
+            return CommentUpvoteToggleResponse.builder()
+                    .upvoted(false)
+                    .upvoteCount(Math.max(0, updated.getUpvotes()))
+                    .qualifiedForScoring(false)
+                    .build();
         }
     }
 
     /**
      * Get comments for a ship with pagination.
-     * Includes commenter profile information and timestamps.
-     *
-     * @param shipId the ID of the ship
-     * @param pageable pagination and sorting parameters
-     * @return Page of CommentResponse objects
-     * @throws ResourceNotFoundException if the ship does not exist
+     * Batch-fetches all comment authors in one query instead of N individual lookups.
      */
     public Page<CommentResponse> getShipComments(String shipId, Pageable pageable) {
-        log.debug("Fetching comments for ship {} with pagination", shipId);
+        if (!shipRepository.existsById(shipId)) {
+            throw new ResourceNotFoundException("Ship", shipId);
+        }
 
-        // Verify ship exists
-        shipRepository.findById(shipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ship not found with id: " + shipId));
-
-        // Fetch comments with pagination
         Page<Comment> comments = commentRepository.findByShipId(shipId, pageable);
 
-        // Map to response DTOs with user information
-        return comments.map(comment -> {
-            User user = userRepository.findById(comment.getUserId())
-                    .orElse(null); // Handle case where user might be deleted
-            return buildCommentResponse(comment, user);
-        });
+        // Collect distinct user IDs, fetch all in one query
+        Set<String> userIds = comments.getContent().stream()
+                .map(Comment::getUserId)
+                .collect(Collectors.toSet());
+        Map<String, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<CommentResponse> responses = comments.getContent().stream()
+                .map(c -> buildCommentResponse(c, userMap.get(c.getUserId())))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(responses, pageable, comments.getTotalElements());
     }
 
     /**
      * Get likes for a ship with pagination.
-     * Includes user profile information and timestamps.
-     *
-     * @param shipId the ID of the ship
-     * @param pageable pagination and sorting parameters
-     * @return Page of LikeResponse objects
-     * @throws ResourceNotFoundException if the ship does not exist
+     * Batch-fetches all liking users in one query instead of N individual lookups.
      */
     public Page<LikeResponse> getShipLikes(String shipId, Pageable pageable) {
-        log.debug("Fetching likes for ship {} with pagination", shipId);
+        if (!shipRepository.existsById(shipId)) {
+            throw new ResourceNotFoundException("Ship", shipId);
+        }
 
-        // Verify ship exists
-        shipRepository.findById(shipId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ship not found with id: " + shipId));
-
-        // Fetch likes with pagination
         Page<Like> likes = likeRepository.findByShipId(shipId, pageable);
 
-        // Map to response DTOs with user information
-        return likes.map(like -> {
-            User user = userRepository.findById(like.getUserId())
-                    .orElse(null); // Handle case where user might be deleted
-            return buildLikeResponse(like, user);
-        });
+        Set<String> userIds = likes.getContent().stream()
+                .map(Like::getUserId)
+                .collect(Collectors.toSet());
+        Map<String, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<LikeResponse> responses = likes.getContent().stream()
+                .map(l -> buildLikeResponse(l, userMap.get(l.getUserId())))
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(responses, pageable, likes.getTotalElements());
     }
 
-    /**
-     * Check if a user has liked a specific ship.
-     *
-     * @param userId the ID of the user
-     * @param shipId the ID of the ship
-     * @return true if the user has liked the ship
-     */
     public boolean hasUserLikedShip(String userId, String shipId) {
         return likeRepository.existsByUserIdAndShipId(userId, shipId);
     }
 
+    // ── private helpers ──────────────────────────────────────────────────────
+
     /**
-     * Build a CommentResponse from a Comment and User.
-     *
-     * @param comment the comment entity
-     * @param user the user entity (can be null if user is deleted)
-     * @return CommentResponse with profile information
+     * Atomically increments the upvotes field on a Comment document.
+     * Returns the updated Comment. Avoids a separate read after the write.
      */
+    private Comment atomicIncrementUpvotes(String commentId, int delta) {
+        Query query = new Query(Criteria.where("_id").is(commentId));
+        Update update = new Update().inc("upvotes", delta);
+        FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
+        Comment updated = mongoTemplate.findAndModify(query, update, options, Comment.class);
+        if (updated == null) {
+            throw new ResourceNotFoundException("Comment", commentId);
+        }
+        return updated;
+    }
+
     private CommentResponse buildCommentResponse(Comment comment, User user) {
         CommentResponse.UserProfileSummary commenter = null;
         if (user != null) {
@@ -351,7 +326,6 @@ public class EngagementService {
                     .bio(user.getBio())
                     .build();
         }
-
         return CommentResponse.builder()
                 .id(comment.getId())
                 .shipId(comment.getShipId())
@@ -362,13 +336,6 @@ public class EngagementService {
                 .build();
     }
 
-    /**
-     * Build a LikeResponse from a Like and User.
-     *
-     * @param like the like entity
-     * @param user the user entity (can be null if user is deleted)
-     * @return LikeResponse with profile information
-     */
     private LikeResponse buildLikeResponse(Like like, User user) {
         LikeResponse.UserProfileSummary userSummary = null;
         if (user != null) {
@@ -379,12 +346,43 @@ public class EngagementService {
                     .bio(user.getBio())
                     .build();
         }
-
         return LikeResponse.builder()
                 .id(like.getId())
                 .shipId(like.getShipId())
                 .user(userSummary)
                 .createdAt(like.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Fire-and-forget notification — runs on the async thread pool.
+     * Failures are logged but never propagate to the caller.
+     */
+    @Async("taskExecutor")
+    protected void notifyAsync(String recipientId, String type, String text,
+                               String actorId, String actorAvatarUrl,
+                               String targetId, String targetView) {
+        try {
+            notificationService.createNotification(recipientId, type, text,
+                    actorId, actorAvatarUrl, targetId, targetView);
+        } catch (Exception e) {
+            log.error("Failed to create {} notification for user {}: {}", type, recipientId, e.getMessage());
+        }
+    }
+
+    /**
+     * Deletes a comment. Only the comment author can delete.
+     * Decrements the ship's comment count atomically.
+     */
+    @Transactional
+    public void deleteComment(String userId, String commentId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!comment.getUserId().equals(userId)) {
+            throw new com.shipspace.exception.ForbiddenException("delete", "comment");
+        }
+        commentRepository.deleteById(commentId);
+        shipCountRepository.incrementCommentCount(comment.getShipId(), -1);
+        log.info("Deleted comment {} by user {}", commentId, userId);
     }
 }

@@ -16,7 +16,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -429,32 +431,93 @@ public class PersonalizationService {
 
     /**
      * Generate explanation metadata for a recommendation.
-     * 
-     * Determines primary reason code based on score components:
-     * - FOLLOWED_BUILDER: if builder in followedBuilders and relevance > 0.7
-     * - TECH_MATCH: if tag_match_score > 0.5
-     * - HIGH_QUALITY: if quality_score > 0.7
-     * - TRENDING: if from trending feed
-     * - COLD_START: if user is cold-start
-     * 
-     * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
-     * 
-     * @param contentId the content ID
-     * @param profile the user interest profile
-     * @param qualityScore the quality score
-     * @param relevanceScore the relevance score
-     * @param performanceScore the performance score
-     * @return RecommendationExplanation with reason code and details
+     *
+     * Priority order for reason code:
+     * 1. COLD_START  — user has < 10 signals (no meaningful profile yet)
+     * 2. FOLLOWED_BUILDER — content is from a builder the user follows AND relevance > 0.7
+     * 3. TECH_MATCH  — at least one tech tag matches user interests (tag score > 0.0)
+     * 4. HIGH_QUALITY — quality score > 0.7
+     * 5. TRENDING    — fallback
      */
     public RecommendationExplanation explainRecommendation(String contentId,
-                                                          UserInterestProfile profile,
-                                                          double qualityScore,
-                                                          double relevanceScore,
-                                                          double performanceScore) {
+                                                           UserInterestProfile profile,
+                                                           double qualityScore,
+                                                           double relevanceScore,
+                                                           double performanceScore) {
         log.debug("Generating explanation for content: {}", contentId);
-        
-        // TODO: Implementation in subsequent tasks
-        throw new UnsupportedOperationException("explainRecommendation not yet implemented");
+
+        double combinedScore = calculateCombinedScore(qualityScore, relevanceScore, performanceScore);
+
+        RecommendationExplanation.ScoreBreakdown breakdown = RecommendationExplanation.ScoreBreakdown.builder()
+                .qualityScore(qualityScore)
+                .relevanceScore(relevanceScore)
+                .performanceScore(performanceScore)
+                .combinedScore(combinedScore)
+                .build();
+
+        // 1. Cold-start user — no meaningful profile yet
+        if (profile.isColdStart()) {
+            return RecommendationExplanation.builder()
+                    .reasonCode(RecommendationExplanation.ReasonCode.COLD_START)
+                    .scoreBreakdown(breakdown)
+                    .build();
+        }
+
+        // Resolve content metadata for tag/builder checks
+        List<String> techTags = java.util.Collections.emptyList();
+        String builderId = null;
+
+        Ship ship = shipRepository.findById(contentId).orElse(null);
+        if (ship != null) {
+            builderId = ship.getUserId();
+            Project project = projectRepository.findById(ship.getProjectId()).orElse(null);
+            if (project != null && project.getTechTags() != null) {
+                techTags = project.getTechTags();
+            }
+        } else {
+            Project project = projectRepository.findById(contentId).orElse(null);
+            if (project != null) {
+                builderId = project.getUserId();
+                techTags = project.getTechTags() != null ? project.getTechTags() : java.util.Collections.emptyList();
+            }
+        }
+
+        // 2. Followed builder with strong relevance
+        if (builderId != null
+                && profile.getFollowedBuilders().contains(builderId)
+                && relevanceScore > 0.7) {
+            return RecommendationExplanation.builder()
+                    .reasonCode(RecommendationExplanation.ReasonCode.FOLLOWED_BUILDER)
+                    .scoreBreakdown(breakdown)
+                    .build();
+        }
+
+        // 3. Tech tag match — find which tags the user actually has scores for
+        List<String> matchingTags = techTags.stream()
+                .filter(tag -> profile.getTechTagScores().getOrDefault(tag, 0.0) > 0.0)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (!matchingTags.isEmpty()) {
+            return RecommendationExplanation.builder()
+                    .reasonCode(RecommendationExplanation.ReasonCode.TECH_MATCH)
+                    .matchingTags(matchingTags)
+                    .scoreBreakdown(breakdown)
+                    .build();
+        }
+
+        // 4. High quality content
+        if (qualityScore > 0.7) {
+            return RecommendationExplanation.builder()
+                    .reasonCode(RecommendationExplanation.ReasonCode.HIGH_QUALITY)
+                    .scoreBreakdown(breakdown)
+                    .build();
+        }
+
+        // 5. Trending fallback
+        return RecommendationExplanation.builder()
+                .reasonCode(RecommendationExplanation.ReasonCode.TRENDING)
+                .scoreBreakdown(breakdown)
+                .build();
     }
 
     /**
@@ -525,69 +588,40 @@ public class PersonalizationService {
 
     /**
      * Query candidate content excluding recently viewed.
-     * 
-     * Retrieves ships and projects that the user has not viewed in the past 7 days.
-     * This ensures feed freshness and prevents showing the same content repeatedly.
-     * 
-     * Algorithm:
-     * 1. Query user's VIEW signals from past 7 days
-     * 2. Extract contentIds from VIEW signals
-     * 3. Query all ships excluding viewed contentIds
-     * 4. Query all projects excluding viewed contentIds
-     * 5. Combine and return as list of ships (projects converted to ship format)
-     * 
-     * Performance considerations:
-     * - Uses indexed query on behavioral_signals.{userId, timestamp}
-     * - Uses indexed query on ships._id (implicit)
-     * - Limits result set to reasonable size for scoring
-     * 
-     * Requirements: 6.5, 8.4
-     * 
-     * @param userId the user ID
-     * @return List of candidate ships (excluding recently viewed)
+     * Fetches a bounded set of recent ships (max 500) and filters out
+     * content the user viewed in the past 7 days.
+     * Avoids full collection scan — uses createdAt index.
      */
     private List<Ship> getCandidateContent(String userId) {
         log.debug("Querying candidate content for user: {}", userId);
 
-        // Calculate timestamp for 7 days ago
         Instant sevenDaysAgo = Instant.now().minus(Duration.ofDays(7));
 
-        // Query user's VIEW signals from past 7 days
-        // Uses compound index: {userId: 1, timestamp: -1}
+        // Collect viewed content IDs for this user in the past 7 days
         List<BehavioralSignal> recentViewSignals = behavioralSignalRepository
-            .findByUserIdAndTimestampAfter(userId, sevenDaysAgo);
+                .findByUserIdAndTimestampAfter(userId, sevenDaysAgo);
 
-        // Extract contentIds from VIEW signals
-        // We only care about VIEW signals for exclusion
-        java.util.Set<String> viewedContentIds = new HashSet<>();
+        Set<String> viewedContentIds = new HashSet<>();
         for (BehavioralSignal signal : recentViewSignals) {
             if (signal.getSignalType() == BehavioralSignal.SignalType.VIEW) {
                 viewedContentIds.add(signal.getContentId());
             }
         }
 
-        log.debug("Found {} viewed content items in past 7 days for user: {}", 
-                  viewedContentIds.size(), userId);
+        log.debug("Found {} viewed content items in past 7 days for user: {}",
+                viewedContentIds.size(), userId);
 
-        // Query all ships excluding viewed contentIds
-        // Note: MongoDB doesn't have a native "NOT IN" for large sets, so we fetch all
-        // and filter in memory for MVP. For production, consider pagination or custom query.
-        List<Ship> allShips = shipRepository.findAll();
-        List<Ship> candidateShips = new java.util.ArrayList<>();
+        // Fetch a bounded recent window — 500 ships max, sorted by createdAt desc
+        // This uses the createdAt index and avoids a full collection scan
+        Pageable bounded = PageRequest.of(0, 500, Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<Ship> recentShips = shipRepository.findAll(bounded).getContent();
 
-        for (Ship ship : allShips) {
-            if (!viewedContentIds.contains(ship.getId())) {
-                candidateShips.add(ship);
-            }
-        }
+        List<Ship> candidates = recentShips.stream()
+                .filter(ship -> !viewedContentIds.contains(ship.getId()))
+                .collect(java.util.stream.Collectors.toList());
 
-        log.debug("Found {} candidate ships for user: {}", candidateShips.size(), userId);
-
-        // TODO: Phase 2 - Include projects in candidate content
-        // For MVP, we focus on ships only as they are the primary content type
-        // Projects can be added in a future iteration with proper conversion to FeedItemResponse
-
-        return candidateShips;
+        log.debug("Found {} candidate ships for user: {}", candidates.size(), userId);
+        return candidates;
     }
 
 

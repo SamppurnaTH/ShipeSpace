@@ -517,67 +517,49 @@ public class BehavioralTrackingService {
 
     /**
      * Scheduled job to apply time decay to all user interest profiles.
-     * Runs daily at midnight to ensure interest scores reflect recent behavior more heavily.
-     * 
-     * Uses exponential decay with a 30-day half-life:
-     * decayed_score = original_score * (0.5 ^ (days_elapsed / 30))
-     * 
-     * This ensures that:
-     * - Recent interactions (last few days) maintain most of their weight
-     * - Older interactions (weeks/months ago) gradually lose influence
-     * - User interests evolve naturally over time
-     * 
-     * Requirements: 1.5
+     * Processes in batches of 200 to avoid loading the entire collection into heap.
      */
-    @Scheduled(cron = "0 0 0 * * *") // Run daily at midnight
+    @Scheduled(cron = "0 0 0 * * *")
     public void applyTimeDecayToAllProfiles() {
         log.info("Starting scheduled time decay job for all user interest profiles");
-        
-        try {
-            // Fetch all user interest profiles
-            List<UserInterestProfile> profiles = userInterestProfileRepository.findAll();
-            log.info("Found {} user interest profiles to process", profiles.size());
-            
-            int updatedCount = 0;
-            int skippedCount = 0;
-            
-            for (UserInterestProfile profile : profiles) {
+
+        int page = 0;
+        final int batchSize = 200;
+        int updatedCount = 0;
+        int skippedCount = 0;
+
+        org.springframework.data.domain.Page<UserInterestProfile> batch;
+        do {
+            batch = userInterestProfileRepository.findAll(
+                    org.springframework.data.domain.PageRequest.of(page, batchSize));
+
+            for (UserInterestProfile profile : batch.getContent()) {
+                if (profile.getLastSignalAt() == null || profile.getTotalSignals() == 0) {
+                    skippedCount++;
+                    continue;
+                }
                 try {
-                    // Skip profiles with no signals or no last signal timestamp
-                    if (profile.getLastSignalAt() == null || profile.getTotalSignals() == 0) {
-                        skippedCount++;
-                        continue;
-                    }
-                    
-                    // Store original score count for logging
-                    int originalScoreCount = profile.getTechTagScores().size();
-                    
-                    // Apply time decay with 30-day half-life
                     profile.applyTimeDecay(30);
-                    
-                    // Update timestamp
                     profile.setUpdatedAt(Instant.now());
-                    
-                    // Save updated profile
                     userInterestProfileRepository.save(profile);
-                    
-                    int newScoreCount = profile.getTechTagScores().size();
-                    log.debug("Applied time decay to profile for user {}: {} -> {} tech tags", 
-                              profile.getUserId(), originalScoreCount, newScoreCount);
-                    
                     updatedCount++;
-                    
                 } catch (Exception e) {
-                    log.error("Error applying time decay to profile for user {}", 
-                              profile.getUserId(), e);
+                    log.error("Error applying time decay to profile for user {}", profile.getUserId(), e);
                 }
             }
-            
-            log.info("Time decay job completed: {} profiles updated, {} profiles skipped", 
-                     updatedCount, skippedCount);
-            
-        } catch (Exception e) {
-            log.error("Error in scheduled time decay job", e);
-        }
+            page++;
+        } while (batch.hasNext());
+
+        log.info("Time decay job completed: {} profiles updated, {} profiles skipped",
+                updatedCount, skippedCount);
+    }
+
+    /**
+     * Convenience overload for feed view tracking.
+     * Uses SHIP content type and a default duration of 30 seconds (above the 10s threshold).
+     */
+    @Async("taskExecutor")
+    public void trackView(String userId, String shipId) {
+        trackView(userId, shipId, ContentType.SHIP, 30);
     }
 }

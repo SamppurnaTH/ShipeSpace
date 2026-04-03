@@ -21,13 +21,9 @@ import java.io.IOException;
 import java.util.Collections;
 
 /**
- * JWT authentication filter that processes incoming requests.
- * Extracts and validates JWT tokens from the Authorization header,
- * and sets the authentication in the security context.
- * 
- * This filter implements Requirements 1.3, 1.4:
- * - Validates JWT tokens on protected endpoints
- * - Returns 401 Unauthorized for invalid/expired tokens
+ * JWT authentication filter.
+ * Validates the token signature, expiry, type, and blacklist status
+ * before setting the security context.
  */
 @Slf4j
 @Component
@@ -35,6 +31,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final TokenBlacklistService tokenBlacklistService;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -46,36 +43,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         try {
-            // Extract JWT token from request
             String jwt = extractJwtFromRequest(request);
 
             if (jwt != null && jwtUtil.validateToken(jwt)) {
-                // Extract user information from token
+                // Reject refresh tokens used as access tokens
+                String tokenType = jwtUtil.extractTokenType(jwt);
+                if (!"access".equals(tokenType)) {
+                    log.debug("Rejected non-access token type: {}", tokenType);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // Reject blacklisted tokens (revoked via logout or rotation)
+                String jti = jwtUtil.extractJti(jwt);
+                if (jti != null && tokenBlacklistService.isBlacklisted(jti)) {
+                    log.debug("Rejected blacklisted token jti={}", jti);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 String userId = jwtUtil.extractUserId(jwt);
                 String username = jwtUtil.extractUsername(jwt);
 
-                // Create authentication object
                 UserDetails userDetails = User.builder()
                         .username(userId)
-                        .password("") // No password needed for JWT auth
+                        .password("")
                         .authorities(Collections.emptyList())
                         .build();
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-
+                                userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                // Set authentication in security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                log.debug("Successfully authenticated user: {} (ID: {})", username, userId);
-            } else if (jwt != null) {
-                log.debug("Invalid or expired JWT token");
+                log.debug("Authenticated user: {} (ID: {})", username, userId);
             }
 
         } catch (Exception e) {
@@ -85,19 +87,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Extracts the JWT token from the Authorization header.
-     *
-     * @param request the HTTP request
-     * @return the JWT token, or null if not present or invalid format
-     */
     private String extractJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
             return bearerToken.substring(BEARER_PREFIX.length());
         }
-
         return null;
     }
 }

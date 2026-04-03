@@ -43,31 +43,26 @@ public class JwtUtil {
 
     /**
      * Generates a JWT access token for the given user ID.
-     *
-     * @param userId the user ID to include in the token
-     * @param username the username to include in the token
-     * @return the generated JWT token string
+     * Includes a unique jti claim for blacklist support.
      */
     public String generateToken(String userId, String username) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("type", "access");
-        
+        claims.put("jti", java.util.UUID.randomUUID().toString());
         return createToken(claims, userId, expiration);
     }
 
     /**
      * Generates a JWT refresh token for the given user ID.
-     *
-     * @param userId the user ID to include in the token
-     * @return the generated refresh token string
+     * Includes a unique jti claim for blacklist support.
      */
     public String generateRefreshToken(String userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("type", "refresh");
-        
+        claims.put("jti", java.util.UUID.randomUUID().toString());
         return createToken(claims, userId, refreshExpiration);
     }
 
@@ -114,12 +109,16 @@ public class JwtUtil {
 
     /**
      * Extracts the token type from the JWT token.
-     *
-     * @param token the JWT token
-     * @return the token type (access or refresh)
      */
     public String extractTokenType(String token) {
         return extractClaim(token, claims -> claims.get("type", String.class));
+    }
+
+    /**
+     * Extracts the JWT ID (jti) claim — used as the blacklist key.
+     */
+    public String extractJti(String token) {
+        return extractClaim(token, claims -> claims.get("jti", String.class));
     }
 
     /**

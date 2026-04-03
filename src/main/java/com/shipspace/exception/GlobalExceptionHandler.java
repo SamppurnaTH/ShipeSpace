@@ -79,7 +79,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse error = ErrorResponse.builder()
                 .code("AUTHENTICATION_ERROR")
-                .message("Authentication failed: " + ex.getMessage())
+                .message("Authentication failed.")
                 .timestamp(Instant.now())
                 .path(extractPath(request))
                 .build();
@@ -98,7 +98,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse error = ErrorResponse.builder()
                 .code("ACCESS_DENIED")
-                .message("Access denied: " + ex.getMessage())
+                .message("Access denied.")
                 .timestamp(Instant.now())
                 .path(extractPath(request))
                 .build();
@@ -272,7 +272,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles general runtime exceptions.
-     * Returns 500 Internal Server Error for unexpected runtime errors.
+     * Internal message is logged but NOT exposed to the client.
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(
@@ -281,7 +281,7 @@ public class GlobalExceptionHandler {
         
         ErrorResponse error = ErrorResponse.builder()
                 .code("RUNTIME_ERROR")
-                .message("An unexpected error occurred: " + ex.getMessage())
+                .message("An unexpected error occurred. Please try again later.")
                 .timestamp(Instant.now())
                 .path(extractPath(request))
                 .build();

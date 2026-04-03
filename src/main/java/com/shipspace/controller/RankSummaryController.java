@@ -140,32 +140,37 @@ public class RankSummaryController {
     }
 
     /**
-     * Invalidates the rank summary cache for a specific user.
-     * 
-     * <p>This endpoint can be called after score updates to ensure
-     * the next request returns fresh data.
-     * 
-     * @param id the ID of the user whose cache should be invalidated
-     * @return 204 No Content on success
+     * Invalidates the rank summary cache for the requesting user only.
+     * Users can only invalidate their own cache — not other users'.
      */
     @DeleteMapping("/{id}/rank-summary/cache")
     @Operation(
         summary = "Invalidate rank summary cache",
-        description = "Invalidate cached rank summary for a specific user (admin operation)"
+        description = "Invalidate cached rank summary. Users may only invalidate their own cache.",
+        security = @io.swagger.v3.oas.annotations.security.SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "204", description = "Cache invalidated successfully"),
+        @ApiResponse(responseCode = "403", description = "Cannot invalidate another user's cache"),
         @ApiResponse(responseCode = "404", description = "User not found")
     })
     public ResponseEntity<Void> invalidateCache(
+            org.springframework.security.core.Authentication authentication,
             @Parameter(description = "ID of the user")
             @PathVariable String id) {
-        // Verify user exists
+
+        String requestingUserId = ((org.springframework.security.core.userdetails.UserDetails)
+                authentication.getPrincipal()).getUsername();
+
+        if (!requestingUserId.equals(id)) {
+            throw new com.shipspace.exception.ForbiddenException(
+                    "You can only invalidate your own rank summary cache");
+        }
+
         userRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("User", id));
-        
+
         log.info("Cache invalidated for user rank summary: {}", id);
-        
         return ResponseEntity.noContent().build();
     }
 }

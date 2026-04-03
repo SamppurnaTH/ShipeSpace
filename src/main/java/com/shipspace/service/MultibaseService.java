@@ -220,28 +220,65 @@ public class MultibaseService {
     }
 
     /**
-     * Validate that the file is a valid image.
-     * 
-     * @param file the file to validate
-     * @throws MultibaseException if validation fails
+     * Validates that the file is a genuine image by inspecting magic bytes.
+     * Content-Type header alone is not trusted — it can be spoofed.
+     *
+     * Supported formats: JPEG, PNG, GIF, WebP
      */
     private void validateImageFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new MultibaseException("File is empty or null");
         }
-        
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new MultibaseException("File must be an image. Content type: " + contentType);
-        }
-        
-        // Check file size (max 10MB)
-        long maxSize = 10 * 1024 * 1024; // 10MB
+
+        // Size check first — avoid reading a huge file just to reject it
+        long maxSize = 10 * 1024 * 1024L; // 10 MB
         if (file.getSize() > maxSize) {
             throw new MultibaseException("File size exceeds maximum allowed size of 10MB");
         }
-        
+
+        // Read the first 12 bytes for magic number detection
+        byte[] header;
+        try {
+            byte[] allBytes = file.getBytes();
+            if (allBytes.length < 4) {
+                throw new MultibaseException("File is too small to be a valid image");
+            }
+            header = java.util.Arrays.copyOf(allBytes, Math.min(12, allBytes.length));
+        } catch (java.io.IOException e) {
+            throw new MultibaseException("Failed to read file for validation", e);
+        }
+
+        if (!isValidImageMagicBytes(header)) {
+            throw new MultibaseException(
+                    "File content does not match a supported image format (JPEG, PNG, GIF, WebP)");
+        }
+
         log.debug("File validation passed for: {}", file.getOriginalFilename());
+    }
+
+    /**
+     * Checks magic bytes for JPEG, PNG, GIF87a, GIF89a, and WebP.
+     */
+    private boolean isValidImageMagicBytes(byte[] header) {
+        // JPEG: FF D8 FF
+        if (header[0] == (byte) 0xFF && header[1] == (byte) 0xD8 && header[2] == (byte) 0xFF) {
+            return true;
+        }
+        // PNG: 89 50 4E 47 0D 0A 1A 0A
+        if (header[0] == (byte) 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
+            return true;
+        }
+        // GIF87a / GIF89a: 47 49 46 38
+        if (header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x38) {
+            return true;
+        }
+        // WebP: 52 49 46 46 ?? ?? ?? ?? 57 45 42 50
+        if (header.length >= 12
+                && header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46
+                && header[8] == 0x57 && header[9] == 0x45 && header[10] == 0x42 && header[11] == 0x50) {
+            return true;
+        }
+        return false;
     }
 
     /**

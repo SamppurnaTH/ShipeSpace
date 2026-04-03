@@ -3,7 +3,6 @@ package com.shipspace.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -61,7 +60,8 @@ public class CacheConfig {
     @Primary
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         if (!cacheEnabled) {
-            return new ConcurrentMapCacheManager();
+            // Return the bounded Caffeine cache when Redis caching is disabled
+            return localCacheManager();
         }
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
@@ -101,21 +101,26 @@ public class CacheConfig {
     }
 
     /**
-     * Local cache manager for development/testing.
-     * 
-     * <p>Provides fast in-memory caching without Redis dependency.
-     * Use when Redis is unavailable or for local development.
+     * Local cache manager using Caffeine — bounded size and TTL.
+     * Used when Redis is unavailable or cache.enabled=false.
+     * Prevents unbounded heap growth from the previous ConcurrentMapCacheManager.
      */
     @Bean
     public CacheManager localCacheManager() {
-        ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager();
-        cacheManager.setCacheNames(java.util.Arrays.asList(
-                "rank-summary",
-                "user-profile",
-                "project-data",
-                "feed-cache"
+        com.github.benmanes.caffeine.cache.Caffeine<Object, Object> caffeine =
+                com.github.benmanes.caffeine.cache.Caffeine.newBuilder()
+                        .maximumSize(1000)
+                        .expireAfterWrite(java.time.Duration.ofSeconds(300));
+
+        org.springframework.cache.caffeine.CaffeineCacheManager manager =
+                new org.springframework.cache.caffeine.CaffeineCacheManager();
+        manager.setCaffeine(caffeine);
+        manager.setCacheNames(java.util.Arrays.asList(
+                "rank-summary", "user-profile", "project-data",
+                "feed-cache", "trendingFeed", "trendingFeedWithTimeWindow",
+                "userInterestProfile", "contentQualityScore"
         ));
-        return cacheManager;
+        return manager;
     }
 
     /**

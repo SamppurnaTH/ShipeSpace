@@ -12,6 +12,7 @@ import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.util.DtoMapper;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class UserService {
     private final ProjectRepository projectRepository;
     private final ShipRepository shipRepository;
     private final DtoMapper dtoMapper;
+    private final UserCountRepository userCountRepository;
 
     /**
      * Retrieves a user by their ID.
@@ -216,21 +218,27 @@ public class UserService {
     }
 
     /**
-     * Updates the project count for a user.
-     * Called when projects are created or deleted.
-     * 
-     * @param userId the ID of the user
+     * Atomically increments the project count for a user.
+     * delta = +1 on create, -1 on delete.
      */
     @Transactional
     public void updateProjectCount(String userId) {
-        log.debug("Updating project count for user ID: {}", userId);
-        
-        User user = getUserById(userId);
-        long projectCount = projectRepository.countByUserId(userId);
-        user.setProjectCount((int) projectCount);
-        user.setUpdatedAt(Instant.now());
-        
-        userRepository.save(user);
-        log.debug("Updated project count to {} for user ID: {}", projectCount, userId);
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
+        userCountRepository.incrementProjectCount(userId, 1);
+        log.debug("Atomically incremented project count for user {}", userId);
+    }
+
+    /**
+     * Atomically decrements the project count for a user (on project delete).
+     */
+    @Transactional
+    public void decrementProjectCount(String userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("User", userId);
+        }
+        userCountRepository.incrementProjectCount(userId, -1);
+        log.debug("Atomically decremented project count for user {}", userId);
     }
 }

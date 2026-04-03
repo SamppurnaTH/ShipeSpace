@@ -85,8 +85,9 @@ public class BehavioralSignal {
     /**
      * Timestamp when the signal occurred.
      * Indexed for temporal queries and time-based analysis.
+     * TTL of 90 days — signals older than 90 days are automatically deleted by MongoDB.
      */
-    @Indexed
+    @Indexed(expireAfterSeconds = 7776000) // 90 days
     @Builder.Default
     private Instant timestamp = Instant.now();
 

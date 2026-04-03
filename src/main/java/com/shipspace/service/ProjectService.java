@@ -6,6 +6,7 @@ import com.shipspace.dto.ProjectUpdateRequest;
 import com.shipspace.exception.ForbiddenException;
 import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.Project;
+import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.Ship;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
@@ -15,6 +16,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +43,8 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ShipRepository shipRepository;
     private final UserService userService;
+    private final MongoTemplate mongoTemplate;
+    private final ShipScoreService shipScoreService;
 
     /**
      * Creates a new project for the authenticated user.
@@ -72,6 +79,13 @@ public class ProjectService {
         
         // Update user's project count
         userService.updateProjectCount(userId);
+
+        // Apply score event — non-fatal if it fails
+        try {
+            shipScoreService.applyScoreEvent(userId, ScoreEventType.PROJECT_CREATED, savedProject.getId());
+        } catch (Exception e) {
+            log.error("Failed to apply PROJECT_CREATED score for user {}: {}", userId, e.getMessage());
+        }
         
         return mapToResponse(savedProject);
     }
@@ -139,6 +153,13 @@ public class ProjectService {
         // Save updated project
         Project updatedProject = projectRepository.save(project);
         log.info("Successfully updated project ID: {}", projectId);
+
+        // Apply score event — non-fatal if it fails
+        try {
+            shipScoreService.applyScoreEvent(userId, ScoreEventType.PROJECT_UPDATED, projectId);
+        } catch (Exception e) {
+            log.error("Failed to apply PROJECT_UPDATED score for user {}: {}", userId, e.getMessage());
+        }
         
         return mapToResponse(updatedProject);
     }
@@ -182,27 +203,48 @@ public class ProjectService {
 
     /**
      * Updates project metadata when a new ship is created.
-     * Increments ship count and updates lastShipAt timestamp.
-     * 
-     * @param projectId the ID of the project
+     * Uses atomic $inc — no read-modify-write race condition.
      */
     @Transactional
     public void updateProjectShipMetadata(String projectId) {
         log.debug("Updating ship metadata for project ID: {}", projectId);
-        
+        Query query = new Query(Criteria.where("_id").is(projectId));
+        Update update = new Update()
+                .inc("shipCount", 1)
+                .set("lastShipAt", java.time.Instant.now())
+                .set("updatedAt", java.time.Instant.now());
+        mongoTemplate.updateFirst(query, update, Project.class);
+        log.debug("Atomically incremented shipCount for project {}", projectId);
+    }
+
+    /**
+     * Deletes a project and all its ships. Only the owner can delete.
+     */
+    @Transactional
+    public void deleteProject(String projectId, String userId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
-        
-        // Update ship count
-        long shipCount = shipRepository.countByProjectId(projectId);
-        project.setShipCount((int) shipCount);
-        
-        // Update last ship timestamp
-        project.setLastShipAt(Instant.now());
-        project.setUpdatedAt(Instant.now());
-        
-        projectRepository.save(project);
-        log.debug("Updated project {} ship count to {}", projectId, shipCount);
+        if (!project.getUserId().equals(userId)) {
+            throw new ForbiddenException("delete", "project");
+        }
+        // Delete all ships belonging to this project
+        shipRepository.deleteByProjectId(projectId);
+        projectRepository.deleteById(projectId);
+        userService.decrementProjectCount(userId);
+        log.info("Deleted project {} and its ships by user {}", projectId, userId);
+    }
+
+    /**
+     * Decrements project ship count when a ship is deleted.
+     */
+    @Transactional
+    public void decrementProjectShipCount(String projectId) {
+        projectRepository.findById(projectId).ifPresent(project -> {
+            int newCount = Math.max(0, project.getShipCount() - 1);
+            project.setShipCount(newCount);
+            project.setUpdatedAt(Instant.now());
+            projectRepository.save(project);
+        });
     }
 
     /**

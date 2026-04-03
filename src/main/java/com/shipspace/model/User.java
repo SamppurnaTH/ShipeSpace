@@ -117,8 +117,9 @@ public class User {
 
     /**
      * Timestamp of the user's last shipping activity that earned ShipScore.
-     * Used to identify inactive users for score decay.
+     * Indexed for the score decay job query (findByLastShipActivityAtBefore).
      */
+    @Indexed
     private Instant lastShipActivityAt;
 
     /**

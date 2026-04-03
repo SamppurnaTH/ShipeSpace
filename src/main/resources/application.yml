@@ -8,7 +8,7 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/shipspace}
-      auto-index-creation: true
+      auto-index-creation: false
       database: shipspace
       # Connection pool settings for production
       connection-per-host: 50
@@ -44,8 +44,8 @@ spring:
 server:
   port: ${PORT:8080}
   error:
-    include-message: always
-    include-binding-errors: always
+    include-message: never
+    include-binding-errors: never
     include-stacktrace: never
   servlet:
     context-path: /api
@@ -84,7 +84,7 @@ multibase:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-  allowed-headers: "*"
+  allowed-headers: Authorization,Content-Type,Accept,X-Requested-With,Cache-Control
   allow-credentials: true
   max-age: 3600
   exposed-headers: X-RateLimit-Limit,X-RateLimit-Remaining,X-RateLimit-Reset
@@ -108,6 +108,7 @@ feed:
   page-size: 20
   trending:
     cache-ttl-minutes: 15
+    recalculation-interval-ms: 900000  # 15 minutes
     time-windows:
       - 24h
       - 7d
@@ -244,14 +245,15 @@ audit:
 springdoc:
   api-docs:
     path: /api-docs
-    enabled: true
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:false}
     operations-sorter: method
     tags-sorter: alpha
     display-request-duration: true
     filter: true
-  show-actuator: true
+  show-actuator: false
   enable-spring-security: true
 
 # Security Configuration
@@ -265,3 +267,6 @@ security:
     permissions-policy: accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),payment=(),usb=()
   cors:
     allow-origin: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# Feature flags
+SWAGGER_ENABLED: ${SWAGGER_ENABLED:false}

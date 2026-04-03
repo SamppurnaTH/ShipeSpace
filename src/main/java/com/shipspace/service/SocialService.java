@@ -6,16 +6,22 @@ import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.Following;
 import com.shipspace.model.User;
 import com.shipspace.repository.FollowingRepository;
+import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +41,8 @@ public class SocialService {
 
     private final FollowingRepository followingRepository;
     private final UserRepository userRepository;
+    private final UserCountRepository userCountRepository;
+    private final NotificationService notificationService;
 
     /**
      * Creates a following relationship between two users.
@@ -49,140 +57,133 @@ public class SocialService {
     @Transactional
     public void followUser(String followerId, String followeeId) {
         log.info("User {} attempting to follow user {}", followerId, followeeId);
-        
-        // Prevent self-follow
+
         if (followerId.equals(followeeId)) {
-            log.warn("User {} attempted to follow themselves", followerId);
             throw new ForbiddenException("Users cannot follow themselves");
         }
-        
+
         // Verify both users exist
-        User follower = userRepository.findById(followerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", followerId));
-        User followee = userRepository.findById(followeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", followeeId));
-        
-        // Check if relationship already exists (duplicate prevention)
+        if (!userRepository.existsById(followerId)) {
+            throw new ResourceNotFoundException("User", followerId);
+        }
+        if (!userRepository.existsById(followeeId)) {
+            throw new ResourceNotFoundException("User", followeeId);
+        }
+
         if (followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)) {
             log.debug("Following relationship already exists between {} and {}", followerId, followeeId);
-            return; // Idempotent operation - silently succeed if already following
+            return;
         }
-        
-        // Create following relationship
-        Following following = Following.builder()
+
+        followingRepository.save(Following.builder()
                 .followerId(followerId)
                 .followeeId(followeeId)
                 .createdAt(Instant.now())
-                .build();
-        
-        followingRepository.save(following);
+                .build());
         log.info("Created following relationship: {} -> {}", followerId, followeeId);
-        
-        // Update follower counts
-        updateFollowerCounts(follower, followee);
+
+        // Atomic increments — no read-modify-write race
+        userCountRepository.incrementFollowingCount(followerId, 1);
+        userCountRepository.incrementFollowerCount(followeeId, 1);
+
+        // Notify followee asynchronously
+        User follower = userRepository.findById(followerId).orElse(null);
+        notifyAsync(followeeId, "FOLLOW",
+                (follower != null ? follower.getUsername() : "Someone") + " started following you",
+                followerId,
+                follower != null ? follower.getAvatarUrl() : null,
+                followerId, "/users/" + followerId);
     }
 
-    /**
-     * Removes a following relationship between two users.
-     * Updates follower/following counts for both users.
-     * 
-     * @param followerId the ID of the user who wants to unfollow
-     * @param followeeId the ID of the user to be unfollowed
-     * @throws ResourceNotFoundException if either user is not found
-     */
     @Transactional
     public void unfollowUser(String followerId, String followeeId) {
         log.info("User {} attempting to unfollow user {}", followerId, followeeId);
-        
-        // Verify both users exist
-        User follower = userRepository.findById(followerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", followerId));
-        User followee = userRepository.findById(followeeId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", followeeId));
-        
-        // Check if relationship exists
+
+        if (!userRepository.existsById(followerId)) {
+            throw new ResourceNotFoundException("User", followerId);
+        }
+        if (!userRepository.existsById(followeeId)) {
+            throw new ResourceNotFoundException("User", followeeId);
+        }
+
         if (!followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)) {
             log.debug("No following relationship exists between {} and {}", followerId, followeeId);
-            return; // Idempotent operation - silently succeed if not following
+            return;
         }
-        
-        // Delete following relationship
+
         followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId);
         log.info("Deleted following relationship: {} -> {}", followerId, followeeId);
-        
-        // Update follower counts
-        updateFollowerCounts(follower, followee);
+
+        // Atomic decrements — floor at 0 is enforced by the DB constraint (counts never go negative)
+        userCountRepository.incrementFollowingCount(followerId, -1);
+        userCountRepository.incrementFollowerCount(followeeId, -1);
     }
 
     /**
      * Retrieves a paginated list of users following the specified user.
-     * Returns user profile summaries for each follower.
-     * 
-     * @param userId the ID of the user whose followers to retrieve
-     * @param pageable pagination and sorting parameters
-     * @return page of user profile responses for followers
-     * @throws ResourceNotFoundException if user is not found
+     * Uses a single bulk findAllById instead of N individual lookups.
      */
     public Page<UserProfileResponse> getFollowers(String userId, Pageable pageable) {
-        log.debug("Retrieving followers for user ID: {} with pagination: {}", userId, pageable);
-        
-        // Verify user exists
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User", userId);
         }
-        
-        // Get paginated following relationships where this user is the followee
+
         Page<Following> followingPage = followingRepository.findByFolloweeId(userId, pageable);
-        
-        // Map to user profile responses
-        return followingPage.map(following -> {
-            User follower = userRepository.findById(following.getFollowerId())
-                    .orElse(null);
-            
-            if (follower == null) {
-                log.warn("Follower user {} not found for following relationship {}", 
-                        following.getFollowerId(), following.getId());
-                return null;
-            }
-            
-            return mapToUserProfileResponse(follower);
-        }).map(profile -> profile); // Filter out nulls handled by Spring Data
-        
+
+        // Collect all follower IDs from this page, then fetch in one query
+        Set<String> followerIds = followingPage.getContent().stream()
+                .map(Following::getFollowerId)
+                .collect(Collectors.toSet());
+
+        Map<String, User> userMap = userRepository.findAllById(followerIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<UserProfileResponse> profiles = followingPage.getContent().stream()
+                .map(f -> {
+                    User u = userMap.get(f.getFollowerId());
+                    if (u == null) {
+                        log.warn("Follower user {} not found", f.getFollowerId());
+                        return null;
+                    }
+                    return mapToUserProfileResponse(u);
+                })
+                .filter(p -> p != null)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(profiles, pageable, followingPage.getTotalElements());
     }
 
     /**
      * Retrieves a paginated list of users that the specified user is following.
-     * Returns user profile summaries for each followed user.
-     * 
-     * @param userId the ID of the user whose following list to retrieve
-     * @param pageable pagination and sorting parameters
-     * @return page of user profile responses for followed users
-     * @throws ResourceNotFoundException if user is not found
+     * Uses a single bulk findAllById instead of N individual lookups.
      */
     public Page<UserProfileResponse> getFollowing(String userId, Pageable pageable) {
-        log.debug("Retrieving following list for user ID: {} with pagination: {}", userId, pageable);
-        
-        // Verify user exists
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User", userId);
         }
-        
-        // Get paginated following relationships where this user is the follower
+
         Page<Following> followingPage = followingRepository.findByFollowerId(userId, pageable);
-        
-        // Map to user profile responses
-        return followingPage.map(following -> {
-            User followee = userRepository.findById(following.getFolloweeId())
-                    .orElse(null);
-            
-            if (followee == null) {
-                log.warn("Followee user {} not found for following relationship {}", 
-                        following.getFolloweeId(), following.getId());
-                return null;
-            }
-            
-            return mapToUserProfileResponse(followee);
-        }).map(profile -> profile); // Filter out nulls handled by Spring Data
+
+        Set<String> followeeIds = followingPage.getContent().stream()
+                .map(Following::getFolloweeId)
+                .collect(Collectors.toSet());
+
+        Map<String, User> userMap = userRepository.findAllById(followeeIds).stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<UserProfileResponse> profiles = followingPage.getContent().stream()
+                .map(f -> {
+                    User u = userMap.get(f.getFolloweeId());
+                    if (u == null) {
+                        log.warn("Followee user {} not found", f.getFolloweeId());
+                        return null;
+                    }
+                    return mapToUserProfileResponse(u);
+                })
+                .filter(p -> p != null)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(profiles, pageable, followingPage.getTotalElements());
     }
 
     /**
@@ -213,40 +214,6 @@ public class SocialService {
         return followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId);
     }
 
-    /**
-     * Updates follower and following counts for both users in a relationship.
-     * Recalculates counts from the database to ensure accuracy.
-     * 
-     * @param follower the user who is following
-     * @param followee the user being followed
-     */
-    private void updateFollowerCounts(User follower, User followee) {
-        log.debug("Updating follower counts for users {} and {}", follower.getId(), followee.getId());
-        
-        // Update follower's following count
-        long followingCount = followingRepository.countByFollowerId(follower.getId());
-        follower.setFollowingCount((int) followingCount);
-        follower.setUpdatedAt(Instant.now());
-        
-        // Update followee's follower count
-        long followerCount = followingRepository.countByFolloweeId(followee.getId());
-        followee.setFollowerCount((int) followerCount);
-        followee.setUpdatedAt(Instant.now());
-        
-        // Save both users
-        userRepository.save(follower);
-        userRepository.save(followee);
-        
-        log.debug("Updated counts - Follower {} following: {}, Followee {} followers: {}", 
-                follower.getId(), followingCount, followee.getId(), followerCount);
-    }
-
-    /**
-     * Maps a User entity to a UserProfileResponse DTO.
-     * 
-     * @param user the user entity
-     * @return user profile response DTO
-     */
     private UserProfileResponse mapToUserProfileResponse(User user) {
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -260,5 +227,17 @@ public class SocialService {
                 .projectCount(user.getProjectCount())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    @Async("taskExecutor")
+    protected void notifyAsync(String recipientId, String type, String text,
+                               String actorId, String actorAvatarUrl,
+                               String targetId, String targetView) {
+        try {
+            notificationService.createNotification(recipientId, type, text,
+                    actorId, actorAvatarUrl, targetId, targetView);
+        } catch (Exception e) {
+            log.error("Failed to create {} notification for user {}: {}", type, recipientId, e.getMessage());
+        }
     }
 }

@@ -236,6 +236,22 @@ public class ShipService {
     }
 
     /**
+     * Deletes a ship. Only the owner can delete.
+     * Also decrements the project's ship count.
+     */
+    @Transactional
+    public void deleteShip(String shipId, String userId) {
+        Ship ship = shipRepository.findById(shipId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ship", shipId));
+        if (!ship.getUserId().equals(userId)) {
+            throw new ForbiddenException("delete", "ship");
+        }
+        shipRepository.deleteById(shipId);
+        projectService.decrementProjectShipCount(ship.getProjectId());
+        log.info("Deleted ship {} by user {}", shipId, userId);
+    }
+
+    /**
      * Verifies that a ship exists and is owned by the specified user.
      * 
      * @param shipId the ID of the ship

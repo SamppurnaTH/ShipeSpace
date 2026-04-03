@@ -1,87 +1,96 @@
 package com.shipspace.controller;
 
-import com.shipspace.model.ScoreEventType;
-import com.shipspace.service.ShipScoreService;
+import com.shipspace.dto.CollaborationRequestDto;
+import com.shipspace.service.CollaborationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
 
 /**
- * REST controller for collaboration management endpoints.
- * 
- * <p><strong>PLACEHOLDER CONTROLLER - PENDING COLLABORATION FEATURE IMPLEMENTATION</strong></p>
- * 
- * <p>This controller is a placeholder for the collaboration feature. When the collaboration
- * feature is implemented, this controller should handle collaboration request acceptance
- * and integrate with the ShipScore progression system.</p>
- * 
- * <h3>Integration Point for Rank and Level Progression (Task 7.3)</h3>
- * 
- * <p>When implementing the {@code acceptCollaboration} method, ensure the following
- * integration with the ShipScore system:</p>
- * 
- * <pre>{@code
- * @PostMapping("/{collaborationId}/accept")
- * public ResponseEntity<?> acceptCollaboration(
- *         Authentication authentication,
- *         @PathVariable String collaborationId) {
- *     
- *     // ... existing collaboration acceptance logic ...
- *     
- *     // After successful acceptance, apply score event for the collaborator
- *     try {
- *         boolean scoreApplied = shipScoreService.applyScoreEvent(
- *             collaboratorId,  // The user who is being added as a collaborator
- *             ScoreEventType.COLLAB_ACCEPTED,
- *             collaborationId  // The collaboration request ID for idempotency
- *         );
- *         
- *         if (scoreApplied) {
- *             log.debug("Successfully applied COLLAB_ACCEPTED score event for collaborator: {}", 
- *                      collaboratorId);
- *         } else {
- *             log.debug("COLLAB_ACCEPTED score event was not applied (duplicate or cap reached) " +
- *                      "for collaborator: {}", collaboratorId);
- *         }
- *     } catch (Exception e) {
- *         // Log the error but don't fail the collaboration acceptance
- *         log.error("Failed to apply COLLAB_ACCEPTED score event for collaborator: {}", 
- *                  collaboratorId, e);
- *     }
- *     
- *     // ... return response ...
- * }
- * }</pre>
- * 
- * <h3>Requirements</h3>
- * <ul>
- *   <li><strong>Requirement 10.3:</strong> When a collaboration request is accepted, 
- *       THE System SHALL invoke ShipScoreService with COLLAB_ACCEPTED event type for the collaborator</li>
- *   <li><strong>Requirement 10.5:</strong> THE System SHALL pass the relevant entity identifier 
- *       as entityId to ensure idempotency</li>
- * </ul>
- * 
- * <h3>Implementation Notes</h3>
- * <ul>
- *   <li>The {@code collaboratorId} should be the ID of the user who is being added as a collaborator,
- *       not the user who is accepting the request</li>
- *   <li>The {@code collaborationId} should be used as the entityId for idempotency protection</li>
- *   <li>Score event application should not fail the collaboration acceptance - errors should be logged</li>
- *   <li>The COLLAB_ACCEPTED event awards 10 points and has no daily cap</li>
- * </ul>
- * 
- * @see ShipScoreService#applyScoreEvent(String, ScoreEventType, String)
- * @see ScoreEventType#COLLAB_ACCEPTED
+ * REST controller for collaboration requests.
+ *
+ * POST   /collaborations              — send a request
+ * POST   /collaborations/{id}/accept  — owner accepts
+ * POST   /collaborations/{id}/decline — owner declines
+ * GET    /collaborations/incoming     — owner views pending requests
+ * GET    /collaborations/sent         — requester views their requests
  */
 @Slf4j
 @RestController
 @RequestMapping("/collaborations")
 @RequiredArgsConstructor
+@Tag(name = "Collaborations", description = "Collaboration request management")
 public class CollaborationController {
 
-    private final ShipScoreService shipScoreService;
+    private final CollaborationService collaborationService;
 
-    // TODO: Implement collaboration endpoints when the collaboration feature is developed
-    // TODO: Ensure acceptCollaboration method integrates with ShipScoreService as documented above
+    @PostMapping
+    @Operation(summary = "Send a collaboration request",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<CollaborationRequestDto.Response> sendRequest(
+            Authentication authentication,
+            @Valid @RequestBody CollaborationRequestDto dto) {
+        String userId = userId(authentication);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(collaborationService.sendRequest(userId, dto));
+    }
+
+    @PostMapping("/{id}/accept")
+    @Operation(summary = "Accept a collaboration request (project owner only)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<CollaborationRequestDto.Response> acceptRequest(
+            Authentication authentication,
+            @PathVariable String id) {
+        return ResponseEntity.ok(collaborationService.acceptRequest(userId(authentication), id));
+    }
+
+    @PostMapping("/{id}/decline")
+    @Operation(summary = "Decline a collaboration request (project owner only)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<CollaborationRequestDto.Response> declineRequest(
+            Authentication authentication,
+            @PathVariable String id) {
+        return ResponseEntity.ok(collaborationService.declineRequest(userId(authentication), id));
+    }
+
+    @GetMapping("/incoming")
+    @Operation(summary = "Get pending collaboration requests for your projects",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Page<CollaborationRequestDto.Response>> getIncoming(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        size = Math.min(size, 50);
+        return ResponseEntity.ok(collaborationService.getIncomingRequests(
+                userId(authentication),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))));
+    }
+
+    @GetMapping("/sent")
+    @Operation(summary = "Get collaboration requests you have sent",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Page<CollaborationRequestDto.Response>> getSent(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        size = Math.min(size, 50);
+        return ResponseEntity.ok(collaborationService.getSentRequests(
+                userId(authentication),
+                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"))));
+    }
+
+    private String userId(Authentication auth) {
+        return ((UserDetails) auth.getPrincipal()).getUsername();
+    }
 }

@@ -8,11 +8,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
- * CORS configuration for the ShipSpace API.
- * Enables cross-origin requests from configured client applications.
+ * CORS configuration.
+ * Allowed headers are an explicit list — wildcard "*" is not used.
  */
 @Configuration
 public class CorsConfig {
@@ -32,25 +31,24 @@ public class CorsConfig {
     @Value("${cors.max-age}")
     private long maxAge;
 
+    @Value("${cors.exposed-headers:}")
+    private String exposedHeaders;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
-        configuration.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
-        
-        if ("*".equals(allowedHeaders)) {
-            configuration.addAllowedHeader("*");
-        } else {
-            configuration.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        config.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
+        config.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
+        config.setAllowCredentials(allowCredentials);
+        config.setMaxAge(maxAge);
+
+        if (!exposedHeaders.isBlank()) {
+            config.setExposedHeaders(Arrays.asList(exposedHeaders.split(",")));
         }
-        
-        configuration.setAllowCredentials(allowCredentials);
-        configuration.setMaxAge(maxAge);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        
+        source.registerCorsConfiguration("/**", config);
         return source;
     }
 }
