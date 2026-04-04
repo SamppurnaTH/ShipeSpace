@@ -7,49 +7,33 @@ import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.User;
 import com.shipspace.repository.ScoreEventLogRepository;
 import com.shipspace.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
-/**
- * Service responsible for managing ShipScore progression, including score calculations,
- * level and rank determination, and score event application.
- * 
- * <p>This service provides core functionality for the rank and level progression system:
- * <ul>
- *   <li>Calculate user level from ShipScore using the formula: min(30, floor(shipScore / 40) + 1)</li>
- *   <li>Determine rank tier from level</li>
- *   <li>Calculate the ShipScore needed to reach the next level</li>
- *   <li>Apply score events with idempotency and daily cap enforcement</li>
- * </ul>
- * 
- * <p>The service ensures transactional safety and maintains data consistency when
- * updating user progression data.
- * 
- * @see <a href=".kiro/specs/rank-level-progression/requirements.md">Requirements 7.1, 8.7, 9.1, 12.3, 15.2</a>
- */
 @Service
+@Slf4j
 public class ShipScoreService {
 
     private final UserRepository userRepository;
     private final ScoreEventLogRepository scoreEventLogRepository;
+    private final Counter scoreEventAppliedCounter;
+    private final Counter scoreEventRejectedCounter;
 
-    /**
-     * Constructs a ShipScoreService with the required repository dependencies.
-     * 
-     * @param userRepository the repository for user data access
-     * @param scoreEventLogRepository the repository for score event logging
-     */
-    @Autowired
-    public ShipScoreService(
-        UserRepository userRepository,
-        ScoreEventLogRepository scoreEventLogRepository
-    ) {
+    public ShipScoreService(UserRepository userRepository,
+                             ScoreEventLogRepository scoreEventLogRepository,
+                             MeterRegistry meterRegistry) {
         this.userRepository = userRepository;
         this.scoreEventLogRepository = scoreEventLogRepository;
+        this.scoreEventAppliedCounter = meterRegistry.counter("shipspace.score.events_applied");
+        this.scoreEventRejectedCounter = meterRegistry.counter("shipspace.score.events_rejected");
     }
 
     /**
@@ -165,91 +149,84 @@ public class ShipScoreService {
      * @throws ResourceNotFoundException if the user doesn't exist
      * @see <a href=".kiro/specs/rank-level-progression/requirements.md">Requirements 6.3, 6.4, 9.1-9.8</a>
      */
+    /**
+     * Apply a score event to a user's ShipScore.
+     *
+     * IDEMPOTENCY NOTE for PROJECT_UPDATED:
+     * The entityId for PROJECT_UPDATED is constructed as "projectId:date" (e.g. "abc123:2026-04-03")
+     * so that the same project can earn points multiple times per day (up to the daily cap)
+     * without the unique compound index blocking all but the first event.
+     *
+     * For all other event types, entityId is the raw entity ID (projectId, commentId, etc.)
+     * and the unique index prevents duplicate scoring for the same entity.
+     */
     @Transactional
     public boolean applyScoreEvent(
         String userId,
         ScoreEventType eventType,
         String entityId
     ) {
-        // Validate parameters
         if (userId == null || eventType == null || entityId == null) {
             throw new IllegalArgumentException("userId, eventType, and entityId must not be null");
         }
 
-        // Check idempotency: Has this exact event already been logged?
-        boolean isDuplicate = scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
-            userId,
-            eventType,
-            entityId
-        );
+        // For PROJECT_UPDATED, suffix entityId with today's date so the idempotency key
+        // is per-project-per-day, not per-project-forever.
+        String effectiveEntityId = (eventType == ScoreEventType.PROJECT_UPDATED)
+                ? entityId + ":" + java.time.LocalDate.now(java.time.ZoneOffset.UTC)
+                : entityId;
 
+        // Check idempotency
+        boolean isDuplicate = scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
+            userId, eventType, effectiveEntityId);
         if (isDuplicate) {
-            // Event has already been processed, reject to maintain idempotency
+            scoreEventRejectedCounter.increment();
             return false;
         }
 
-        // Check daily cap: Does this event type have a daily limit?
+        // Check daily cap
         if (eventType.hasDailyCap()) {
-            // Calculate start of current day in UTC
             Instant startOfDay = Instant.now().truncatedTo(ChronoUnit.DAYS);
-            
-            // Count how many events of this type the user has triggered today
             long eventCountToday = scoreEventLogRepository.countByUserIdAndEventTypeAndCreatedAtAfter(
-                userId,
-                eventType,
-                startOfDay
-            );
-            
-            // Check if the user has reached or exceeded the daily cap
+                userId, eventType, startOfDay);
             if (eventCountToday >= eventType.getDailyCap()) {
-                // Daily cap exceeded, reject the event
+                scoreEventRejectedCounter.increment();
                 return false;
             }
         }
 
-        // Fetch user by userId (throw ResourceNotFoundException if not found)
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
-        // Store old level and rank for comparison
         int oldLevel = user.getLevel();
         RankTier oldRank = user.getRank();
 
-        // Add event type points to user.shipScore
         int newShipScore = user.getShipScore() + eventType.getPoints();
         user.setShipScore(newShipScore);
-
-        // Update user.lastShipActivityAt to current timestamp
         user.setLastShipActivityAt(Instant.now());
 
-        // Recalculate level using calculateLevel
         int newLevel = calculateLevel(newShipScore);
         user.setLevel(newLevel);
 
-        // If level changed, recalculate rank using calculateRank
         if (newLevel != oldLevel) {
             RankTier newRank = calculateRank(newLevel);
             user.setRank(newRank);
-
-            // If rank changed, update user.rankUpdatedAt to current timestamp
             if (newRank != oldRank) {
                 user.setRankUpdatedAt(Instant.now());
             }
         }
 
-        // Create ScoreEventLog entry with current timestamp
         ScoreEventLog eventLog = ScoreEventLog.builder()
             .userId(userId)
             .eventType(eventType)
-            .entityId(entityId)
+            .entityId(effectiveEntityId)
             .createdAt(Instant.now())
             .build();
 
-        // Save user and event log atomically (within @Transactional context)
         userRepository.save(user);
         scoreEventLogRepository.save(eventLog);
+        scoreEventAppliedCounter.increment();
 
-        // Return true on success
         return true;
     }
 

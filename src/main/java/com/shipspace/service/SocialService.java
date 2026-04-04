@@ -42,7 +42,7 @@ public class SocialService {
     private final FollowingRepository followingRepository;
     private final UserRepository userRepository;
     private final UserCountRepository userCountRepository;
-    private final NotificationService notificationService;
+    private final NotificationDispatchService notificationDispatchService;
 
     /**
      * Creates a following relationship between two users.
@@ -88,7 +88,7 @@ public class SocialService {
 
         // Notify followee asynchronously
         User follower = userRepository.findById(followerId).orElse(null);
-        notifyAsync(followeeId, "FOLLOW",
+        notificationDispatchService.dispatch(followeeId, "FOLLOW",
                 (follower != null ? follower.getUsername() : "Someone") + " started following you",
                 followerId,
                 follower != null ? follower.getAvatarUrl() : null,
@@ -188,17 +188,18 @@ public class SocialService {
 
     /**
      * Gets the list of user IDs that a specific user is following.
-     * Used for feed generation and filtering.
-     * 
-     * @param userId the ID of the user
-     * @return list of user IDs being followed
+     * Capped at 1000 to prevent OOM on power users. Feed generation uses
+     * the paginated FeedService path which caps at 500 anyway.
      */
     public List<String> getFollowingUserIds(String userId) {
         log.debug("Retrieving following user IDs for user ID: {}", userId);
-        
-        List<Following> followingList = followingRepository.findByFollowerId(userId);
-        
-        return followingList.stream()
+        org.springframework.data.domain.Pageable cap =
+                org.springframework.data.domain.PageRequest.of(0, 1000,
+                        org.springframework.data.domain.Sort.by(
+                                org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        return followingRepository.findByFollowerId(userId, cap)
+                .getContent()
+                .stream()
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
     }
@@ -234,7 +235,7 @@ public class SocialService {
                                String actorId, String actorAvatarUrl,
                                String targetId, String targetView) {
         try {
-            notificationService.createNotification(recipientId, type, text,
+            notificationDispatchService.dispatch(recipientId, type, text,
                     actorId, actorAvatarUrl, targetId, targetView);
         } catch (Exception e) {
             log.error("Failed to create {} notification for user {}: {}", type, recipientId, e.getMessage());

@@ -18,6 +18,7 @@ import com.shipspace.repository.LikeRepository;
 import com.shipspace.repository.ShipCountRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -62,7 +63,8 @@ public class EngagementService {
     private final CommentQualificationService commentQualificationService;
     private final ShipScoreService shipScoreService;
     private final MongoTemplate mongoTemplate;
-    private final NotificationService notificationService;
+    private final NotificationDispatchService notificationDispatchService;
+    private final InputSanitizer inputSanitizer;
 
     /**
      * Toggle like state for a ship.
@@ -84,13 +86,23 @@ public class EngagementService {
         Optional<Like> existingLike = likeRepository.findByUserIdAndShipId(userId, shipId);
 
         if (existingLike.isPresent()) {
-            likeRepository.deleteByUserIdAndShipId(userId, shipId);
-            // Atomic decrement — floor at 0 handled by max(0, ...) in the $inc value
-            Ship updated = shipCountRepository.incrementLikeCount(shipId, -1);
-            log.info("User {} unliked ship {}", userId, shipId);
+            long deleted = likeRepository.deleteByUserIdAndShipId(userId, shipId);
+            if (deleted > 0) {
+                // Only decrement if we actually deleted — prevents double-decrement on concurrent unlike
+                Ship updated = shipCountRepository.incrementLikeCount(shipId, -1);
+                log.info("User {} unliked ship {}", userId, shipId);
+                return LikeToggleResponse.builder()
+                        .liked(false)
+                        .likeCount(updated.getLikeCount())
+                        .message("Ship unliked successfully")
+                        .build();
+            }
+            // Another concurrent request already deleted it — return current state
+            Ship current = shipRepository.findById(shipId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Ship", shipId));
             return LikeToggleResponse.builder()
                     .liked(false)
-                    .likeCount(Math.max(0, updated.getLikeCount()))
+                    .likeCount(current.getLikeCount())
                     .message("Ship unliked successfully")
                     .build();
         }
@@ -109,7 +121,7 @@ public class EngagementService {
             Ship ship = shipRepository.findById(shipId).orElse(null);
             if (ship != null && !ship.getUserId().equals(userId)) {
                 User actor = userRepository.findById(userId).orElse(null);
-                notifyAsync(ship.getUserId(), "LIKE",
+                notificationDispatchService.dispatch(ship.getUserId(), "LIKE",
                         (actor != null ? actor.getUsername() : "Someone") + " liked your ship",
                         userId,
                         actor != null ? actor.getAvatarUrl() : null,
@@ -151,7 +163,7 @@ public class EngagementService {
         Comment comment = commentRepository.save(Comment.builder()
                 .userId(userId)
                 .shipId(shipId)
-                .content(request.getContent())
+                .content(inputSanitizer.sanitize(request.getContent(), 1000))
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build());
@@ -162,7 +174,7 @@ public class EngagementService {
         // Notify ship owner asynchronously (skip self-comment)
         Ship ship = shipRepository.findById(shipId).orElse(null);
         if (ship != null && !ship.getUserId().equals(userId)) {
-            notifyAsync(ship.getUserId(), "COMMENT",
+            notificationDispatchService.dispatch(ship.getUserId(), "COMMENT",
                     user.getUsername() + " commented on your ship",
                     userId, user.getAvatarUrl(),
                     shipId, "/ships/" + shipId);
@@ -299,6 +311,117 @@ public class EngagementService {
         return likeRepository.existsByUserIdAndShipId(userId, shipId);
     }
 
+    /**
+     * Explicit like — idempotent. Returns current state even if already liked.
+     */
+    @Transactional
+    public LikeToggleResponse likeShip(String userId, String shipId) {
+        if (!shipRepository.existsById(shipId)) throw new ResourceNotFoundException("Ship", shipId);
+        if (!userRepository.existsById(userId)) throw new ResourceNotFoundException("User", userId);
+
+        if (likeRepository.existsByUserIdAndShipId(userId, shipId)) {
+            Ship ship = shipRepository.findById(shipId).orElseThrow();
+            return LikeToggleResponse.builder().liked(true)
+                    .likeCount(ship.getLikeCount()).message("Already liked").build();
+        }
+        try {
+            likeRepository.save(Like.builder().userId(userId).shipId(shipId)
+                    .createdAt(Instant.now()).build());
+            Ship updated = shipCountRepository.incrementLikeCount(shipId, 1);
+            Ship ship = shipRepository.findById(shipId).orElse(null);
+            if (ship != null && !ship.getUserId().equals(userId)) {
+                User actor = userRepository.findById(userId).orElse(null);
+                notificationDispatchService.dispatch(ship.getUserId(), "LIKE",
+                        (actor != null ? actor.getUsername() : "Someone") + " liked your ship",
+                        userId, actor != null ? actor.getAvatarUrl() : null,
+                        shipId, "/ships/" + shipId);
+            }
+            return LikeToggleResponse.builder().liked(true)
+                    .likeCount(updated.getLikeCount()).message("Ship liked successfully").build();
+        } catch (DuplicateKeyException e) {
+            Ship ship = shipRepository.findById(shipId).orElseThrow();
+            return LikeToggleResponse.builder().liked(true)
+                    .likeCount(ship.getLikeCount()).message("Already liked").build();
+        }
+    }
+
+    /**
+     * Explicit unlike — idempotent. Returns current state even if not liked.
+     */
+    @Transactional
+    public LikeToggleResponse unlikeShip(String userId, String shipId) {
+        if (!shipRepository.existsById(shipId)) throw new ResourceNotFoundException("Ship", shipId);
+        if (!userRepository.existsById(userId)) throw new ResourceNotFoundException("User", userId);
+
+        if (!likeRepository.existsByUserIdAndShipId(userId, shipId)) {
+            Ship ship = shipRepository.findById(shipId).orElseThrow();
+            return LikeToggleResponse.builder().liked(false)
+                    .likeCount(ship.getLikeCount()).message("Not liked").build();
+        }
+        long deleted = likeRepository.deleteByUserIdAndShipId(userId, shipId);
+        if (deleted > 0) {
+            Ship updated = shipCountRepository.incrementLikeCount(shipId, -1);
+            return LikeToggleResponse.builder().liked(false)
+                    .likeCount(updated.getLikeCount()).message("Ship unliked successfully").build();
+        }
+        // Concurrent request beat us to the delete
+        Ship current = shipRepository.findById(shipId).orElseThrow();
+        return LikeToggleResponse.builder().liked(false)
+                .likeCount(current.getLikeCount()).message("Ship unliked successfully").build();
+    }
+
+    /**
+     * Explicit upvote — idempotent.
+     */
+    @Transactional
+    public CommentUpvoteToggleResponse addCommentUpvote(String userId, String commentId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!userRepository.existsById(userId)) throw new ResourceNotFoundException("User", userId);
+
+        if (commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId).isPresent()) {
+            return CommentUpvoteToggleResponse.builder().upvoted(true)
+                    .upvoteCount(comment.getUpvotes()).qualifiedForScoring(false).build();
+        }
+        try {
+            commentUpvoteRepository.save(CommentUpvote.builder().userId(userId)
+                    .commentId(commentId).createdAt(Instant.now()).build());
+            boolean wasQualified = commentQualificationService.isQualified(comment);
+            Comment updated = atomicIncrementUpvotes(commentId, 1);
+            boolean isNowQualified = commentQualificationService.isQualified(updated);
+            boolean scored = false;
+            if (!wasQualified && isNowQualified) {
+                try { scored = shipScoreService.applyScoreEvent(
+                        comment.getUserId(), ScoreEventType.QUALITY_COMMENT, commentId);
+                } catch (Exception e) { log.error("QUALITY_COMMENT score failed for {}", commentId, e); }
+            }
+            return CommentUpvoteToggleResponse.builder().upvoted(true)
+                    .upvoteCount(updated.getUpvotes()).qualifiedForScoring(scored).build();
+        } catch (DuplicateKeyException e) {
+            return CommentUpvoteToggleResponse.builder().upvoted(true)
+                    .upvoteCount(comment.getUpvotes()).qualifiedForScoring(false).build();
+        }
+    }
+
+    /**
+     * Explicit remove upvote — idempotent.
+     */
+    @Transactional
+    public CommentUpvoteToggleResponse removeCommentUpvote(String userId, String commentId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+        if (!userRepository.existsById(userId)) throw new ResourceNotFoundException("User", userId);
+
+        if (commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId).isEmpty()) {
+            return CommentUpvoteToggleResponse.builder().upvoted(false)
+                    .upvoteCount(comment.getUpvotes()).qualifiedForScoring(false).build();
+        }
+        commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+        Comment updated = atomicIncrementUpvotes(commentId, -1);
+        return CommentUpvoteToggleResponse.builder().upvoted(false)
+                .upvoteCount(Math.max(0, updated.getUpvotes())).qualifiedForScoring(false).build();
+    }
+
     // ── private helpers ──────────────────────────────────────────────────────
 
     /**
@@ -352,22 +475,6 @@ public class EngagementService {
                 .user(userSummary)
                 .createdAt(like.getCreatedAt())
                 .build();
-    }
-
-    /**
-     * Fire-and-forget notification — runs on the async thread pool.
-     * Failures are logged but never propagate to the caller.
-     */
-    @Async("taskExecutor")
-    protected void notifyAsync(String recipientId, String type, String text,
-                               String actorId, String actorAvatarUrl,
-                               String targetId, String targetView) {
-        try {
-            notificationService.createNotification(recipientId, type, text,
-                    actorId, actorAvatarUrl, targetId, targetView);
-        } catch (Exception e) {
-            log.error("Failed to create {} notification for user {}: {}", type, recipientId, e.getMessage());
-        }
     }
 
     /**

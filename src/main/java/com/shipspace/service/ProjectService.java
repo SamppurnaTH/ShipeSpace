@@ -10,6 +10,7 @@ import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.Ship;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * Service for project management operations.
@@ -45,6 +47,8 @@ public class ProjectService {
     private final UserService userService;
     private final MongoTemplate mongoTemplate;
     private final ShipScoreService shipScoreService;
+    private final CascadeDeleteService cascadeDeleteService;
+    private final InputSanitizer inputSanitizer;
 
     /**
      * Creates a new project for the authenticated user.
@@ -64,8 +68,8 @@ public class ProjectService {
         // Create project entity
         Project project = Project.builder()
                 .userId(userId)
-                .name(request.getName())
-                .description(request.getDescription())
+                .name(inputSanitizer.sanitize(request.getName(), 100))
+                .description(inputSanitizer.sanitize(request.getDescription(), 2000))
                 .techTags(request.getTechTags())
                 .externalLinks(request.getExternalLinks())
                 .shipCount(0)
@@ -134,12 +138,12 @@ public class ProjectService {
             throw new ForbiddenException("update", "project");
         }
         
-        // Update only provided fields
+        // Update only provided fields — sanitize free-text
         if (request.getName() != null) {
-            project.setName(request.getName());
+            project.setName(inputSanitizer.sanitize(request.getName(), 100));
         }
         if (request.getDescription() != null) {
-            project.setDescription(request.getDescription());
+            project.setDescription(inputSanitizer.sanitize(request.getDescription(), 2000));
         }
         if (request.getTechTags() != null) {
             project.setTechTags(request.getTechTags());
@@ -227,24 +231,34 @@ public class ProjectService {
         if (!project.getUserId().equals(userId)) {
             throw new ForbiddenException("delete", "project");
         }
+        // Collect ship IDs before deletion for cascade cleanup — projection only, no full doc load
+        List<String> shipIds = shipRepository.findIdsByProjectId(projectId)
+                .stream()
+                .map(com.shipspace.model.Ship::getId)
+                .collect(java.util.stream.Collectors.toList());
+
         // Delete all ships belonging to this project
         shipRepository.deleteByProjectId(projectId);
         projectRepository.deleteById(projectId);
         userService.decrementProjectCount(userId);
+
+        // Cascade: clean up all orphaned documents
+        cascadeDeleteService.deleteProjectCascade(projectId, shipIds);
         log.info("Deleted project {} and its ships by user {}", projectId, userId);
     }
 
     /**
      * Decrements project ship count when a ship is deleted.
+     * Uses atomic $inc — no read-modify-write race condition.
      */
     @Transactional
     public void decrementProjectShipCount(String projectId) {
-        projectRepository.findById(projectId).ifPresent(project -> {
-            int newCount = Math.max(0, project.getShipCount() - 1);
-            project.setShipCount(newCount);
-            project.setUpdatedAt(Instant.now());
-            projectRepository.save(project);
-        });
+        Query query = new Query(Criteria.where("_id").is(projectId));
+        Update update = new Update()
+                .inc("shipCount", -1)
+                .set("updatedAt", Instant.now());
+        mongoTemplate.updateFirst(query, update, Project.class);
+        log.debug("Atomically decremented shipCount for project {}", projectId);
     }
 
     /**
@@ -262,6 +276,13 @@ public class ProjectService {
         if (!project.getUserId().equals(userId)) {
             throw new ForbiddenException("access", "project");
         }
+    }
+
+    /**
+     * Batch-fetch projects by IDs. Used by FeedController for enrichment.
+     */
+    public List<Project> findAllByIds(java.util.Collection<String> ids) {
+        return projectRepository.findAllById(ids);
     }
 
     /**

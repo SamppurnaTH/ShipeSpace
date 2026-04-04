@@ -37,12 +37,16 @@ public class UserUpdateRequest {
     private String location;
 
     @Pattern(
-        regexp = "^(https?://.*)?$",
-        message = "Website URL must start with http:// or https://"
+        regexp = "^(https://.*)?$",
+        message = "Website URL must use HTTPS"
     )
     @Size(max = 200, message = "Website URL must not exceed 200 characters")
     private String websiteUrl;
 
+    @Pattern(
+        regexp = "^(https://.*)?$",
+        message = "Avatar URL must use HTTPS"
+    )
     @Size(max = 500, message = "Avatar URL must not exceed 500 characters")
     private String avatarUrl;
 }

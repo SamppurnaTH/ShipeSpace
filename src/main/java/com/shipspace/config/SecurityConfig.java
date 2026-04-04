@@ -35,14 +35,18 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 // Always-public endpoints
+                // Note: paths are relative to the servlet context (/api is the context-path,
+                // so Spring Security sees paths WITHOUT the /api prefix)
                 auth.requestMatchers(
-                        "/api/auth/github",
-                        "/api/auth/refresh",
-                        "/api/health",
-                        "/api/health/**",
+                        "/auth/github",
+                        "/auth/state",
+                        "/auth/refresh",
+                        "/health",
+                        "/health/**",
                         "/actuator/health",
-                        "/api/feeds/trending",
-                        "/api/feeds/trending/**"
+                        "/actuator/health/**",
+                        "/feeds/trending",
+                        "/feeds/trending/**"
                 ).permitAll();
 
                 // Swagger only when explicitly enabled (dev/staging)

@@ -69,11 +69,14 @@ public interface ShipRepository extends MongoRepository<Ship, String> {
 
     /**
      * Count the number of ships for a specific project.
-     *
-     * @param projectId the ID of the project
-     * @return the count of ships for the project
      */
     long countByProjectId(String projectId);
+
+    /**
+     * Count the number of ships for a specific user.
+     * Use this instead of findByUserId(Pageable.unpaged()).getTotalElements().
+     */
+    long countByUserId(String userId);
 
     /**
      * Delete all ships for a project (used when deleting a project).
@@ -83,9 +86,13 @@ public interface ShipRepository extends MongoRepository<Ship, String> {
     /**
      * Find ships with expired edit windows.
      * Used for cleanup or analytics.
-     *
-     * @param currentTime the current timestamp
-     * @return List of ships with expired edit windows
      */
     List<Ship> findByEditWindowExpiresBefore(Instant currentTime);
+
+    /**
+     * Find only the IDs of ships for a project — used for cascade delete.
+     * Projection on _id only avoids loading full Ship documents into heap.
+     */
+    @Query(value = "{ 'projectId': ?0 }", fields = "{ '_id': 1 }")
+    List<Ship> findIdsByProjectId(String projectId);
 }

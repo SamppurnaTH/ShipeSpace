@@ -7,17 +7,22 @@ import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
 import com.shipspace.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * REST controller for user profile management endpoints.
@@ -33,6 +38,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "User Management", description = "User profile and activity endpoints")
 public class UserController {
 
@@ -89,27 +95,23 @@ public class UserController {
     }
 
     /**
-     * Gets the current authenticated user's projects.
-     *
-     * @param authentication the Spring Security authentication object
-     * @return list of projects owned by the current user
+     * Gets the current authenticated user's projects with pagination.
      */
     @GetMapping("/me/projects")
     @Operation(
         summary = "Get current user's projects",
-        description = "Retrieve all projects owned by the authenticated user",
+        description = "Retrieve projects owned by the authenticated user (paginated)",
         security = @SecurityRequirement(name = "bearerAuth")
     )
-    public ResponseEntity<List<ProjectResponse>> getCurrentUserProjects(Authentication authentication) {
-        log.debug("Received request for current user's projects");
-        
-        // Extract user ID from authentication
+    public ResponseEntity<Page<ProjectResponse>> getCurrentUserProjects(
+            Authentication authentication,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Page size (max 50)") @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String userId = userDetails.getUsername(); // We store userId in username field
-        
-        List<ProjectResponse> projects = userService.getUserProjects(userId);
-        
-        log.debug("Returning {} projects for current user", projects.size());
+        String userId = userDetails.getUsername();
+        Page<ProjectResponse> projects = userService.getUserProjects(
+                userId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        log.debug("Returning {} projects for current user (page {})", projects.getNumberOfElements(), page);
         return ResponseEntity.ok(projects);
     }
 

@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -62,76 +63,77 @@ public class RequestLoggingConfig {
             // Add request ID to response headers
             response.setHeader(REQUEST_ID_HEADER, requestId);
             response.setHeader(CORRELATION_ID_HEADER, requestId);
-            
+
             // Store request ID in request attribute for downstream use
             request.setAttribute("requestId", requestId);
-            
+
+            // Phase 8: put requestId into MDC so it appears in every log line
+            // emitted during this request — critical for log correlation in ELK/CloudWatch.
+            MDC.put("requestId", requestId);
+
             // Start timing
             long startTime = System.currentTimeMillis();
-            
-            // Continue filter chain
-            filterChain.doFilter(request, response);
-            
-            // Calculate response time
-            long responseTime = System.currentTimeMillis() - startTime;
-            
-            // Get response status
-            int status = response.getStatus();
-            
-            // Get user ID if available
-            String userId = (String) request.getAttribute("userId");
-            if (userId == null) {
-                userId = "anonymous";
-            }
-            
-            // Get client IP
-            String clientIp = getClientIp(request);
-            
-            // Log request — structured format: METHOD PATH STATUS USER_ID RESPONSE_TIME CLIENT_IP
-            String logMessage = String.format("[%s] %s %s -> %d (%dms) user=%s ip=%s",
-                    requestId,
-                    request.getMethod(),
-                    request.getRequestURI(),
-                    status,
-                    responseTime,
-                    userId,
-                    clientIp
-            );
-            
-            if (status >= 500) {
-                log.error(logMessage);
-            } else if (status >= 400) {
-                log.warn(logMessage);
-            } else if (responseTime > 1000) {
-                log.warn(logMessage + " [SLOW REQUEST]");
-            } else {
-                log.info(logMessage);
-            }
-            
-            // Log detailed info for errors
-            if (status >= 500) {
-                log.error("Request details - RequestID: {}, Query: {}, Body: {}",
-                        requestId,
-                        request.getQueryString(),
-                        request.getParameterMap());
+
+            try {
+                // Continue filter chain
+                filterChain.doFilter(request, response);
+
+                // Calculate response time and log INSIDE the try so MDC is still set
+                long responseTime = System.currentTimeMillis() - startTime;
+                int status = response.getStatus();
+                String userId = (String) request.getAttribute("userId");
+                if (userId == null) userId = "anonymous";
+                String clientIp = getClientIp(request);
+
+                String logMessage = String.format("[%s] %s %s -> %d (%dms) user=%s ip=%s",
+                        requestId, request.getMethod(), request.getRequestURI(),
+                        status, responseTime, userId, clientIp);
+
+                if (status >= 500) {
+                    log.error(logMessage);
+                } else if (status >= 400) {
+                    log.warn(logMessage);
+                } else if (responseTime > 1000) {
+                    log.warn("{} [SLOW REQUEST]", logMessage);
+                } else {
+                    log.info(logMessage);
+                }
+            } finally {
+                // Always clear MDC — thread pool reuse means stale values leak across requests
+                MDC.remove("requestId");
             }
         }
 
         /**
-         * Extracts client IP address, handling proxy headers.
+         * Extracts client IP address.
+         * Phase 4 fix: only trusts X-Forwarded-For when the direct connection
+         * comes from a private/loopback address (trusted reverse proxy).
+         * Blindly reading X-Forwarded-For from any source allows IP spoofing.
          */
         private String getClientIp(HttpServletRequest request) {
-            String xForwardedFor = request.getHeader("X-Forwarded-For");
-            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-                return xForwardedFor.split(",")[0].trim();
+            String remoteAddr = request.getRemoteAddr();
+            if (isTrustedProxy(remoteAddr)) {
+                String xff = request.getHeader("X-Forwarded-For");
+                if (xff != null && !xff.isEmpty()) {
+                    return xff.split(",")[0].trim();
+                }
+                String xRealIp = request.getHeader("X-Real-IP");
+                if (xRealIp != null && !xRealIp.isEmpty()) {
+                    return xRealIp;
+                }
             }
-            
-            String xRealIp = request.getHeader("X-Real-IP");
-            if (xRealIp != null && !xRealIp.isEmpty()) {
-                return xRealIp;
-            }
-            
-            return request.getRemoteAddr();
+            return remoteAddr;
+        }
+
+        private boolean isTrustedProxy(String addr) {
+            if (addr == null) return false;
+            return addr.equals("127.0.0.1") || addr.equals("::1")
+                    || addr.startsWith("10.")
+                    || addr.startsWith("172.16.") || addr.startsWith("172.17.")
+                    || addr.startsWith("172.18.") || addr.startsWith("172.19.")
+                    || addr.startsWith("172.2")
+                    || addr.startsWith("172.30.") || addr.startsWith("172.31.")
+                    || addr.startsWith("192.168.");
         }
     }
 }

@@ -64,10 +64,13 @@ public interface LikeRepository extends MongoRepository<Like, String> {
 
     /**
      * Delete a like by user and ship.
-     * Used for unlike operations.
+     * Returns the number of documents deleted (0 or 1).
+     * Callers MUST check the return value before decrementing counters —
+     * decrementing when nothing was deleted causes counter drift.
      *
      * @param userId the ID of the user
      * @param shipId the ID of the ship
+     * @return number of documents deleted
      */
-    void deleteByUserIdAndShipId(String userId, String shipId);
+    long deleteByUserIdAndShipId(String userId, String shipId);
 }

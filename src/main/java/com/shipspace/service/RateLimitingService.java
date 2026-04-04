@@ -1,6 +1,9 @@
 package com.shipspace.service;
 
+import com.shipspace.config.SloEnforcementService;
 import lombok.extern.slf4j.Slf4j;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -46,9 +49,15 @@ public class RateLimitingService {
             );
 
     private final RedisTemplate<String, String> redisTemplate;
+    private final Counter rateLimitRejectionCounter;
+    private final SloEnforcementService sloEnforcementService;
 
-    public RateLimitingService(RedisTemplate<String, String> redisTemplate) {
+    public RateLimitingService(RedisTemplate<String, String> redisTemplate,
+                                MeterRegistry meterRegistry,
+                                SloEnforcementService sloEnforcementService) {
         this.redisTemplate = redisTemplate;
+        this.sloEnforcementService = sloEnforcementService;
+        this.rateLimitRejectionCounter = meterRegistry.counter("shipspace.rate_limit.rejections");
     }
 
     /**
@@ -63,6 +72,10 @@ public class RateLimitingService {
      */
     public boolean isRateLimited(String userId, String action, int maxRequests, int windowSecs) {
         String key = KEY_PREFIX + userId + ":" + action;
+        // Enforce tighter limits when system is under SLO pressure.
+        // This is server-side enforcement — not advisory. Clients that ignore
+        // Retry-After headers are rate-limited regardless.
+        int effectiveMax = (int) Math.max(1, maxRequests * sloEnforcementService.getRateLimitMultiplier());
         try {
             Long count = redisTemplate.execute(
                     INCREMENT_SCRIPT,
@@ -71,13 +84,50 @@ public class RateLimitingService {
             );
             if (count == null) count = 1L;
 
-            if (count > maxRequests) {
-                log.debug("Rate limited user {} for action {}: {}/{}", userId, action, count, maxRequests);
+            if (count > effectiveMax) {
+                log.debug("Rate limited user {} for action {}: {}/{} (multiplier={})",
+                        userId, action, count, effectiveMax,
+                        sloEnforcementService.getRateLimitMultiplier());
+                rateLimitRejectionCounter.increment();
                 return true;
             }
             return false;
         } catch (Exception e) {
-            // Fail open — if Redis is down, don't block legitimate traffic
+            log.error("Rate limit check failed for user {} action {}: {}", userId, action, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Checks rate limit and writes X-RateLimit-* headers onto the response.
+     * Returns true if the request should be rejected.
+     */
+    public boolean isRateLimited(String userId, String action, int maxRequests, int windowSecs,
+                                  jakarta.servlet.http.HttpServletResponse response) {
+        String key = KEY_PREFIX + userId + ":" + action;
+        int effectiveMax = (int) Math.max(1, maxRequests * sloEnforcementService.getRateLimitMultiplier());
+        try {
+            Long count = redisTemplate.execute(
+                    INCREMENT_SCRIPT,
+                    Collections.singletonList(key),
+                    String.valueOf(windowSecs)
+            );
+            if (count == null) count = 1L;
+
+            long remaining = Math.max(0, effectiveMax - count);
+            long resetEpoch = System.currentTimeMillis() / 1000 + windowSecs;
+
+            response.setHeader("X-RateLimit-Limit", String.valueOf(effectiveMax));
+            response.setHeader("X-RateLimit-Remaining", String.valueOf(remaining));
+            response.setHeader("X-RateLimit-Reset", String.valueOf(resetEpoch));
+
+            if (count > effectiveMax) {
+                log.debug("Rate limited user {} for action {}: {}/{}", userId, action, count, effectiveMax);
+                rateLimitRejectionCounter.increment();
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
             log.error("Rate limit check failed for user {} action {}: {}", userId, action, e.getMessage());
             return false;
         }

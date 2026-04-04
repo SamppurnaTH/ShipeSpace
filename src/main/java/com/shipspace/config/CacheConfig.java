@@ -38,8 +38,10 @@ import java.util.Map;
 @EnableCaching
 public class CacheConfig {
 
-    @Value("${spring.cache.redis.time-to-live:300}")
-    private long defaultTtl;
+    // Phase 1 fix: corrected property path. spring.cache.redis.time-to-live is in
+    // milliseconds per Spring Boot convention, so we divide by 1000 for Duration.ofSeconds.
+    @Value("${spring.cache.redis.time-to-live:300000}")
+    private long defaultTtlMs;
 
     @Value("${cache.rank-summary.ttl-seconds:60}")
     private long rankSummaryTtl;
@@ -65,7 +67,7 @@ public class CacheConfig {
         }
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofSeconds(defaultTtl))
+                .entryTtl(Duration.ofMillis(defaultTtlMs))
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer())
                 )
@@ -93,6 +95,24 @@ public class CacheConfig {
         // Feed cache - longer TTL for trending data
         cacheConfigurations.put("feed-cache", 
                 config.entryTtl(Duration.ofMinutes(15)));
+
+        // Phase 1 fix: trendingFeed and trendingFeedWithTimeWindow were missing from
+        // the Redis config, causing them to fall through to the default TTL (300s).
+        // The prefixCacheNameWith("shipspace:") above prevents key collisions:
+        // Redis keys become "shipspace:trendingFeed::0:20" vs
+        // "shipspace:trendingFeedWithTimeWindow::24h:0:20" — no overlap.
+        cacheConfigurations.put("trendingFeed",
+                config.entryTtl(Duration.ofMinutes(15)));
+        cacheConfigurations.put("trendingFeedWithTimeWindow",
+                config.entryTtl(Duration.ofMinutes(15)));
+
+        // User interest profile - 5-minute TTL (updated by behavioral tracking)
+        cacheConfigurations.put("userInterestProfile",
+                config.entryTtl(Duration.ofMinutes(5)));
+
+        // Content quality score - 1-hour TTL (updated by background job)
+        cacheConfigurations.put("contentQualityScore",
+                config.entryTtl(Duration.ofHours(1)));
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)

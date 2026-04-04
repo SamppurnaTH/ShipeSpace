@@ -16,6 +16,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -36,31 +39,62 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/ships")
 @RequiredArgsConstructor
 @Slf4j
+@Validated
 @Tag(name = "Engagement", description = "Engagement management endpoints for likes and comments")
 public class EngagementController {
 
     private final EngagementService engagementService;
     private final BehavioralTrackingService behavioralTrackingService;
 
-    @PostMapping("/{shipId}/like")
-    @Operation(summary = "Toggle like on a ship", security = @SecurityRequirement(name = "bearerAuth"))
+    @PutMapping("/{shipId}/like")
+    @Operation(summary = "Like a ship", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Like toggled successfully",
+            @ApiResponse(responseCode = "200", description = "Ship liked successfully",
                     content = @Content(schema = @Schema(implementation = LikeToggleResponse.class))),
             @ApiResponse(responseCode = "401", description = "Unauthorized"),
             @ApiResponse(responseCode = "404", description = "Ship not found")
     })
-    public ResponseEntity<LikeToggleResponse> toggleLike(
+    public ResponseEntity<LikeToggleResponse> likeShip(
             Authentication authentication,
             @PathVariable String shipId) {
         String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
-        log.info("Toggle like request for ship {} by user {}", shipId, userId);
-        LikeToggleResponse response = engagementService.toggleLike(userId, shipId);
-        // Fire-and-forget behavioral signal
+        LikeToggleResponse response = engagementService.likeShip(userId, shipId);
         if (response.isLiked()) {
             behavioralTrackingService.trackLike(userId, shipId);
         }
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{shipId}/like")
+    @Operation(summary = "Unlike a ship", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<LikeToggleResponse> unlikeShip(
+            Authentication authentication,
+            @PathVariable String shipId) {
+        String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
+        return ResponseEntity.ok(engagementService.unlikeShip(userId, shipId));
+    }
+
+    @PutMapping("/comments/{commentId}/upvote")
+    @Operation(summary = "Upvote a comment", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Upvote added successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "404", description = "Comment not found")
+    })
+    public ResponseEntity<CommentUpvoteToggleResponse> upvoteComment(
+            Authentication authentication,
+            @PathVariable String commentId) {
+        String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
+        return ResponseEntity.ok(engagementService.addCommentUpvote(userId, commentId));
+    }
+
+    @DeleteMapping("/comments/{commentId}/upvote")
+    @Operation(summary = "Remove upvote from a comment", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<CommentUpvoteToggleResponse> removeCommentUpvote(
+            Authentication authentication,
+            @PathVariable String commentId) {
+        String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
+        return ResponseEntity.ok(engagementService.removeCommentUpvote(userId, commentId));
     }
 
     @PostMapping("/{shipId}/comments")
@@ -78,34 +112,17 @@ public class EngagementController {
         String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
         log.info("Add comment request for ship {} by user {}", shipId, userId);
         CommentResponse response = engagementService.addComment(userId, shipId, request);
-        // Fire-and-forget behavioral signal
         behavioralTrackingService.trackComment(userId, shipId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    @PostMapping("/comments/{commentId}/upvote")
-    @Operation(summary = "Toggle upvote on a comment", security = @SecurityRequirement(name = "bearerAuth"))
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Upvote toggled successfully"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized"),
-            @ApiResponse(responseCode = "404", description = "Comment not found")
-    })
-    public ResponseEntity<CommentUpvoteToggleResponse> toggleCommentUpvote(
-            Authentication authentication,
-            @PathVariable String commentId) {
-        String userId = ((UserDetails) authentication.getPrincipal()).getUsername();
-        log.info("Toggle upvote request for comment {} by user {}", commentId, userId);
-        return ResponseEntity.ok(engagementService.toggleCommentUpvote(userId, commentId));
     }
 
     @GetMapping("/{shipId}/comments")
     @Operation(summary = "Get comments for a ship")
     public ResponseEntity<Page<CommentResponse>> getShipComments(
             @PathVariable String shipId,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Page size (max 100)")
-            @RequestParam(defaultValue = "20") int size) {
-        size = Math.min(size, 100);
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(engagementService.getShipComments(shipId, pageable));
     }
@@ -114,10 +131,9 @@ public class EngagementController {
     @Operation(summary = "Get likes for a ship")
     public ResponseEntity<Page<LikeResponse>> getShipLikes(
             @PathVariable String shipId,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Page size (max 100)")
-            @RequestParam(defaultValue = "20") int size) {
-        size = Math.min(size, 100);
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         return ResponseEntity.ok(engagementService.getShipLikes(shipId, pageable));
     }

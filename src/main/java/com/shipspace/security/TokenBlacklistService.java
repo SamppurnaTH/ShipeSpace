@@ -47,14 +47,41 @@ public class TokenBlacklistService {
 
     /**
      * Returns true if the token has been revoked.
+     *
+     * Failure strategy:
+     * - Access token checks (short-lived, 24h): FAIL OPEN.
+     *   A Redis outage should not log out every active user. The worst case is
+     *   a revoked access token remaining valid for up to 24h — acceptable.
+     * - Refresh token checks (long-lived, 7d): FAIL CLOSED.
+     *   Refresh tokens are long-lived and used for re-authentication. Allowing
+     *   a potentially revoked refresh token through is a higher security risk.
+     *
+     * @param tokenId  the jti claim of the token
+     * @param isRefreshToken  true if this is a refresh token check
      */
-    public boolean isBlacklisted(String tokenId) {
+    public boolean isBlacklisted(String tokenId, boolean isRefreshToken) {
         try {
             return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + tokenId));
         } catch (Exception e) {
-            // Fail closed — if Redis is down, reject the token to be safe
-            log.error("Redis unavailable during blacklist check for token {}: {}", tokenId, e.getMessage());
-            return true;
+            if (isRefreshToken) {
+                // Fail closed for refresh tokens — higher security risk
+                log.error("Redis unavailable during refresh token blacklist check for jti={}: {}",
+                        tokenId, e.getMessage());
+                return true;
+            } else {
+                // Fail open for access tokens — availability over security for short-lived tokens
+                log.warn("Redis unavailable during access token blacklist check for jti={}, failing open: {}",
+                        tokenId, e.getMessage());
+                return false;
+            }
         }
+    }
+
+    /**
+     * Convenience overload — defaults to access token (fail-open) behavior.
+     * Kept for backward compatibility with the JWT filter.
+     */
+    public boolean isBlacklisted(String tokenId) {
+        return isBlacklisted(tokenId, false);
     }
 }

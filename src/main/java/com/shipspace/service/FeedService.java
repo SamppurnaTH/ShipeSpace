@@ -19,7 +19,9 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import com.shipspace.config.ScheduledJobMetrics;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
@@ -41,6 +43,8 @@ public class FeedService {
     private final ShipRepository shipRepository;
     private final FollowingRepository followingRepository;
     private final MongoTemplate mongoTemplate;
+    private final DistributedLockService lockService;
+    private final ScheduledJobMetrics scheduledJobMetrics;
 
     /**
      * Generate a chronological feed of ships from users that the authenticated user follows.
@@ -159,9 +163,13 @@ public class FeedService {
 
     /**
      * Calculate trending scores for all ships in batches of 200.
-     * Avoids loading the entire collection into heap.
+     *
+     * Stampede fix: we do NOT use @CacheEvict here. Instead we update the
+     * trendingScore field on each Ship document, then call invalidateTrendingCache()
+     * only AFTER all writes are committed. This means there is always a valid
+     * cached result available — the old one serves requests while the new scores
+     * are being computed, and the cache is only cleared once the new data is ready.
      */
-    @CacheEvict(value = {"trendingFeed", "trendingFeedWithTimeWindow"}, allEntries = true)
     public void calculateTrendingScores() {
         log.info("Starting trending score calculation");
 
@@ -185,7 +193,6 @@ public class FeedService {
                     .collect(java.util.stream.Collectors.toList());
 
             if (!dirty.isEmpty()) {
-                // Bulk unordered writes — one round-trip per batch instead of N
                 BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Ship.class);
                 for (Ship ship : dirty) {
                     Query q = new Query(Criteria.where("_id").is(ship.getId()));
@@ -198,6 +205,9 @@ public class FeedService {
             page++;
         } while (batch.hasNext());
 
+        // Evict AFTER all writes are committed — not before.
+        // This prevents a stampede window where the cache is empty while scores are being written.
+        invalidateTrendingCache();
         log.info("Trending score calculation completed. Updated {} ships. Cache invalidated.", updatedCount);
     }
 
@@ -208,11 +218,14 @@ public class FeedService {
     @Scheduled(fixedRateString = "${feed.trending.recalculation-interval-ms:900000}")
     public void scheduledTrendingRecalculation() {
         log.info("Scheduled trending score recalculation triggered");
-        try {
-            calculateTrendingScores();
-        } catch (Exception e) {
-            log.error("Scheduled trending recalculation failed: {}", e.getMessage(), e);
-        }
+        lockService.runWithLock("trending-recalculation", Duration.ofMinutes(20), () -> {
+            try {
+                calculateTrendingScores();
+                scheduledJobMetrics.recordSuccess("trending-recalculation");
+            } catch (Exception e) {
+                log.error("Scheduled trending recalculation failed: {}", e.getMessage(), e);
+            }
+        });
     }
 
     /**

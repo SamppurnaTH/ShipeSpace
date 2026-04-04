@@ -36,6 +36,12 @@ public class SecurityHeadersConfig {
                 response.setHeader("Permissions-Policy",
                         "accelerometer=(), camera=(), geolocation=(), gyroscope=(), " +
                         "magnetometer=(), microphone=(), payment=(), usb=()");
+                // Phase 4: CSP was missing. This is a pure JSON API — no HTML rendering.
+                // Restricting to default-src 'none' prevents any browser from executing
+                // content from this origin as a page (defense-in-depth for API endpoints).
+                response.setHeader("Content-Security-Policy", "default-src 'none'");
+                // HSTS: force HTTPS for 1 year, include subdomains
+                response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
                 chain.doFilter(request, response);
             }
         });

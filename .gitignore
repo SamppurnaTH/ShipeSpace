@@ -44,3 +44,11 @@ application-local.properties
 *.bak
 *.swp
 *~.nib
+
+# Environment secrets — never commit real credentials
+.env
+web/.env
+
+# Frontend build artifacts
+web/node_modules/
+web/dist/

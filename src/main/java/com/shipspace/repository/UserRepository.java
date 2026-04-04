@@ -1,6 +1,8 @@
 package com.shipspace.repository;
 
 import com.shipspace.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
@@ -53,9 +55,12 @@ public interface UserRepository extends MongoRepository<User, String> {
     /**
      * Find all users whose last ship activity occurred before the specified threshold.
      * Used by the score decay job to identify inactive users.
-     *
-     * @param threshold the Instant threshold; users with lastShipActivityAt before this time are returned
-     * @return List of users who have been inactive since before the threshold
+     * Prefer the paginated overload to avoid loading the full result set into heap.
      */
     List<User> findByLastShipActivityAtBefore(Instant threshold);
+
+    /**
+     * Paginated version — use this in scheduled jobs to avoid OOM.
+     */
+    Page<User> findByLastShipActivityAtBefore(Instant threshold, Pageable pageable);
 }

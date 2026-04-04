@@ -7,6 +7,7 @@ import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.security.TokenBlacklistService;
 import com.shipspace.util.JwtUtil;
+import io.micrometer.core.instrument.Counter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final GitHubOAuthService gitHubOAuthService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final Counter authSuccessCounter;
+    private final Counter authFailureCounter;
+    private final Counter tokenRefreshCounter;
 
     @Value("${jwt.expiration}")
     private Long jwtExpiration;
@@ -42,12 +46,14 @@ public class AuthService {
      */
     public AuthResponse authenticateWithGitHub(String code) {
         log.debug("Authenticating user with GitHub OAuth code");
-
-        // Authenticate with GitHub and get/create user
-        User user = gitHubOAuthService.authenticateWithGitHub(code);
-
-        // Generate JWT tokens
-        return generateAuthResponse(user);
+        try {
+            User user = gitHubOAuthService.authenticateWithGitHub(code);
+            authSuccessCounter.increment();
+            return generateAuthResponse(user);
+        } catch (Exception e) {
+            authFailureCounter.increment();
+            throw e;
+        }
     }
 
     /**
@@ -61,9 +67,9 @@ public class AuthService {
             throw new InvalidTokenException("Invalid or expired refresh token");
         }
 
-        // Check blacklist — prevents replay of already-rotated tokens
+        // Check blacklist — prevents replay of already-rotated tokens (fail-closed for refresh tokens)
         String jti = jwtUtil.extractJti(refreshToken);
-        if (jti != null && tokenBlacklistService.isBlacklisted(jti)) {
+        if (jti != null && tokenBlacklistService.isBlacklisted(jti, true)) {
             throw new InvalidTokenException("Refresh token has been revoked");
         }
 
@@ -77,6 +83,7 @@ public class AuthService {
         }
 
         log.info("Successfully refreshed token for user: {}", user.getUsername());
+        tokenRefreshCounter.increment();
         return generateAuthResponse(user);
     }
 

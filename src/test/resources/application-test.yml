@@ -1,26 +1,33 @@
 spring:
   data:
     mongodb:
-      # Embedded MongoDB will be used for tests
       auto-index-creation: true
-  
-  # Allow bean definition overriding for tests
   main:
     allow-bean-definition-overriding: true
-  
-  # Disable Redis for tests
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
 
-# Embedded MongoDB version
 de:
   flapdoodle:
     mongodb:
       embedded:
         version: 6.0.6
 
-# Test-specific configuration
+# Provide safe test-only secrets so JWT_SECRET env var is not required in CI
+jwt:
+  secret: test-secret-key-for-unit-tests-only-minimum-32-chars
+  expiration: 86400000
+  refresh-expiration: 604800000
+
+github:
+  oauth:
+    client-id: test-client-id
+    client-secret: test-client-secret
+    redirect-uri: http://localhost:3000/auth/callback
+    token-url: https://github.com/login/oauth/access_token
+    user-url: https://api.github.com/user
+
 logging:
   level:
     root: INFO

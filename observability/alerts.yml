@@ -1,0 +1,290 @@
+##
+## Prometheus alerting rules for ShipSpace production.
+## Load into Prometheus via rule_files in prometheus.yml.
+##
+## Severity levels:
+##   critical  → page the on-call engineer immediately (PagerDuty/OpsGenie)
+##   warning   → Slack notification, investigate within 1 hour
+##   info      → Slack notification, investigate next business day
+##
+
+groups:
+  # ── Availability ─────────────────────────────────────────────────────────────
+  - name: availability
+    rules:
+      - alert: ServiceDown
+        expr: up{job="shipspace-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "ShipSpace backend is DOWN"
+          description: "No healthy backend instances for 1 minute. All traffic is failing."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              job="shipspace-backend",
+              status=~"5.."
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{job="shipspace-backend"}[5m]))
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate > 5% for 2 minutes"
+          description: "Current error rate: {{ $value | humanizePercentage }}"
+
+      - alert: ElevatedErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{
+              job="shipspace-backend",
+              status=~"5.."
+            }[5m]))
+            /
+            sum(rate(http_server_requests_seconds_count{job="shipspace-backend"}[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Error rate > 1% for 5 minutes"
+          description: "Current error rate: {{ $value | humanizePercentage }}"
+
+  # ── Latency ──────────────────────────────────────────────────────────────────
+  - name: latency
+    rules:
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_requests_seconds_bucket{job="shipspace-backend"}[5m]))
+            by (le, uri)
+          ) > 2.0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "p99 latency > 2s on {{ $labels.uri }}"
+          description: "p99 = {{ $value }}s. Investigate DB queries or external calls."
+
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket{job="shipspace-backend"}[5m]))
+            by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency > 1s"
+          description: "p95 = {{ $value }}s"
+
+      - alert: FeedGenerationSlow
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(shipspace_feed_generation_time_seconds_bucket[5m]))
+            by (le)
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Feed generation p95 > 500ms"
+          description: "Personalized feed is slow. Check MongoDB indexes and candidate pool size."
+
+  # ── Infrastructure ────────────────────────────────────────────────────────────
+  - name: infrastructure
+    rules:
+      - alert: MongoDBDown
+        expr: mongodb_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MongoDB is unreachable"
+          description: "All write operations are failing. Immediate action required."
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is unreachable"
+          description: "Rate limiting disabled. Token blacklist unavailable. Refresh tokens fail-closed."
+
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory > 85%"
+          description: "Redis at {{ $value | humanizePercentage }} memory. Risk of eviction."
+
+      - alert: MongoDBHighConnections
+        expr: mongodb_connections_current > 400
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MongoDB connection count > 400"
+          description: "Current: {{ $value }}. Pool max is 500. Risk of connection exhaustion."
+
+  # ── JVM ───────────────────────────────────────────────────────────────────────
+  - name: jvm
+    rules:
+      - alert: JVMHeapHigh
+        expr: |
+          (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap > 85%"
+          description: "Heap at {{ $value | humanizePercentage }}. GC pressure increasing. OOM risk."
+
+      - alert: JVMHeapCritical
+        expr: |
+          (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "JVM heap > 95% — OOM imminent"
+          description: "Container will restart. Check for memory leak or oversized requests."
+
+      - alert: ThreadPoolSaturation
+        expr: |
+          jvm_threads_states_threads{state="blocked"} > 20
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of blocked threads ({{ $value }})"
+          description: "Possible deadlock or slow external call blocking thread pool."
+
+  # ── Business Metrics ──────────────────────────────────────────────────────────
+  - name: business
+    rules:
+      - alert: AuthFailureSpike
+        expr: |
+          rate(shipspace_auth_failure_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auth failure rate > 0.5/s"
+          description: "Possible brute-force attack or GitHub OAuth outage."
+
+      - alert: RateLimitSpike
+        expr: |
+          rate(shipspace_rate_limit_rejections_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit rejections > 10/s"
+          description: "Possible DDoS or misbehaving client. Check IP distribution."
+
+      - alert: ScheduledJobStale
+        expr: |
+          (time() - shipspace_job_last_success_seconds) > 90000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scheduled job '{{ $labels.job }}' has not run in 25h"
+          description: "Last success: {{ $value | humanizeDuration }} ago. Check Redis lock and job logs."
+
+      - alert: ScoreEventRejectionHigh
+        expr: |
+          rate(shipspace_score_events_rejected_total[15m])
+          /
+          (rate(shipspace_score_events_applied_total[15m]) + rate(shipspace_score_events_rejected_total[15m]))
+          > 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Score event rejection rate > 50%"
+          description: "More than half of score events are being rejected (duplicates or cap exceeded). May indicate replay attack or misconfiguration."
+
+  # ── SLO Burn Rate Alerts ──────────────────────────────────────────────────────
+  # These fire when the error budget is being consumed too fast.
+  # A 14x burn rate means the monthly budget will be exhausted in ~2 days.
+  - name: slo_burn_rate
+    rules:
+      # Engagement SLO: p95 < 200ms, p99 < 500ms, error budget 0.1%/month
+      - alert: EngagementSLOBurnRateCritical
+        expr: |
+          (
+            1 - (
+              rate(shipspace_slo_engagement_seconds_bucket{le="0.2"}[1h])
+              /
+              rate(shipspace_slo_engagement_seconds_count[1h])
+            )
+          ) > 0.014
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Engagement SLO burning at >14x rate (p95 budget exhausted in <2 days)"
+          description: "{{ $value | humanizePercentage }} of engagement requests exceed 200ms SLO. Error budget: 0.1%/month."
+
+      - alert: EngagementSLOBurnRateWarning
+        expr: |
+          (
+            1 - (
+              rate(shipspace_slo_engagement_seconds_bucket{le="0.2"}[6h])
+              /
+              rate(shipspace_slo_engagement_seconds_count[6h])
+            )
+          ) > 0.005
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Engagement SLO burning at >5x rate"
+          description: "{{ $value | humanizePercentage }} of engagement requests exceed 200ms SLO."
+
+      # Feed SLO: p95 < 300ms, error budget 0.5%/month
+      - alert: FeedSLOBurnRateCritical
+        expr: |
+          (
+            1 - (
+              rate(shipspace_slo_feed_trending_seconds_bucket{le="0.3"}[1h])
+              /
+              rate(shipspace_slo_feed_trending_seconds_count[1h])
+            )
+          ) > 0.07
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Feed SLO burning at >14x rate (p95 budget exhausted in <2 days)"
+          description: "{{ $value | humanizePercentage }} of feed requests exceed 300ms SLO."
+
+      # Load shedding activation alert — if we're shedding, something is wrong
+      - alert: LoadSheddingActive
+        expr: rate(shipspace_load_shedding_shed_requests_total[5m]) > 1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Load shedding is active (>1 req/s being shed)"
+          description: "{{ $value }} req/s being rejected. System is overloaded. Scale out or investigate."
+
+      - alert: LoadSheddingCritical
+        expr: rate(shipspace_load_shedding_shed_requests_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Load shedding critical (>10 req/s being shed)"
+          description: "{{ $value }} req/s being rejected. Immediate scale-out required."

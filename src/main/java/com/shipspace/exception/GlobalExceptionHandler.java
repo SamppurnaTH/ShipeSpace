@@ -31,6 +31,23 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     /**
+     * Handles rate limit exceeded exceptions.
+     * Returns 429 Too Many Requests.
+     */
+    @ExceptionHandler(TooManyRequestsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyRequestsException(
+            TooManyRequestsException ex, WebRequest request) {
+        log.warn("Rate limit exceeded: {}", ex.getMessage());
+        ErrorResponse error = ErrorResponse.builder()
+                .code("TOO_MANY_REQUESTS")
+                .message(ex.getMessage())
+                .timestamp(Instant.now())
+                .path(extractPath(request))
+                .build();
+        return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS).body(error);
+    }
+
+    /**
      * Handles GitHub OAuth exceptions.
      * Returns 401 Unauthorized when GitHub authentication fails.
      */

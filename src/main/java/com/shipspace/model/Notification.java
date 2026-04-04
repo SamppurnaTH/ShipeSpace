@@ -72,10 +72,8 @@ public class Notification {
     @Builder.Default
     private boolean read = false;
 
-    /**
-     * Timestamp when the notification was created.
-     */
-    @Indexed
+    /** TTL: auto-delete after 90 days. */
+    @Indexed(expireAfterSeconds = 7776000)
     @Builder.Default
     private Instant createdAt = Instant.now();
 }

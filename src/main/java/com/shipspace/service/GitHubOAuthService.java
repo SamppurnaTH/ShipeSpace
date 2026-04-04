@@ -5,6 +5,8 @@ import com.shipspace.dto.GitHubUserResponse;
 import com.shipspace.exception.GitHubOAuthException;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,13 +55,11 @@ public class GitHubOAuthService {
 
     /**
      * Authenticates a user with GitHub OAuth code.
-     * Exchanges the OAuth code for an access token, retrieves user data from GitHub,
-     * and creates or updates the user in the database.
-     *
-     * @param code the GitHub OAuth authorization code
-     * @return the authenticated User entity
-     * @throws GitHubOAuthException if OAuth validation fails or user data cannot be retrieved
+     * Protected by a circuit breaker — if GitHub API is down, the circuit opens
+     * and subsequent calls fail fast with GitHubOAuthException instead of timing out.
      */
+    @CircuitBreaker(name = "github-oauth", fallbackMethod = "githubAuthFallback")
+    @Retry(name = "external-api")
     public User authenticateWithGitHub(String code) {
         log.debug("Starting GitHub OAuth authentication with code: {}", code);
 
@@ -247,5 +247,15 @@ public class GitHubOAuthService {
      */
     public Optional<User> getUserByGithubId(String githubId) {
         return userRepository.findByGithubId(githubId);
+    }
+
+    /**
+     * Circuit breaker fallback — GitHub API is unavailable.
+     * Throws a clear exception so the client gets a 503-style error, not a timeout.
+     */
+    private User githubAuthFallback(String code, Throwable t) {
+        log.error("GitHub OAuth circuit breaker open — GitHub API unavailable: {}", t.getMessage());
+        throw new GitHubOAuthException(
+                "GitHub authentication is temporarily unavailable. Please try again later.");
     }
 }

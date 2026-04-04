@@ -15,6 +15,7 @@ import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.util.DtoMapper;
+import com.shipspace.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +47,7 @@ public class UserService {
     private final ShipRepository shipRepository;
     private final DtoMapper dtoMapper;
     private final UserCountRepository userCountRepository;
+    private final InputSanitizer inputSanitizer;
 
     /**
      * Retrieves a user by their ID.
@@ -103,15 +105,15 @@ public class UserService {
         
         User user = getUserById(userId);
         
-        // Update only provided fields
+        // Update only provided fields — sanitize all free-text inputs
         if (updateRequest.getEmail() != null) {
             user.setEmail(updateRequest.getEmail());
         }
         if (updateRequest.getBio() != null) {
-            user.setBio(updateRequest.getBio());
+            user.setBio(inputSanitizer.sanitize(updateRequest.getBio(), 500));
         }
         if (updateRequest.getLocation() != null) {
-            user.setLocation(updateRequest.getLocation());
+            user.setLocation(inputSanitizer.sanitize(updateRequest.getLocation(), 100));
         }
         if (updateRequest.getWebsiteUrl() != null) {
             user.setWebsiteUrl(updateRequest.getWebsiteUrl());
@@ -129,14 +131,26 @@ public class UserService {
     }
 
     /**
-     * Retrieves all projects owned by a user as ProjectResponse DTOs.
-     * 
-     * @param userId the ID of the user
-     * @return list of project responses
-     * @throws ResourceNotFoundException if user is not found
+     * Retrieves projects owned by a user with pagination.
+     *
+     * @param userId   the ID of the user
+     * @param pageable pagination parameters
+     * @return page of project responses
+     */
+    public org.springframework.data.domain.Page<ProjectResponse> getUserProjects(
+            String userId, org.springframework.data.domain.Pageable pageable) {
+        log.debug("Retrieving projects for user ID: {}", userId);
+        getUserById(userId);
+        return projectRepository.findByUserId(userId, pageable)
+                .map(dtoMapper::toProjectResponse);
+    }
+
+    /**
+     * Retrieves all projects owned by a user (no pagination — kept for internal use only).
+     * Do NOT expose this via a public API endpoint.
      */
     public List<ProjectResponse> getUserProjects(String userId) {
-        log.debug("Retrieving projects for user ID: {}", userId);
+        log.debug("Retrieving all projects for user ID: {} (internal use)", userId);
         getUserById(userId);
         List<Project> projects = projectRepository.findByUserId(userId);
         return projects.stream().map(dtoMapper::toProjectResponse).toList();
@@ -160,11 +174,11 @@ public class UserService {
         // Get recent ships sorted by creation date (most recent first)
         Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createdAt"));
         List<Ship> recentShips = shipRepository.findByUserId(userId, pageable).getContent();
-        
-        // Count total ships
-        long totalShips = shipRepository.findByUserId(userId, Pageable.unpaged()).getTotalElements();
-        
-        // Calculate total engagement (sum of likes and comments across all ships)
+
+        // Use count query — never load all ships into heap
+        long totalShips = shipRepository.countByUserId(userId);
+
+        // Calculate total engagement on the returned page only (documented as "recent engagement")
         long totalEngagement = recentShips.stream()
                 .mapToLong(ship -> ship.getLikeCount() + ship.getCommentCount())
                 .sum();
@@ -181,6 +195,13 @@ public class UserService {
                 .totalShips(totalShips)
                 .totalEngagement(totalEngagement)
                 .build();
+    }
+
+    /**
+     * Batch-fetch users by IDs. Used by FeedController for enrichment.
+     */
+    public List<User> findAllByIds(java.util.Collection<String> ids) {
+        return userRepository.findAllById(ids);
     }
 
     /**

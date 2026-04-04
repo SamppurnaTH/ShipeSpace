@@ -21,30 +21,39 @@ public class ShipCountRepository {
     private final MongoTemplate mongoTemplate;
 
     /**
-     * Atomically increments likeCount by delta (+1 or -1) and returns the updated Ship.
-     * Uses findAndModify with $inc — single round-trip, no race window.
+     * Atomically increments likeCount by delta and returns the updated Ship.
+     * Floors at 0 if the result would go negative.
      */
     public Ship incrementLikeCount(String shipId, int delta) {
         Query query = new Query(Criteria.where("_id").is(shipId));
-        Update update = new Update().inc("likeCount", delta);
         FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
-        Ship updated = mongoTemplate.findAndModify(query, update, options, Ship.class);
+        Ship updated = mongoTemplate.findAndModify(query,
+                new Update().inc("likeCount", delta), options, Ship.class);
         if (updated == null) {
             throw new com.shipspace.exception.ResourceNotFoundException("Ship", shipId);
+        }
+        if (updated.getLikeCount() != null && updated.getLikeCount() < 0) {
+            mongoTemplate.updateFirst(query, new Update().set("likeCount", 0), Ship.class);
+            updated.setLikeCount(0);
         }
         return updated;
     }
 
     /**
-     * Atomically increments commentCount by delta (+1 or -1) and returns the updated Ship.
+     * Atomically increments commentCount by delta and returns the updated Ship.
+     * Floors at 0 if the result would go negative.
      */
     public Ship incrementCommentCount(String shipId, int delta) {
         Query query = new Query(Criteria.where("_id").is(shipId));
-        Update update = new Update().inc("commentCount", delta);
         FindAndModifyOptions options = FindAndModifyOptions.options().returnNew(true);
-        Ship updated = mongoTemplate.findAndModify(query, update, options, Ship.class);
+        Ship updated = mongoTemplate.findAndModify(query,
+                new Update().inc("commentCount", delta), options, Ship.class);
         if (updated == null) {
             throw new com.shipspace.exception.ResourceNotFoundException("Ship", shipId);
+        }
+        if (updated.getCommentCount() != null && updated.getCommentCount() < 0) {
+            mongoTemplate.updateFirst(query, new Update().set("commentCount", 0), Ship.class);
+            updated.setCommentCount(0);
         }
         return updated;
     }

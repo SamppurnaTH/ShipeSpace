@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="shipspace"/>
+
+    <!-- ── Development: human-readable console output ──────────────────────── -->
+    <springProfile name="dev,test">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId}/%X{spanId}] - %msg%n</pattern>
+            </encoder>
+        </appender>
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.shipspace" level="DEBUG"/>
+        <logger name="org.springframework.data.mongodb" level="INFO"/>
+        <logger name="org.springframework.security" level="INFO"/>
+    </springProfile>
+
+    <!-- ── Production: structured JSON for log aggregation (ELK/CloudWatch) ── -->
+    <springProfile name="!dev,!test">
+        <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"app":"${appName}","env":"${SPRING_PROFILES_ACTIVE:-production}"}</customFields>
+                <!-- Include MDC fields: traceId, spanId, userId, requestId -->
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>spanId</includeMdcKeyName>
+                <includeMdcKeyName>requestId</includeMdcKeyName>
+            </encoder>
+        </appender>
+
+        <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <appender-ref ref="JSON_CONSOLE"/>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="ASYNC_JSON"/>
+        </root>
+        <logger name="com.shipspace" level="INFO"/>
+        <!-- Suppress noisy framework logs in production -->
+        <logger name="org.springframework.data.mongodb" level="WARN"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="io.lettuce" level="WARN"/>
+    </springProfile>
+</configuration>

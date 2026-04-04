@@ -8,8 +8,11 @@ import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.ImageReference;
 import com.shipspace.model.Ship;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
+import io.micrometer.core.instrument.Counter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +41,9 @@ public class ShipService {
     private final ShipRepository shipRepository;
     private final ProjectService projectService;
     private final MultibaseService multibaseService;
+    private final CascadeDeleteService cascadeDeleteService;
+    private final InputSanitizer inputSanitizer;
+    private final Counter shipCreatedCounter;
 
     /**
      * Edit window duration in minutes.
@@ -73,8 +79,8 @@ public class ShipService {
         Ship ship = Ship.builder()
                 .userId(userId)
                 .projectId(request.getProjectId())
-                .content(request.getContent())
-                .externalLinks(request.getExternalLinks() != null ? 
+                .content(inputSanitizer.sanitize(request.getContent(), 5000))
+                .externalLinks(request.getExternalLinks() != null ?
                         request.getExternalLinks() : new ArrayList<>())
                 .images(new ArrayList<>())
                 .likeCount(0)
@@ -88,6 +94,9 @@ public class ShipService {
         // Save ship
         Ship savedShip = shipRepository.save(ship);
         log.info("Successfully created ship with ID: {} for user: {}", savedShip.getId(), userId);
+
+        // Increment Prometheus counter
+        shipCreatedCounter.increment();
         
         // Update project metadata (ship count and last ship timestamp)
         projectService.updateProjectShipMetadata(request.getProjectId());
@@ -152,7 +161,7 @@ public class ShipService {
         
         // Update only provided fields
         if (request.getContent() != null) {
-            ship.setContent(request.getContent());
+            ship.setContent(inputSanitizer.sanitize(request.getContent(), 5000));
         }
         if (request.getExternalLinks() != null) {
             ship.setExternalLinks(request.getExternalLinks());
@@ -208,17 +217,27 @@ public class ShipService {
         
         // Upload images to Multibase (Requirement 4.3)
         List<ImageReference> imageReferences = new ArrayList<>();
+        List<String> failedFiles = new ArrayList<>();
         for (MultipartFile file : files) {
             try {
                 ImageReference imageRef = multibaseService.uploadImage(file);
                 imageReferences.add(imageRef);
-                log.debug("Successfully uploaded image {} with hash: {}", 
+                log.debug("Successfully uploaded image {} with hash: {}",
                         file.getOriginalFilename(), imageRef.getMultibaseHash());
             } catch (Exception e) {
                 log.error("Failed to upload image {} for ship {}", file.getOriginalFilename(), shipId, e);
-                // Continue with other images even if one fails
-                // In production, you might want to handle this differently
+                failedFiles.add(file.getOriginalFilename());
             }
+        }
+
+        if (!failedFiles.isEmpty() && imageReferences.isEmpty()) {
+            // All uploads failed — don't save partial state, surface the error
+            throw new com.shipspace.exception.MultibaseException(
+                    "All image uploads failed: " + String.join(", ", failedFiles));
+        }
+        if (!failedFiles.isEmpty()) {
+            log.warn("Partial upload failure for ship {}: {} files failed: {}",
+                    shipId, failedFiles.size(), failedFiles);
         }
         
         // Add image references to ship
@@ -227,11 +246,11 @@ public class ShipService {
         }
         ship.getImages().addAll(imageReferences);
         ship.setUpdatedAt(Instant.now());
-        
-        // Save updated ship
+
         Ship updatedShip = shipRepository.save(ship);
-        log.info("Successfully uploaded {} images to ship ID: {}", imageReferences.size(), shipId);
-        
+        log.info("Uploaded {}/{} images to ship ID: {} (failed: {})",
+                imageReferences.size(), files.size(), shipId, failedFiles.size());
+
         return mapToResponse(updatedShip);
     }
 
@@ -247,6 +266,7 @@ public class ShipService {
             throw new ForbiddenException("delete", "ship");
         }
         shipRepository.deleteById(shipId);
+        cascadeDeleteService.deleteShipCascade(shipId);
         projectService.decrementProjectShipCount(ship.getProjectId());
         log.info("Deleted ship {} by user {}", shipId, userId);
     }

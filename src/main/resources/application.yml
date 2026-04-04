@@ -2,15 +2,21 @@ spring:
   application:
     name: shipspace-mvp
   main:
-    allow-bean-definition-overriding: true
+    # allow-bean-definition-overriding was removed.
+    # If you see "Bean definition overriding" errors on startup, find the duplicate
+    # @Bean method and remove or qualify it — do NOT re-enable this flag.
+    allow-bean-definition-overriding: false
 
   # MongoDB Configuration with Connection Pooling
   data:
     mongodb:
+      # Production URI should include replicaSet and readPreference:
+      # mongodb+srv://...?replicaSet=rs0&readPreference=secondaryPreferred&maxPoolSize=50
+      # readPreference=secondaryPreferred: reads go to secondaries during primary election,
+      # preventing 100% read failure during the ~10s election window (F-01 fix).
       uri: ${MONGODB_URI:mongodb://localhost:27017/shipspace}
       auto-index-creation: false
       database: shipspace
-      # Connection pool settings for production
       connection-per-host: 50
       min-connections-per-host: 10
       max-connections-idle-time: 60000
@@ -21,13 +27,28 @@ spring:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
     password: ${REDIS_PASSWORD:}
-    timeout: 5000
+    # F-03 fix: reduced from 5000ms to 500ms.
+    # A 5s Redis timeout under load causes thread starvation — all 16 pool connections
+    # block for 5s each, exhausting the HTTP thread pool and taking down the entire service.
+    # 500ms is aggressive but correct: if Redis can't respond in 500ms it's effectively down.
+    timeout: 500
     lettuce:
       pool:
         max-active: 16
         max-idle: 8
         min-idle: 2
-        max-wait: 5000
+        # F-03 fix: reduced from 5000ms to 200ms.
+        # max-wait is how long a thread waits for a pool connection.
+        # 5000ms × 16 threads = 80s of potential blocking. 200ms fails fast.
+        max-wait: 200
+
+  # Cache Configuration (Spring Boot auto-config)
+  # Phase 1 fix: spring.cache.redis.time-to-live is the correct property path.
+  # The previous value was read via @Value("${spring.cache.redis.time-to-live:300}")
+  # in CacheConfig — this is now consistent with Spring Boot's own cache auto-config.
+  cache:
+    redis:
+      time-to-live: 300000  # 300 seconds in milliseconds (Spring Boot expects ms here)
 
   # Jackson Configuration
   jackson:
@@ -37,8 +58,6 @@ spring:
       indent-output: false
     deserialization:
       fail-on-unknown-properties: false
-    parser:
-      allow-unquoted-control-chars: true
 
 # Server Configuration
 server:
@@ -57,10 +76,14 @@ server:
     enabled: true
 
 # JWT Configuration
+# F-10 fix: access token TTL reduced from 24h to 15 minutes.
+# This limits the replay window if a token is stolen or if Redis is down
+# during a blacklist check (fail-open). Refresh tokens remain at 7 days.
+# Clients must implement silent refresh using the refresh token.
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-change-this-in-production-minimum-256-bits}
-  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:900000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
 
 # GitHub OAuth Configuration
 github:
@@ -146,13 +169,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,circuitbreakers
+        include: health,info,metrics,prometheus,circuitbreakers,loggers
   endpoint:
     health:
       show-details: when-authorized
       group:
         readiness:
-          include: mongo,redis
+          include: mongo,redis,multibase
         liveness:
           include: ping
   metrics:
@@ -163,9 +186,12 @@ management:
       application: shipspace-mvp
   tracing:
     sampling:
-      probability: 1.0
+      probability: 0.1   # 10% in production — set to 1.0 only in dev/staging
     propagation:
       type: w3c
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 # Resilience4j Configuration
 resilience4j:
@@ -189,6 +215,27 @@ resilience4j:
         minimumNumberOfCalls: 5
         waitDurationInOpenState: 30000
         failureRateThreshold: 50
+      github-oauth:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 3
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30000
+        failureRateThreshold: 60
+        recordExceptions:
+          - com.shipspace.exception.GitHubOAuthException
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+      multibase:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 3
+        waitDurationInOpenState: 60000
+        failureRateThreshold: 50
+        recordExceptions:
+          - com.shipspace.exception.MultibaseException
+          - java.io.IOException
   retry:
     instances:
       mongodb:
@@ -267,6 +314,21 @@ security:
     permissions-policy: accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),payment=(),usb=()
   cors:
     allow-origin: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+# Load Shedding Configuration
+load-shedding:
+  enabled: ${LOAD_SHEDDING_ENABLED:true}
+  # Max concurrent requests before hard rejection (matches Tomcat thread pool)
+  max-concurrent-requests: ${LOAD_SHEDDING_MAX_CONCURRENT:200}
+  # Shed writes when utilization exceeds this fraction (0.85 = 85%)
+  shed-threshold: ${LOAD_SHEDDING_SHED_THRESHOLD:0.85}
+
+# SLO Control Loop Configuration
+slo:
+  # Warm-start cycles after restart (each cycle = 10s evaluation interval).
+  # 6 cycles = 60s ramp from 50% to full concurrency.
+  # Prevents cold-start overload after crash or rolling restart.
+  warm-start-cycles: ${SLO_WARM_START_CYCLES:6}
 
 # Feature flags
 SWAGGER_ENABLED: ${SWAGGER_ENABLED:false}

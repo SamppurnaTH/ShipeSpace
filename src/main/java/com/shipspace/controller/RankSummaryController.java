@@ -3,8 +3,8 @@ package com.shipspace.controller;
 import com.shipspace.dto.RankSummaryResponse;
 import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.User;
-import com.shipspace.repository.UserRepository;
 import com.shipspace.service.ShipScoreService;
+import com.shipspace.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -42,7 +41,7 @@ import java.util.concurrent.TimeUnit;
 @Tag(name = "Rank Progression", description = "User rank and level progression endpoints")
 public class RankSummaryController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final ShipScoreService shipScoreService;
 
     /**
@@ -113,8 +112,7 @@ public class RankSummaryController {
         log.debug("Received request for rank summary for user: {}", id);
         
         // Fetch user by id (throw ResourceNotFoundException if not found)
-        User user = userRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        User user = userService.getUserById(id);
         
         // Calculate nextLevelScore using shipScoreService
         Integer nextLevelScore = shipScoreService.calculateNextLevelScore(
@@ -167,8 +165,7 @@ public class RankSummaryController {
                     "You can only invalidate your own rank summary cache");
         }
 
-        userRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        userService.getUserById(id); // throws 404 if not found
 
         log.info("Cache invalidated for user rank summary: {}", id);
         return ResponseEntity.noContent().build();

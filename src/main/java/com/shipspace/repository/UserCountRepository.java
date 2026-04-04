@@ -20,25 +20,40 @@ public class UserCountRepository {
 
     private final MongoTemplate mongoTemplate;
 
-    /** Atomically increments followerCount on the followee. */
+    /** Atomically increments followerCount on the followee. Floor at 0. */
     public void incrementFollowerCount(String userId, int delta) {
         atomicIncrement(userId, "followerCount", delta);
     }
 
-    /** Atomically increments followingCount on the follower. */
+    /** Atomically increments followingCount on the follower. Floor at 0. */
     public void incrementFollowingCount(String userId, int delta) {
         atomicIncrement(userId, "followingCount", delta);
     }
 
-    /** Atomically increments projectCount. */
+    /** Atomically increments projectCount. Floor at 0. */
     public void incrementProjectCount(String userId, int delta) {
         atomicIncrement(userId, "projectCount", delta);
     }
 
+    /**
+     * Atomic increment with floor-at-zero protection.
+     *
+     * For decrements (delta < 0) we use a conditional update:
+     *   { $inc: { field: delta } } WHERE field >= abs(delta)
+     * If the field is already 0, the update is a no-op — no negative counts.
+     *
+     * For increments (delta > 0) we use a plain $inc — no floor needed.
+     */
     private void atomicIncrement(String userId, String field, int delta) {
         Query query = new Query(Criteria.where("_id").is(userId));
-        Update update = new Update().inc(field, delta);
-        // We don't need the return value here — fire and forget within the transaction
+        Update update;
+        if (delta < 0) {
+            // Only decrement if the current value is >= abs(delta) to prevent going negative
+            query.addCriteria(Criteria.where(field).gte(Math.abs(delta)));
+            update = new Update().inc(field, delta);
+        } else {
+            update = new Update().inc(field, delta);
+        }
         mongoTemplate.updateFirst(query, update, User.class);
     }
 }

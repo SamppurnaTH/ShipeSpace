@@ -3,6 +3,7 @@ package com.shipspace.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -80,9 +81,10 @@ public class ScoreEventLog {
 
     /**
      * Timestamp when the scoring event was logged.
-     * Used for daily cap calculations and audit trails.
+     * TTL: auto-delete after 90 days — idempotency only needs to cover realistic replay windows.
      */
     @NotNull(message = "Created at timestamp is required")
+    @Indexed(expireAfterSeconds = 7776000)
     @Builder.Default
     private Instant createdAt = Instant.now();
 }

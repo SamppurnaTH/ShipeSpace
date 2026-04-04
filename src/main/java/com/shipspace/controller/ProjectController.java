@@ -6,11 +6,14 @@ import com.shipspace.dto.ProjectUpdateRequest;
 import com.shipspace.dto.ShipResponse;
 import com.shipspace.model.Ship;
 import com.shipspace.service.ProjectService;
+import com.shipspace.util.DtoMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,10 +38,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/projects")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Project Management", description = "Project CRUD and ship history endpoints")
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final DtoMapper dtoMapper;
 
     /**
      * Creates a new project for the authenticated user.
@@ -142,13 +148,13 @@ public class ProjectController {
             @Parameter(description = "ID of the project")
             @PathVariable String projectId,
             @Parameter(description = "Page number (0-indexed)")
-            @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Page size (max 100)")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         log.debug("Received request for ships of project: {} (page: {}, size: {})", projectId, page, size);
         
         Page<Ship> ships = projectService.getProjectShips(projectId, page, size);
-        Page<ShipResponse> shipResponses = ships.map(this::mapToShipResponse);
+        Page<ShipResponse> shipResponses = ships.map(dtoMapper::toShipResponse);
         
         log.debug("Returning {} ships for project: {}", shipResponses.getNumberOfElements(), projectId);
         return ResponseEntity.ok(shipResponses);
@@ -173,29 +179,5 @@ public class ProjectController {
         log.info("Delete project request for project: {} by user: {}", projectId, userId);
         projectService.deleteProject(projectId, userId);
         return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Maps a Ship entity to a ShipResponse DTO.
-     * 
-     * @param ship the ship entity
-     * @return the ship response DTO
-     */
-    private ShipResponse mapToShipResponse(Ship ship) {
-        return ShipResponse.builder()
-                .id(ship.getId())
-                .userId(ship.getUserId())
-                .projectId(ship.getProjectId())
-                .content(ship.getContent())
-                .images(ship.getImages())
-                .externalLinks(ship.getExternalLinks())
-                .likeCount(ship.getLikeCount())
-                .commentCount(ship.getCommentCount())
-                .trendingScore(ship.getTrendingScore())
-                .editWindowOpen(ship.isEditWindowOpen())
-                .editWindowExpires(ship.getEditWindowExpires())
-                .createdAt(ship.getCreatedAt())
-                .updatedAt(ship.getUpdatedAt())
-                .build();
     }
 }

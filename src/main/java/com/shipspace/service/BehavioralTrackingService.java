@@ -10,18 +10,30 @@ import com.shipspace.repository.BehavioralSignalRepository;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserInterestProfileRepository;
+import com.shipspace.service.InterestProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+
+import com.shipspace.config.SloEnforcementService;
+import com.shipspace.config.ScheduledJobMetrics;
 
 /**
  * Service responsible for recording and processing user behavioral signals.
@@ -47,6 +59,11 @@ public class BehavioralTrackingService {
     private final UserInterestProfileRepository userInterestProfileRepository;
     private final ShipRepository shipRepository;
     private final ProjectRepository projectRepository;
+    private final MongoTemplate mongoTemplate;
+    private final DistributedLockService lockService;
+    private final InterestProfileService interestProfileService;
+    private final ScheduledJobMetrics scheduledJobMetrics;
+    private final SloEnforcementService sloEnforcementService;
 
     /**
      * Track a like action on a ship.
@@ -59,7 +76,7 @@ public class BehavioralTrackingService {
      * 
      * Requirements: 7.1
      */
-    @Async("taskExecutor")
+    @Async("behavioralTrackingExecutor")
     public void trackLike(String userId, String shipId) {
         log.debug("Tracking LIKE signal for user {} on ship {}", userId, shipId);
 
@@ -108,7 +125,7 @@ public class BehavioralTrackingService {
      * 
      * Requirements: 7.2
      */
-    @Async("taskExecutor")
+    @Async("behavioralTrackingExecutor")
     public void trackComment(String userId, String shipId) {
         log.debug("Tracking COMMENT signal for user {} on ship {}", userId, shipId);
         
@@ -159,7 +176,7 @@ public class BehavioralTrackingService {
      * 
      * Requirements: 7.3
      */
-    @Async("taskExecutor")
+    @Async("behavioralTrackingExecutor")
     public void trackView(String userId, String contentId, ContentType contentType, int durationSeconds) {
         log.debug("Tracking VIEW signal for user {} on {} {} (duration: {}s)", 
                   userId, contentType, contentId, durationSeconds);
@@ -228,7 +245,7 @@ public class BehavioralTrackingService {
      * 
      * Requirements: 7.4
      */
-    @Async("taskExecutor")
+    @Async("behavioralTrackingExecutor")
     public void trackFollow(String userId, String builderId, String contentId) {
         log.debug("Tracking FOLLOW signal for user {} following builder {} (context: {})", 
                   userId, builderId, contentId);
@@ -288,7 +305,7 @@ public class BehavioralTrackingService {
      * 
      * Requirements: 7.5
      */
-    @Async("taskExecutor")
+    @Async("behavioralTrackingExecutor")
     public void trackSkip(String userId, String contentId) {
         log.debug("Tracking SKIP signal for user {} on content {}", userId, contentId);
         
@@ -361,8 +378,8 @@ public class BehavioralTrackingService {
                   signal.getSignalType(), signal.getUserId(), signal.getContentId());
         
         try {
-            // Get or create user interest profile
-            UserInterestProfile profile = getOrCreateProfile(signal.getUserId());
+            // Use InterestProfileService to get or create the profile (Phase 3 refactor)
+            UserInterestProfile profile = interestProfileService.getOrCreatePersistedProfile(signal.getUserId());
             
             // Calculate signal weight based on signal type
             double weight = getSignalWeight(signal.getSignalType());
@@ -396,6 +413,8 @@ public class BehavioralTrackingService {
             
             // Persist updated profile
             userInterestProfileRepository.save(profile);
+            // Evict the cached profile so the next feed request sees fresh data
+            interestProfileService.evictProfile(signal.getUserId());
             log.debug("Updated interest profile for user {}: totalSignals={}, tagCount={}, followedBuilders={}", 
                       signal.getUserId(), profile.getTotalSignals(), 
                       profile.getTechTagScores().size(), profile.getFollowedBuilders().size());
@@ -517,49 +536,83 @@ public class BehavioralTrackingService {
 
     /**
      * Scheduled job to apply time decay to all user interest profiles.
-     * Processes in batches of 200 to avoid loading the entire collection into heap.
+     * Processes in batches of 200 with bulk writes — no individual saves.
+     * Distributed lock prevents duplicate execution across instances.
      */
     @Scheduled(cron = "0 0 0 * * *")
     public void applyTimeDecayToAllProfiles() {
-        log.info("Starting scheduled time decay job for all user interest profiles");
+        lockService.runWithLock("interest-profile-decay", Duration.ofMinutes(30), () -> {
+            log.info("Starting scheduled time decay job for all user interest profiles");
+            int page = 0;
+            final int batchSize = 200;
+            int updatedCount = 0;
+            int skippedCount = 0;
 
-        int page = 0;
-        final int batchSize = 200;
-        int updatedCount = 0;
-        int skippedCount = 0;
+            Page<UserInterestProfile> batch;
+            do {
+                batch = userInterestProfileRepository.findAll(PageRequest.of(page, batchSize));
+                List<UserInterestProfile> dirty = new ArrayList<>();
 
-        org.springframework.data.domain.Page<UserInterestProfile> batch;
-        do {
-            batch = userInterestProfileRepository.findAll(
-                    org.springframework.data.domain.PageRequest.of(page, batchSize));
-
-            for (UserInterestProfile profile : batch.getContent()) {
-                if (profile.getLastSignalAt() == null || profile.getTotalSignals() == 0) {
-                    skippedCount++;
-                    continue;
+                for (UserInterestProfile profile : batch.getContent()) {
+                    if (profile.getLastSignalAt() == null || profile.getTotalSignals() == 0) {
+                        skippedCount++;
+                        continue;
+                    }
+                    try {
+                        profile.applyTimeDecay(30);
+                        profile.setUpdatedAt(Instant.now());
+                        dirty.add(profile);
+                        updatedCount++;
+                    } catch (Exception e) {
+                        log.error("Error applying time decay to profile for user {}", profile.getUserId(), e);
+                    }
                 }
-                try {
-                    profile.applyTimeDecay(30);
-                    profile.setUpdatedAt(Instant.now());
-                    userInterestProfileRepository.save(profile);
-                    updatedCount++;
-                } catch (Exception e) {
-                    log.error("Error applying time decay to profile for user {}", profile.getUserId(), e);
-                }
-            }
-            page++;
-        } while (batch.hasNext());
 
-        log.info("Time decay job completed: {} profiles updated, {} profiles skipped",
-                updatedCount, skippedCount);
+                if (!dirty.isEmpty()) {
+                    bulkSaveProfiles(dirty);
+                }
+                page++;
+            } while (batch.hasNext());
+
+            log.info("Time decay job completed: {} profiles updated, {} profiles skipped",
+                    updatedCount, skippedCount);
+            scheduledJobMetrics.recordSuccess("interest-profile-decay");
+        });
     }
 
     /**
-     * Convenience overload for feed view tracking.
-     * Uses SHIP content type and a default duration of 30 seconds (above the 10s threshold).
+     * Bulk-write updated profiles — one MongoDB round-trip per batch.
      */
-    @Async("taskExecutor")
+    private void bulkSaveProfiles(List<UserInterestProfile> profiles) {
+        try {
+            BulkOperations bulkOps = mongoTemplate.bulkOps(
+                    BulkOperations.BulkMode.UNORDERED, UserInterestProfile.class);
+            for (UserInterestProfile profile : profiles) {
+                Query q = new Query(Criteria.where("_id").is(profile.getId()));
+                Update u = new Update()
+                        .set("techTagScores", profile.getTechTagScores())
+                        .set("updatedAt", profile.getUpdatedAt());
+                bulkOps.updateOne(q, u);
+            }
+            bulkOps.execute();
+        } catch (Exception e) {
+            log.error("Bulk profile save failed, falling back to individual saves: {}", e.getMessage());
+            profiles.forEach(p -> {
+                try { userInterestProfileRepository.save(p); }
+                catch (Exception ex) { log.error("Individual profile save failed for {}", p.getUserId(), ex); }
+            });
+        }
+    }
+
+    @Async("behavioralTrackingExecutor")
     public void trackView(String userId, String shipId) {
+        // Skip behavioral writes entirely when system is under SLO pressure (level 2+)
+        // Signals are best-effort — dropping them under load is acceptable
+        if (sloEnforcementService != null && sloEnforcementService.isBehavioralWritesSkipped()) {
+            log.debug("Behavioral writes skipped (SLO degradation active) for user {} ship {}",
+                    userId, shipId);
+            return;
+        }
         trackView(userId, shipId, ContentType.SHIP, 30);
     }
 }

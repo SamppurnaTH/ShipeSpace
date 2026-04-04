@@ -1,0 +1,57 @@
+##
+## Optional observability stack — run alongside docker-compose.yml:
+##   docker compose -f docker-compose.yml -f docker-compose.observability.yml up
+##
+## Provides: Prometheus (metrics), Grafana (dashboards), Zipkin (traces)
+##
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: shipspace-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: shipspace-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+  zipkin:
+    image: openzipkin/zipkin:3.3
+    container_name: shipspace-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - shipspace-network
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  shipspace-network:
+    external: true
