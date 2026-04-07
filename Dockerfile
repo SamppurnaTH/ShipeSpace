@@ -22,8 +22,8 @@ COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
 
 # Health check — Docker and orchestrators use this to determine readiness
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8080/api/actuator/health/liveness || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+  CMD wget -qO- http://localhost:8080/api/actuator/health/liveness || exit 1
 
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \

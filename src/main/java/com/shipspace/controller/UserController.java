@@ -2,6 +2,7 @@ package com.shipspace.controller;
 
 import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.dto.ProjectResponse;
+import com.shipspace.dto.ShipResponse;
 import com.shipspace.dto.UserActivityResponse;
 import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
@@ -43,6 +44,21 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     private final UserService userService;
+
+    /**
+     * Gets a user's public ships by user ID (paginated, reverse chronological).
+     * Public endpoint — no auth required.
+     */
+    @GetMapping("/{userId}/ships")
+    @Operation(summary = "Get user's ships", description = "Retrieve ships posted by any user")
+    public ResponseEntity<Page<ShipResponse>> getUserShips(
+            @PathVariable String userId,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Page size (max 50)") @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+        Page<ShipResponse> ships = userService.getUserShips(
+                userId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return ResponseEntity.ok(ships);
+    }
 
     /**
      * Gets a user's public profile by user ID.

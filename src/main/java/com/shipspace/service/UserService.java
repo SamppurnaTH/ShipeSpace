@@ -131,6 +131,16 @@ public class UserService {
     }
 
     /**
+     * Retrieves ships posted by a user (paginated, public).
+     */
+    public org.springframework.data.domain.Page<com.shipspace.dto.ShipResponse> getUserShips(
+            String userId, org.springframework.data.domain.Pageable pageable) {
+        getUserById(userId); // validates user exists
+        return shipRepository.findByUserId(userId, pageable)
+                .map(dtoMapper::toShipResponse);
+    }
+
+    /**
      * Retrieves projects owned by a user with pagination.
      *
      * @param userId   the ID of the user

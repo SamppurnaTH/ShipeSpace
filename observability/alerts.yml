@@ -288,3 +288,107 @@ groups:
         annotations:
           summary: "Load shedding critical (>10 req/s being shed)"
           description: "{{ $value }} req/s being rejected. Immediate scale-out required."
+
+  # ── Search ────────────────────────────────────────────────────────────────────
+  - name: search
+    rules:
+      - alert: SearchSlowQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(shipspace_search_users_duration_ms_seconds_bucket[5m]))
+            by (le)
+          ) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search p95 latency > 100ms"
+          description: "p95 = {{ $value }}s. Check if $text index is being used (run explain()). May indicate index missing or collection scan."
+
+      # Two-tier fallback alerting: warn early (15%), escalate late (30%).
+      # At 15% users are occasionally frustrated. At 30% it's a systemic failure.
+      - alert: SearchFallbackRateElevated
+        expr: |
+          (
+            sum(rate(shipspace_search_fallback_total[5m]))
+            /
+            (
+              sum(rate(shipspace_search_users_duration_ms_seconds_count[5m]))
+              + sum(rate(shipspace_search_ships_duration_ms_seconds_count[5m]))
+            )
+          ) > 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search fallback rate > 15% — users seeing partial-match results"
+          description: |
+            {{ $value | humanizePercentage }} of searches are hitting the regex fallback.
+            This means $text is returning empty for these queries.
+            Likely cause: users typing partial words (e.g. 'reac' for 'react').
+            Action: monitor trend. If sustained, consider Atlas Search for prefix support.
+
+      - alert: SearchFallbackRateHigh
+        expr: |
+          (
+            sum(rate(shipspace_search_fallback_total[5m]))
+            /
+            (
+              sum(rate(shipspace_search_users_duration_ms_seconds_count[5m]))
+              + sum(rate(shipspace_search_ships_duration_ms_seconds_count[5m]))
+            )
+          ) > 0.30
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Search fallback rate > 30% — $text index likely missing or broken"
+          description: |
+            {{ $value | humanizePercentage }} of searches are hitting the regex fallback.
+            At this rate the fallback IS the search system, not a safety net.
+            Immediate action: verify text indexes exist with db.ships.getIndexes() and db.users.getIndexes().
+            If missing: restart the application to trigger MongoIndexInitializer.
+
+      - alert: SearchRateLimitSpike
+        expr: |
+          rate(shipspace_rate_limit_rejections_total{action=~"search.*"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search rate-limit rejections > 5/s"
+          description: "Possible scraper or misbehaving client hammering search. Check IP distribution."
+
+      # Adaptive fallback circuit alerts.
+      # The circuit opens when fallback regex scans become too slow (p90 > 200ms).
+      # When open, partial-word searches return empty results — users lose functionality.
+      # These alerts fire when the circuit stays open long enough to be a real problem.
+      - alert: SearchFallbackCircuitOpenWarning
+        expr: shipspace_search_fallback_circuit_open_seconds > 300
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Search fallback circuit has been open for > 5 minutes"
+          description: |
+            The adaptive fallback circuit has been open for {{ $value | humanizeDuration }}.
+            Partial-word searches (e.g. 'reac' for 'react') are returning empty results.
+            Current fallback p90: check shipspace_search_fallback_p90_ms metric.
+            Cause: regex scans are slow — likely due to collection growth or missing index.
+            Action: check MongoDB collection size and index health. Consider Atlas Search.
+
+      - alert: SearchFallbackCircuitOpenCritical
+        expr: shipspace_search_fallback_circuit_open_seconds > 900
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Search fallback circuit has been open for > 15 minutes — feature degraded"
+          description: |
+            The adaptive fallback circuit has been open for {{ $value | humanizeDuration }}.
+            Partial-word search is effectively disabled. Users cannot find content by typing prefixes.
+            This is a sustained degradation, not a transient spike.
+            Immediate action: investigate fallback latency (shipspace_search_fallback_p90_ms),
+            check MongoDB collection size, and consider disabling fallback permanently
+            (set search.fallback.disable-threshold-ms=1 to force circuit open) until
+            proper search infrastructure (Atlas Search / Elasticsearch) is in place.

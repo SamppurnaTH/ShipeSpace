@@ -22,25 +22,19 @@ spring:
       max-connections-idle-time: 60000
       max-wait-time: 30000
 
-  # Redis Configuration
-  redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-    # F-03 fix: reduced from 5000ms to 500ms.
-    # A 5s Redis timeout under load causes thread starvation — all 16 pool connections
-    # block for 5s each, exhausting the HTTP thread pool and taking down the entire service.
-    # 500ms is aggressive but correct: if Redis can't respond in 500ms it's effectively down.
-    timeout: 500
-    lettuce:
-      pool:
-        max-active: 16
-        max-idle: 8
-        min-idle: 2
-        # F-03 fix: reduced from 5000ms to 200ms.
-        # max-wait is how long a thread waits for a pool connection.
-        # 5000ms × 16 threads = 80s of potential blocking. 200ms fails fast.
-        max-wait: 200
+    # Redis Configuration (Spring Boot 3.x uses spring.data.redis)
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 500
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 200
+        shutdown-timeout: 200ms
 
   # Cache Configuration (Spring Boot auto-config)
   # Phase 1 fix: spring.cache.redis.time-to-live is the correct property path.
@@ -175,7 +169,7 @@ management:
       show-details: when-authorized
       group:
         readiness:
-          include: mongo,redis,multibase
+          include: mongo,redis,multibase,searchIndex
         liveness:
           include: ping
   metrics:
@@ -318,10 +312,12 @@ security:
 # Load Shedding Configuration
 load-shedding:
   enabled: ${LOAD_SHEDDING_ENABLED:true}
-  # Max concurrent requests before hard rejection (matches Tomcat thread pool)
   max-concurrent-requests: ${LOAD_SHEDDING_MAX_CONCURRENT:200}
-  # Shed writes when utilization exceeds this fraction (0.85 = 85%)
   shed-threshold: ${LOAD_SHEDDING_SHED_THRESHOLD:0.85}
+
+# Demo Mode Configuration
+demo:
+  mode: ${DEMO_MODE:false}
 
 # SLO Control Loop Configuration
 slo:
@@ -329,6 +325,34 @@ slo:
   # 6 cycles = 60s ramp from 50% to full concurrency.
   # Prevents cold-start overload after crash or rolling restart.
   warm-start-cycles: ${SLO_WARM_START_CYCLES:6}
+
+# Search Configuration
+# Slow query threshold in milliseconds. Queries exceeding this emit WARN.
+# Default: 100ms. Tune after measuring real p95 baseline in production.
+# Valid range: 10–10000ms. Values outside this range are clamped at startup.
+search:
+  slow-query-threshold-ms: ${SEARCH_SLOW_QUERY_THRESHOLD_MS:100}
+  # X-Search-Path response header — exposes text vs fallback execution path.
+  # Enable in dev/staging for load testing and debugging.
+  # Keep false in production: exposes internal system behavior to clients.
+  # Authenticated users can also trigger per-request via X-Debug: true header.
+  debug-headers-enabled: ${SEARCH_DEBUG_HEADERS:false}
+  # Startup index verification retry config.
+  # Exponential backoff: delays are initialDelay, initialDelay*multiplier, ...
+  # Default: 3 retries, 2s initial, 2x multiplier → waits 2s + 4s = 6s max.
+  index-verify:
+    max-retries: ${SEARCH_INDEX_VERIFY_MAX_RETRIES:3}
+    retry-initial-delay-ms: ${SEARCH_INDEX_VERIFY_INITIAL_DELAY_MS:2000}
+    retry-backoff-multiplier: ${SEARCH_INDEX_VERIFY_BACKOFF_MULTIPLIER:2.0}
+  # Adaptive fallback circuit breaker.
+  # Uses hysteresis: disable threshold > enable threshold prevents oscillation.
+  # Signal: p90 of a rolling window (not average — resistant to single outliers).
+  # Circuit opens  when p90 > disable-threshold-ms (fallback suppressed).
+  # Circuit closes when p90 < enable-threshold-ms  (fallback restored).
+  fallback:
+    disable-threshold-ms: ${SEARCH_FALLBACK_DISABLE_MS:200}
+    enable-threshold-ms: ${SEARCH_FALLBACK_ENABLE_MS:120}
+    window-size: ${SEARCH_FALLBACK_WINDOW_SIZE:20}
 
 # Feature flags
 SWAGGER_ENABLED: ${SWAGGER_ENABLED:false}

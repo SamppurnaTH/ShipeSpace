@@ -4,8 +4,8 @@ import com.shipspace.dto.CommentCreateRequest;
 import com.shipspace.dto.CommentResponse;
 import com.shipspace.dto.LikeResponse;
 import com.shipspace.dto.LikeToggleResponse;
+import com.shipspace.service.BehavioralTrackingService;
 import com.shipspace.service.EngagementService;
-import com.shipspace.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,9 +16,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,9 +30,6 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for EngagementController.
- * Tests engagement endpoints including like toggling, comment creation, and retrieval.
- * 
- * Requirements tested: 8.1, 8.2, 8.3, 8.4, 8.5
  */
 @ExtendWith(MockitoExtension.class)
 class EngagementControllerTest {
@@ -38,17 +38,22 @@ class EngagementControllerTest {
     private EngagementService engagementService;
 
     @Mock
-    private JwtUtil jwtUtil;
+    private BehavioralTrackingService behavioralTrackingService;
+
+    @Mock
+    private Authentication authentication;
+
+    @Mock
+    private UserDetails userDetails;
 
     @InjectMocks
     private EngagementController engagementController;
 
     @Test
-    void toggleLike_ValidRequest_ReturnsLikeToggleResponse() {
+    void likeShip_ValidRequest_ReturnsLikeToggleResponse() {
         // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
         LikeToggleResponse expectedResponse = LikeToggleResponse.builder()
                 .liked(true)
@@ -56,11 +61,12 @@ class EngagementControllerTest {
                 .message("Ship liked successfully")
                 .build();
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
-        when(engagementService.toggleLike(userId, shipId)).thenReturn(expectedResponse);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
+        when(engagementService.likeShip(userId, shipId)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<LikeToggleResponse> response = engagementController.toggleLike(shipId, authHeader);
+        ResponseEntity<LikeToggleResponse> response = engagementController.likeShip(authentication, shipId);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -69,16 +75,15 @@ class EngagementControllerTest {
         assertThat(response.getBody().getLikeCount()).isEqualTo(10);
         assertThat(response.getBody().getMessage()).contains("liked successfully");
 
-        verify(jwtUtil).extractUserId("valid-jwt-token");
-        verify(engagementService).toggleLike(userId, shipId);
+        verify(engagementService).likeShip(userId, shipId);
+        verify(behavioralTrackingService).trackLike(userId, shipId);
     }
 
     @Test
-    void toggleLike_UnlikeRequest_ReturnsUnlikedResponse() {
+    void unlikeShip_ValidRequest_ReturnsUnlikedResponse() {
         // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
         LikeToggleResponse expectedResponse = LikeToggleResponse.builder()
                 .liked(false)
@@ -86,11 +91,12 @@ class EngagementControllerTest {
                 .message("Ship unliked successfully")
                 .build();
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
-        when(engagementService.toggleLike(userId, shipId)).thenReturn(expectedResponse);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
+        when(engagementService.unlikeShip(userId, shipId)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<LikeToggleResponse> response = engagementController.toggleLike(shipId, authHeader);
+        ResponseEntity<LikeToggleResponse> response = engagementController.unlikeShip(authentication, shipId);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -99,7 +105,7 @@ class EngagementControllerTest {
         assertThat(response.getBody().getLikeCount()).isEqualTo(9);
         assertThat(response.getBody().getMessage()).contains("unliked successfully");
 
-        verify(engagementService).toggleLike(userId, shipId);
+        verify(engagementService).unlikeShip(userId, shipId);
     }
 
     @Test
@@ -107,7 +113,6 @@ class EngagementControllerTest {
         // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
         CommentCreateRequest request = CommentCreateRequest.builder()
                 .content("Great work on this project!")
@@ -127,11 +132,12 @@ class EngagementControllerTest {
                 .updatedAt(Instant.now())
                 .build();
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
         when(engagementService.addComment(userId, shipId, request)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<CommentResponse> response = engagementController.addComment(shipId, request, authHeader);
+        ResponseEntity<CommentResponse> response = engagementController.addComment(authentication, shipId, request);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
@@ -142,8 +148,8 @@ class EngagementControllerTest {
         assertThat(response.getBody().getCommenter()).isNotNull();
         assertThat(response.getBody().getCommenter().getUsername()).isEqualTo("testuser");
 
-        verify(jwtUtil).extractUserId("valid-jwt-token");
         verify(engagementService).addComment(userId, shipId, request);
+        verify(behavioralTrackingService).trackComment(userId, shipId);
     }
 
     @Test
@@ -201,7 +207,7 @@ class EngagementControllerTest {
         int page = 2;
         int size = 10;
 
-        Page<CommentResponse> expectedPage = new PageImpl<>(Arrays.asList());
+        Page<CommentResponse> expectedPage = new PageImpl<>(Collections.emptyList());
 
         when(engagementService.getShipComments(eq(shipId), any(Pageable.class))).thenReturn(expectedPage);
 
@@ -264,7 +270,7 @@ class EngagementControllerTest {
         int page = 1;
         int size = 50;
 
-        Page<LikeResponse> expectedPage = new PageImpl<>(Arrays.asList());
+        Page<LikeResponse> expectedPage = new PageImpl<>(Collections.emptyList());
 
         when(engagementService.getShipLikes(eq(shipId), any(Pageable.class))).thenReturn(expectedPage);
 
@@ -281,19 +287,18 @@ class EngagementControllerTest {
         // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
         when(engagementService.hasUserLikedShip(userId, shipId)).thenReturn(true);
 
         // Act
-        ResponseEntity<Boolean> response = engagementController.getLikeStatus(shipId, authHeader);
+        ResponseEntity<Boolean> response = engagementController.getLikeStatus(authentication, shipId);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isTrue();
 
-        verify(jwtUtil).extractUserId("valid-jwt-token");
         verify(engagementService).hasUserLikedShip(userId, shipId);
     }
 
@@ -302,13 +307,13 @@ class EngagementControllerTest {
         // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
         when(engagementService.hasUserLikedShip(userId, shipId)).thenReturn(false);
 
         // Act
-        ResponseEntity<Boolean> response = engagementController.getLikeStatus(shipId, authHeader);
+        ResponseEntity<Boolean> response = engagementController.getLikeStatus(authentication, shipId);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -319,11 +324,9 @@ class EngagementControllerTest {
 
     @Test
     void addComment_EmptyContent_ShouldBeValidatedByFramework() {
-        // This test verifies that the controller accepts the request
-        // Actual validation is handled by Spring's @Valid annotation
+        // Arrange
         String shipId = "ship-123";
         String userId = "user-456";
-        String authHeader = "Bearer valid-jwt-token";
 
         CommentCreateRequest request = CommentCreateRequest.builder()
                 .content("Valid comment content")
@@ -341,11 +344,12 @@ class EngagementControllerTest {
                 .updatedAt(Instant.now())
                 .build();
 
-        when(jwtUtil.extractUserId("valid-jwt-token")).thenReturn(userId);
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
         when(engagementService.addComment(userId, shipId, request)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<CommentResponse> response = engagementController.addComment(shipId, request, authHeader);
+        ResponseEntity<CommentResponse> response = engagementController.addComment(authentication, shipId, request);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);

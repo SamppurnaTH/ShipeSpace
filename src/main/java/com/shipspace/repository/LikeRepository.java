@@ -73,4 +73,14 @@ public interface LikeRepository extends MongoRepository<Like, String> {
      * @return number of documents deleted
      */
     long deleteByUserIdAndShipId(String userId, String shipId);
+
+    /**
+     * Find all ship IDs liked by a user within a given set.
+     * Used for bulk like-status enrichment in feed responses.
+     *
+     * @param userId  the ID of the user
+     * @param shipIds the set of ship IDs to check
+     * @return list of Like documents matching the criteria
+     */
+    java.util.List<Like> findByUserIdAndShipIdIn(String userId, java.util.Collection<String> shipIds);
 }

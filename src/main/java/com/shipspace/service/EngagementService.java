@@ -312,6 +312,18 @@ public class EngagementService {
     }
 
     /**
+     * Returns the set of ship IDs (from the given collection) that the user has liked.
+     * Single query — O(1) round trips regardless of page size.
+     */
+    public java.util.Set<String> getLikedShipIds(String userId, java.util.Collection<String> shipIds) {
+        if (shipIds == null || shipIds.isEmpty()) return java.util.Set.of();
+        return likeRepository.findByUserIdAndShipIdIn(userId, shipIds)
+                .stream()
+                .map(com.shipspace.model.Like::getShipId)
+                .collect(java.util.stream.Collectors.toSet());
+    }
+
+    /**
      * Explicit like — idempotent. Returns current state even if already liked.
      */
     @Transactional

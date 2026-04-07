@@ -8,6 +8,7 @@ import com.shipspace.model.Project;
 import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.service.BehavioralTrackingService;
+import com.shipspace.service.EngagementService;
 import com.shipspace.service.FeedService;
 import com.shipspace.service.PersonalizationService;
 import com.shipspace.service.ProjectService;
@@ -55,6 +56,7 @@ public class FeedController {
     private final UserService userService;
     private final DtoMapper dtoMapper;
     private final SloEnforcementService sloEnforcementService;
+    private final EngagementService engagementService;
 
     @GetMapping("/following")
     @Operation(
@@ -74,31 +76,35 @@ public class FeedController {
         size = Math.min(size, 50);
         String userId = authentication.getName();
         Page<Ship> ships = feedService.getFollowingFeed(userId, PageRequest.of(page, size));
-        return ResponseEntity.ok(enrichPage(ships));
+        return ResponseEntity.ok(enrichPage(ships, userId));
     }
 
     @GetMapping("/trending")
     @Operation(summary = "Get trending feed", description = "Ships ranked by engagement score (all time)")
     public ResponseEntity<Page<FeedItemResponse>> getTrendingFeed(
+            Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         size = Math.min(size, 50);
+        String userId = authentication != null ? authentication.getName() : null;
         Page<Ship> ships = feedService.getTrendingFeed(PageRequest.of(page, size));
-        return ResponseEntity.ok(enrichPage(ships));
+        return ResponseEntity.ok(enrichPage(ships, userId));
     }
 
     @GetMapping("/trending/{timeWindow}")
     @Operation(summary = "Get trending feed with time window",
             description = "Trending feed within a time window. Format: <number><unit> e.g. 24h, 7d, 30d")
     public ResponseEntity<Page<FeedItemResponse>> getTrendingFeedWithTimeWindow(
+            Authentication authentication,
             @PathVariable String timeWindow,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         size = Math.min(size, 50);
+        String userId = authentication != null ? authentication.getName() : null;
         Page<Ship> ships = feedService.getTrendingFeedWithTimeWindow(timeWindow, PageRequest.of(page, size));
-        return ResponseEntity.ok(enrichPage(ships));
+        return ResponseEntity.ok(enrichPage(ships, userId));
     }
 
     /**
@@ -125,9 +131,6 @@ public class FeedController {
         String userId = authentication.getName();
         log.debug("Getting personalized feed for user: {}", userId);
 
-        // SLO-driven degradation: if personalization is disabled (level 1+),
-        // serve trending feed instead. Faster, no interest profile lookup.
-        // The response header tells the client which mode was served.
         Page<Ship> ships;
         boolean degraded = sloEnforcementService.isPersonalizationDisabled();
         if (degraded) {
@@ -137,9 +140,8 @@ public class FeedController {
         } else {
             ships = personalizationService.getPersonalizedFeed(userId, PageRequest.of(page, size));
         }
-        Page<FeedItemResponse> response = enrichPage(ships);
+        Page<FeedItemResponse> response = enrichPage(ships, userId);
 
-        // Track views fire-and-forget (skipped automatically at degradation level 2+)
         ships.getContent().forEach(ship -> behavioralTrackingService.trackView(userId, ship.getId()));
 
         return ResponseEntity.ok()
@@ -149,7 +151,7 @@ public class FeedController {
 
     // ── Batch enrichment — 2 queries per page regardless of page size ─────────
 
-    private Page<FeedItemResponse> enrichPage(Page<Ship> ships) {
+    private Page<FeedItemResponse> enrichPage(Page<Ship> ships, String userId) {
         List<Ship> content = ships.getContent();
         if (content.isEmpty()) {
             return new PageImpl<>(List.of(), ships.getPageable(), ships.getTotalElements());
@@ -157,25 +159,32 @@ public class FeedController {
 
         Set<String> projectIds = content.stream().map(Ship::getProjectId).collect(Collectors.toSet());
         Set<String> userIds = content.stream().map(Ship::getUserId).collect(Collectors.toSet());
+        Set<String> shipIds = content.stream().map(Ship::getId).collect(Collectors.toSet());
 
-        // Delegate to service layer — no direct repo access in controller
         Map<String, Project> projectMap = projectService.findAllByIds(projectIds)
                 .stream().collect(Collectors.toMap(Project::getId, Function.identity()));
         Map<String, User> userMap = userService.findAllByIds(userIds)
                 .stream().collect(Collectors.toMap(User::getId, Function.identity()));
 
+        // Single bulk query for like status — only when user is authenticated
+        Set<String> likedIds = (userId != null)
+                ? engagementService.getLikedShipIds(userId, shipIds)
+                : Set.of();
+
         List<FeedItemResponse> items = content.stream()
-                .map(ship -> toFeedItem(ship, projectMap.get(ship.getProjectId()), userMap.get(ship.getUserId())))
+                .map(ship -> toFeedItem(ship, projectMap.get(ship.getProjectId()),
+                        userMap.get(ship.getUserId()), userId != null ? likedIds.contains(ship.getId()) : null))
                 .collect(Collectors.toList());
 
         return new PageImpl<>(items, ships.getPageable(), ships.getTotalElements());
     }
 
-    private FeedItemResponse toFeedItem(Ship ship, Project project, User user) {
+    private FeedItemResponse toFeedItem(Ship ship, Project project, User user, Boolean liked) {
         return FeedItemResponse.builder()
                 .ship(dtoMapper.toShipResponse(ship))
                 .project(project != null ? dtoMapper.toProjectResponse(project) : null)
                 .user(user != null ? toUserProfileResponse(user) : null)
+                .liked(liked)
                 .build();
     }
 

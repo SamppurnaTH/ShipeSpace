@@ -1,201 +1,165 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { getPersonalizedFeed, getTrendingFeed, likeShip, unlikeShip } from '../api/endpoints'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
+import { useFeed, type FeedType, type TrendingWindow } from '../hooks/useFeed'
+import { ShipCard } from '../components/ShipCard'
+import { ShipCardSkeleton } from '../components/ShipCardSkeleton'
+import { SystemBanner } from '../components/SystemBanner'
+import { Spinner } from '../components/Spinner'
+import { deleteShip } from '../api/endpoints'
+import { useToast } from '../components/Toast'
 
-interface Ship {
-  id: string
-  content: string
-  likeCount: number
-  commentCount: number
-  trendingScore: number
-  createdAt: string
-}
+interface FeedPageProps { feedType?: FeedType }
 
-interface FeedItem {
-  ship: Ship
-  user?: { username: string; avatarUrl: string }
-  project?: { name: string; techTags: string[] }
-}
+const WINDOWS: { label: string; value: TrendingWindow }[] = [
+  { label: 'All Time', value: 'all' },
+  { label: '24h', value: '24h' },
+  { label: '7d', value: '7d' },
+  { label: '30d', value: '30d' },
+]
 
-interface Page {
-  content: FeedItem[]
-  totalPages: number
-  number: number
-}
-
-export function FeedPage() {
+export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
   const { user } = useAuth()
-  const [items, setItems] = useState<FeedItem[]>([])
-  const [page, setPage] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [feedMode, setFeedMode] = useState<string>('—')
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const { toast } = useToast()
+  const [trendWindow, setTrendWindow] = useState<TrendingWindow>('all')
+  const { items, setItems, status, hasMore, feedMode, systemState, likedIds, loadMore, toggleLike } =
+    useFeed(!!user, feedType, trendWindow)
   const loaderRef = useRef<HTMLDivElement>(null)
 
-  const fetchPage = useCallback(async (pageNum: number) => {
-    if (loading || !hasMore) return
-    setLoading(true)
-    try {
-      const res = user
-        ? await getPersonalizedFeed(pageNum, 20)
-        : await getTrendingFeed(pageNum, 20)
-
-      const mode = res.headers['x-feed-mode'] || (user ? 'personalized' : 'trending')
-      setFeedMode(mode)
-
-      const data: Page = res.data
-      setItems(prev => pageNum === 0 ? data.content : [...prev, ...data.content])
-      setHasMore(pageNum < data.totalPages - 1)
-      setPage(pageNum)
-    } catch (err) {
-      console.error('Feed fetch failed', err)
-      setHasMore(false) // stop the observer from retrying on connection errors
-    } finally {
-      setLoading(false)
-    }
-  }, [user, loading, hasMore])
-
-  // Initial load
-  useEffect(() => {
-    setItems([])
-    setPage(0)
-    setHasMore(true)
-    fetchPage(0)
-  }, [user])
-
-  // Infinite scroll via IntersectionObserver
   useEffect(() => {
     const el = loaderRef.current
     if (!el) return
-    const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore && !loading) {
-        fetchPage(page + 1)
-      }
-    }, { threshold: 0.1 })
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) loadMore() }, { threshold: 0.1 })
     obs.observe(el)
     return () => obs.disconnect()
-  }, [page, hasMore, loading, fetchPage])
+  }, [loadMore])
 
-  const toggleLike = async (item: FeedItem) => {
-    const id = item.ship.id
-    const liked = likedIds.has(id)
-    // Optimistic update
-    setLikedIds(prev => {
-      const next = new Set(prev)
-      liked ? next.delete(id) : next.add(id)
-      return next
-    })
-    setItems(prev => prev.map(i =>
-      i.ship.id === id
-        ? { ...i, ship: { ...i.ship, likeCount: i.ship.likeCount + (liked ? -1 : 1) } }
-        : i
-    ))
+  const handleDelete = async (shipId: string) => {
+    if (!confirm('Delete this ship? This cannot be undone.')) return
     try {
-      liked ? await unlikeShip(id) : await likeShip(id)
+      await deleteShip(shipId)
+      setItems(prev => prev.filter(i => i.ship.id !== shipId))
+      toast('Ship deleted', 'success')
     } catch {
-      // Revert on failure
-      setLikedIds(prev => {
-        const next = new Set(prev)
-        liked ? next.add(id) : next.delete(id)
-        return next
-      })
-      setItems(prev => prev.map(i =>
-        i.ship.id === id
-          ? { ...i, ship: { ...i.ship, likeCount: i.ship.likeCount + (liked ? 1 : -1) } }
-          : i
-      ))
+      toast('Could not delete ship', 'error')
     }
   }
 
+  const systemMsg = systemState !== 'normal' ? {
+    degraded:      { variant: 'warning' as const, message: 'Personalized feed unavailable', detail: 'Showing trending content.' },
+    'rate-limited':{ variant: 'warning' as const, message: 'Rate limited', detail: 'Slow down — requests will resume shortly.' },
+    unavailable:   { variant: 'error'   as const, message: 'Service under load', detail: 'Some features may be slower.' },
+  }[systemState] : null
+
   return (
-    <div style={styles.page}>
-      <div style={styles.modeBar}>
-        Feed mode: <strong>{feedMode}</strong>
-        {feedMode === 'trending-fallback' && (
-          <span style={styles.fallbackBadge}>⚠ degraded</span>
+    <div style={{ maxWidth: 'var(--feed-max-width)', margin: '0 auto' }}>
+
+      {/* Feed type tabs */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+        {feedType === 'trending' && WINDOWS.map(w => (
+          <button key={w.value} onClick={() => setTrendWindow(w.value)} style={{
+            padding: '5px 14px', borderRadius: 'var(--radius-full)',
+            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            fontSize: 'var(--text-sm)', fontWeight: 500,
+            background: trendWindow === w.value ? 'var(--color-brand)' : 'var(--color-surface-2)',
+            color: trendWindow === w.value ? '#fff' : 'var(--color-text-muted)',
+            transition: 'all var(--transition-fast)',
+          }}>{w.label}</button>
+        ))}
+
+        {feedMode && feedMode !== feedType && (
+          <span style={{
+            fontSize: 'var(--text-xs)', padding: '3px 10px',
+            background: feedMode.includes('fallback') ? 'var(--color-warning-bg)' : 'var(--color-brand-light)',
+            color: feedMode.includes('fallback') ? 'var(--color-warning)' : 'var(--color-brand-dim)',
+            borderRadius: 'var(--radius-full)',
+            fontFamily: 'var(--font-mono)',
+          }}>
+            {feedMode.includes('fallback') ? '⚠ fallback' : `✦ ${feedMode}`}
+          </span>
         )}
       </div>
 
-      {items.map(item => (
-        <div key={item.ship.id} style={styles.card}>
-          <div style={styles.cardHeader}>
-            {item.user?.avatarUrl && (
-              <img src={item.user.avatarUrl} alt="" style={styles.avatar} />
-            )}
-            <div>
-              <div style={styles.username}>{item.user?.username || 'unknown'}</div>
-              {item.project && (
-                <div style={styles.project}>
-                  {item.project.name}
-                  {item.project.techTags?.map(t => (
-                    <span key={t} style={styles.tag}>{t}</span>
-                  ))}
-                </div>
-              )}
+      {systemMsg && <SystemBanner variant={systemMsg.variant} message={systemMsg.message} detail={systemMsg.detail} />}
+
+      {/* Skeletons */}
+      {status === 'loading' && items.length === 0 &&
+        Array.from({ length: 5 }).map((_, i) => <ShipCardSkeleton key={i} />)}
+
+      {/* Empty */}
+      {status === 'done' && items.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--color-text-muted)' }}>
+          <div style={{ fontSize: 40, marginBottom: 'var(--space-4)' }}>⚓</div>
+          <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
+            {feedType === 'following' ? 'Your feed is empty' : "Nothing here yet — be the first to ship"}
+          </div>
+          <div style={{ fontSize: 'var(--text-sm)', marginBottom: feedType === 'personalized' ? 'var(--space-5)' : 0 }}>
+            {feedType === 'following'
+              ? 'Follow some builders to see their ships here.'
+              : feedType === 'personalized'
+              ? "Start by creating a project and shipping your first update."
+              : 'Be the first to ship something.'}
+          </div>
+          {feedType === 'personalized' && (
+            <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="/projects" style={{
+                padding: '9px 22px', borderRadius: 'var(--radius-md)',
+                background: 'var(--color-brand)', color: '#fff',
+                fontSize: 'var(--text-sm)', fontWeight: 600, textDecoration: 'none',
+              }}>
+                Create a project
+              </a>
+              <a href="/trending" style={{
+                padding: '9px 22px', borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)',
+                fontSize: 'var(--text-sm)', fontWeight: 600, textDecoration: 'none',
+              }}>
+                Browse trending
+              </a>
             </div>
-          </div>
-
-          <p style={styles.content}>{item.ship.content}</p>
-
-          <div style={styles.actions}>
-            <button
-              onClick={() => user && toggleLike(item)}
-              style={{
-                ...styles.likeBtn,
-                color: likedIds.has(item.ship.id) ? '#f43f5e' : '#64748b',
-              }}
-              disabled={!user}
-              title={user ? undefined : 'Login to like'}
-            >
-              {likedIds.has(item.ship.id) ? '♥' : '♡'} {item.ship.likeCount}
-            </button>
-            <span style={styles.meta}>
-              💬 {item.ship.commentCount}
-            </span>
-            <span style={styles.meta}>
-              {new Date(item.ship.createdAt).toLocaleDateString()}
-            </span>
-          </div>
+          )}
         </div>
+      )}
+
+      {/* Error */}
+      {status === 'error' && items.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
+          <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>⚡</div>
+          <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
+            Couldn't load the feed
+          </div>
+          <div style={{ fontSize: 'var(--text-sm)' }}>Check your connection or try again.</div>
+        </div>
+      )}
+
+      {/* Items */}
+      {items.map(item => (
+        <ShipCard
+          key={item.ship.id}
+          ship={item.ship}
+          user={item.user}
+          project={item.project}
+          liked={likedIds.has(item.ship.id)}
+          canLike={!!user}
+          onLike={() => toggleLike(item)}
+          isOwner={!!user && user.id === item.user?.id}
+          onDelete={() => handleDelete(item.ship.id)}
+        />
       ))}
 
-      <div ref={loaderRef} style={styles.loader}>
-        {loading && <span>Loading…</span>}
-        {!hasMore && items.length > 0 && <span style={{ color: '#64748b' }}>End of feed</span>}
+      {/* Infinite scroll sentinel */}
+      <div ref={loaderRef} style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)' }}>
+        {status === 'loading' && items.length > 0 && <Spinner size={20} />}
+        {!hasMore && items.length > 0 && (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+            ── end of feed ──{' '}
+            <button onClick={() => globalThis.window.scrollTo({ top: 0, behavior: 'smooth' })} style={{
+              background: 'none', border: 'none', color: 'var(--color-brand-dim)',
+              cursor: 'pointer', fontSize: 'inherit', fontFamily: 'inherit', padding: 0,
+            }}>↑ top</button>
+          </span>
+        )}
       </div>
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 640, margin: '0 auto', padding: '16px 12px' },
-  modeBar: {
-    fontSize: 12, color: '#64748b', marginBottom: 16,
-    padding: '6px 10px', background: '#f1f5f9', borderRadius: 6,
-  },
-  fallbackBadge: {
-    marginLeft: 8, color: '#f59e0b', fontWeight: 'bold',
-  },
-  card: {
-    background: '#fff', border: '1px solid #e2e8f0',
-    borderRadius: 10, padding: 16, marginBottom: 12,
-  },
-  cardHeader: { display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' },
-  avatar: { width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' },
-  username: { fontWeight: 600, fontSize: 14 },
-  project: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  tag: {
-    display: 'inline-block', marginLeft: 4,
-    background: '#e0f2fe', color: '#0369a1',
-    borderRadius: 4, padding: '1px 5px', fontSize: 11,
-  },
-  content: { fontSize: 14, lineHeight: 1.6, margin: '0 0 12px', color: '#1e293b' },
-  actions: { display: 'flex', gap: 16, alignItems: 'center' },
-  likeBtn: {
-    background: 'none', border: 'none', cursor: 'pointer',
-    fontSize: 14, padding: 0, fontFamily: 'inherit',
-  },
-  meta: { fontSize: 13, color: '#94a3b8' },
-  loader: { textAlign: 'center', padding: 24, fontSize: 13, color: '#94a3b8' },
 }

@@ -2,7 +2,10 @@ package com.shipspace.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.SimpleCacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -12,6 +15,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -36,7 +40,7 @@ import java.util.Map;
  */
 @Configuration
 @EnableCaching
-public class CacheConfig {
+public class CacheConfig implements CachingConfigurer {
 
     // Phase 1 fix: corrected property path. spring.cache.redis.time-to-live is in
     // milliseconds per Spring Boot convention, so we divide by 1000 for Duration.ofSeconds.
@@ -118,6 +122,40 @@ public class CacheConfig {
                 .cacheDefaults(config)
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .build();
+    }
+
+    /**
+     * Swallows cache errors so a deserialization failure or Redis outage
+     * never propagates as a 500. Falls through to the real method instead.
+     */
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new SimpleCacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException e,
+                    org.springframework.cache.Cache cache, Object key) {
+                LoggerFactory.getLogger(CacheConfig.class)
+                        .warn("Cache GET error (cache={}) — falling through: {}", cache.getName(), e.getMessage());
+            }
+            @Override
+            public void handleCachePutError(RuntimeException e,
+                    org.springframework.cache.Cache cache, Object key, Object value) {
+                LoggerFactory.getLogger(CacheConfig.class)
+                        .warn("Cache PUT error (cache={}) — ignoring: {}", cache.getName(), e.getMessage());
+            }
+            @Override
+            public void handleCacheEvictError(RuntimeException e,
+                    org.springframework.cache.Cache cache, Object key) {
+                LoggerFactory.getLogger(CacheConfig.class)
+                        .warn("Cache EVICT error (cache={}) — ignoring: {}", cache.getName(), e.getMessage());
+            }
+            @Override
+            public void handleCacheClearError(RuntimeException e,
+                    org.springframework.cache.Cache cache) {
+                LoggerFactory.getLogger(CacheConfig.class)
+                        .warn("Cache CLEAR error (cache={}) — ignoring: {}", cache.getName(), e.getMessage());
+            }
+        };
     }
 
     /**

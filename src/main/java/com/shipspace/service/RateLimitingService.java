@@ -2,7 +2,6 @@ package com.shipspace.service;
 
 import com.shipspace.config.SloEnforcementService;
 import lombok.extern.slf4j.Slf4j;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -49,15 +48,17 @@ public class RateLimitingService {
             );
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final Counter rateLimitRejectionCounter;
+    private final MeterRegistry meterRegistry;
     private final SloEnforcementService sloEnforcementService;
 
     public RateLimitingService(RedisTemplate<String, String> redisTemplate,
                                 MeterRegistry meterRegistry,
                                 SloEnforcementService sloEnforcementService) {
         this.redisTemplate = redisTemplate;
+        this.meterRegistry = meterRegistry;
         this.sloEnforcementService = sloEnforcementService;
-        this.rateLimitRejectionCounter = meterRegistry.counter("shipspace.rate_limit.rejections");
+        // Pre-register the untagged counter so existing Prometheus queries still work
+        meterRegistry.counter("shipspace.rate_limit.rejections");
     }
 
     /**
@@ -88,7 +89,8 @@ public class RateLimitingService {
                 log.debug("Rate limited user {} for action {}: {}/{} (multiplier={})",
                         userId, action, count, effectiveMax,
                         sloEnforcementService.getRateLimitMultiplier());
-                rateLimitRejectionCounter.increment();
+                meterRegistry.counter("shipspace.rate_limit.rejections",
+                        "action", action).increment();
                 return true;
             }
             return false;
@@ -123,7 +125,8 @@ public class RateLimitingService {
 
             if (count > effectiveMax) {
                 log.debug("Rate limited user {} for action {}: {}/{}", userId, action, count, effectiveMax);
-                rateLimitRejectionCounter.increment();
+                meterRegistry.counter("shipspace.rate_limit.rejections",
+                        "action", action).increment();
                 return true;
             }
             return false;

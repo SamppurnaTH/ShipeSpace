@@ -65,6 +65,11 @@ public class MongoIndexInitializer {
         ops.ensureIndex(new Index().on("rank", Sort.Direction.ASC).named("rank_asc"));
         ops.ensureIndex(new Index().on("lastShipActivityAt", Sort.Direction.ASC).named("lastShipActivityAt_asc"));
         ops.ensureIndex(new Index().on("createdAt", Sort.Direction.ASC).named("createdAt_asc"));
+        // Text index for search — covers username and bio
+        mongoTemplate.getDb().getCollection("users").createIndex(
+                new org.bson.Document("username", "text").append("bio", "text"),
+                new com.mongodb.client.model.IndexOptions().name("users_text_search")
+        );
     }
 
     private void createShipIndexes() {
@@ -78,6 +83,11 @@ public class MongoIndexInitializer {
         ops.ensureIndex(new CompoundIndexDefinition(
                 new org.bson.Document("userId", 1).append("createdAt", -1))
                 .named("userId_createdAt_idx"));
+        // Text index for search — covers ship content
+        mongoTemplate.getDb().getCollection("ships").createIndex(
+                new org.bson.Document("content", "text"),
+                new com.mongodb.client.model.IndexOptions().name("ships_text_search")
+        );
     }
 
     private void createProjectIndexes() {

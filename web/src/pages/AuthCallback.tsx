@@ -1,66 +1,83 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { authGitHub } from '../api/endpoints'
+import { Spinner } from '../components/Spinner'
 
 export function AuthCallback() {
   const { login } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const ran = useRef(false) // prevent double-fire in StrictMode
 
   useEffect(() => {
+    if (ran.current) return
+    ran.current = true
+
     const params = new URLSearchParams(window.location.search)
     const code  = params.get('code')
     const state = params.get('state')
 
     if (!code || !state) {
-      setError('Missing OAuth code or state. Please try logging in again.')
+      setError('Missing OAuth parameters. Please try logging in again.')
       return
     }
 
     authGitHub(code, state)
-      .then(res => {
-        login(res.data.accessToken, res.data.refreshToken)
-        window.location.href = '/'
+      .then(async res => {
+        await login(res.data.accessToken, res.data.refreshToken)
+        window.location.replace('/')
       })
       .catch(err => {
-        setError(err.response?.data?.message || 'Authentication failed. Please try again.')
+        const msg = err.response?.data?.message
+        if (err.response?.status === 401) {
+          setError('OAuth state mismatch — possible CSRF. Please try again.')
+        } else {
+          setError(msg || 'Authentication failed. Please try again.')
+        }
       })
   }, [])
 
   if (error) {
     return (
-      <div style={styles.center}>
-        <div style={styles.error}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>⚠</div>
-          <div>{error}</div>
-          <a href="/" style={styles.link}>← Back to home</a>
+      <div style={center}>
+        <div style={{
+          background: 'var(--color-error-bg)',
+          border: '1px solid var(--color-error-border)',
+          borderRadius: 'var(--radius-lg)', padding: 'var(--space-8)',
+          textAlign: 'center', color: 'var(--color-error)', maxWidth: 380,
+          animation: 'fadeIn 200ms ease',
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>⚠</div>
+          <div style={{ fontWeight: 'var(--weight-semibold)', marginBottom: 'var(--space-2)' }}>
+            Login failed
+          </div>
+          <div style={{ fontSize: 'var(--text-sm)', opacity: 0.85, marginBottom: 'var(--space-5)' }}>
+            {error}
+          </div>
+          <a href="/" style={{
+            display: 'inline-block',
+            background: 'var(--color-error)', color: '#fff',
+            borderRadius: 'var(--radius-md)', padding: '8px 20px',
+            fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)',
+          }}>
+            ← Back to home
+          </a>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={styles.center}>
-      <div style={styles.spinner} />
-      <div style={{ color: '#64748b', marginTop: 12 }}>Completing login…</div>
+    <div style={center}>
+      <Spinner size={36} />
+      <div style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-4)', fontSize: 'var(--text-sm)' }}>
+        Completing login…
+      </div>
     </div>
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  center: {
-    display: 'flex', flexDirection: 'column',
-    alignItems: 'center', justifyContent: 'center',
-    minHeight: '60vh', gap: 8,
-  },
-  error: {
-    background: '#fef2f2', border: '1px solid #fecaca',
-    borderRadius: 10, padding: 24, textAlign: 'center',
-    color: '#dc2626', maxWidth: 360,
-  },
-  link: { display: 'block', marginTop: 12, color: '#3b82f6', fontSize: 13 },
-  spinner: {
-    width: 32, height: 32, border: '3px solid #e2e8f0',
-    borderTop: '3px solid #3b82f6', borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
+const center: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', justifyContent: 'center',
+  minHeight: '70vh', gap: 'var(--space-2)',
 }

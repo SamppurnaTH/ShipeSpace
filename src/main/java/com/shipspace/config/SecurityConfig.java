@@ -46,7 +46,12 @@ public class SecurityConfig {
                         "/actuator/health",
                         "/actuator/health/**",
                         "/feeds/trending",
-                        "/feeds/trending/**"
+                        "/feeds/trending/**",
+                        "/search",
+                        "/users/*/ships",
+                        "/demo/status",
+                        "/demo/reset",
+                        "/demo/data"
                 ).permitAll();
 
                 // Swagger only when explicitly enabled (dev/staging)

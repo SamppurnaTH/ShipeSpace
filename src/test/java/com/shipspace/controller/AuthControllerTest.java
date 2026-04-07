@@ -6,7 +6,11 @@ import com.shipspace.dto.CurrentUserResponse;
 import com.shipspace.dto.RefreshTokenRequest;
 import com.shipspace.exception.GitHubOAuthException;
 import com.shipspace.exception.InvalidTokenException;
+import com.shipspace.security.OAuthStateService;
 import com.shipspace.service.AuthService;
+import com.shipspace.service.RateLimitingService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,6 +43,18 @@ class AuthControllerTest {
     @Mock
     private UserDetails userDetails;
 
+    @Mock
+    private RateLimitingService rateLimitingService;
+
+    @Mock
+    private OAuthStateService oAuthStateService;
+
+    @Mock
+    private HttpServletRequest httpRequest;
+
+    @Mock
+    private HttpServletResponse httpResponse;
+
     @InjectMocks
     private AuthController authController;
 
@@ -48,6 +64,7 @@ class AuthControllerTest {
         String oauthCode = "valid-oauth-code";
         AuthRequest request = AuthRequest.builder()
                 .code(oauthCode)
+                .state("valid-state")
                 .build();
 
         AuthResponse expectedResponse = AuthResponse.builder()
@@ -63,10 +80,11 @@ class AuthControllerTest {
                         .build())
                 .build();
 
+        when(oAuthStateService.validateAndConsume("valid-state")).thenReturn(true);
         when(authService.authenticateWithGitHub(oauthCode)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<AuthResponse> response = authController.authenticateWithGitHub(request);
+        ResponseEntity<AuthResponse> response = authController.authenticateWithGitHub(request, httpRequest, httpResponse);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -89,13 +107,15 @@ class AuthControllerTest {
         String invalidCode = "invalid-oauth-code";
         AuthRequest request = AuthRequest.builder()
                 .code(invalidCode)
+                .state("valid-state")
                 .build();
 
+        when(oAuthStateService.validateAndConsume("valid-state")).thenReturn(true);
         when(authService.authenticateWithGitHub(invalidCode))
                 .thenThrow(new GitHubOAuthException("Invalid OAuth code"));
 
         // Act & Assert
-        assertThatThrownBy(() -> authController.authenticateWithGitHub(request))
+        assertThatThrownBy(() -> authController.authenticateWithGitHub(request, httpRequest, httpResponse))
                 .isInstanceOf(GitHubOAuthException.class)
                 .hasMessage("Invalid OAuth code");
 
@@ -123,10 +143,11 @@ class AuthControllerTest {
                         .build())
                 .build();
 
+        when(authService.extractUserId(validRefreshToken)).thenReturn("user-id");
         when(authService.refreshToken(validRefreshToken)).thenReturn(expectedResponse);
 
         // Act
-        ResponseEntity<AuthResponse> response = authController.refreshToken(request);
+        ResponseEntity<AuthResponse> response = authController.refreshToken(request, httpRequest, httpResponse);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -147,11 +168,12 @@ class AuthControllerTest {
                 .refreshToken(invalidRefreshToken)
                 .build();
 
+        when(authService.extractUserId(invalidRefreshToken)).thenReturn("user-id");
         when(authService.refreshToken(invalidRefreshToken))
                 .thenThrow(new InvalidTokenException("Invalid or expired refresh token"));
 
         // Act & Assert
-        assertThatThrownBy(() -> authController.refreshToken(request))
+        assertThatThrownBy(() -> authController.refreshToken(request, httpRequest, httpResponse))
                 .isInstanceOf(InvalidTokenException.class)
                 .hasMessage("Invalid or expired refresh token");
 
