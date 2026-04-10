@@ -90,7 +90,7 @@ public class SearchService {
     // Epoch ms when circuit opened — used to detect "stuck open" condition
     private volatile long    circuitOpenSinceMs  = 0;
     // Micrometer gauge: circuit state (0=closed, 1=open)
-    private final io.micrometer.core.instrument.AtomicInteger fallbackCircuitGauge;
+    private final java.util.concurrent.atomic.AtomicInteger fallbackCircuitGauge;
     // Micrometer gauge: current p90 of fallback latency window (ms), -1 when window not full
     private final java.util.concurrent.atomic.AtomicLong fallbackP90Gauge;
 
@@ -127,9 +127,9 @@ public class SearchService {
         this.fallbackWindowSize = Math.max(3, fallbackWindowSize); // minimum 3 for meaningful p90
 
         // Gauge: 0 = circuit closed (fallback allowed), 1 = circuit open (fallback suppressed)
-        this.fallbackCircuitGauge = new io.micrometer.core.instrument.AtomicInteger(0);
+        this.fallbackCircuitGauge = new java.util.concurrent.atomic.AtomicInteger(0);
         io.micrometer.core.instrument.Gauge.builder("shipspace.search.fallback.circuit",
-                        fallbackCircuitGauge, io.micrometer.core.instrument.AtomicInteger::get)
+                        fallbackCircuitGauge, java.util.concurrent.atomic.AtomicInteger::get)
                 .description("Adaptive fallback circuit state: 0=closed (allowed), 1=open (suppressed)")
                 .register(registry);
 
