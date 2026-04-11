@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { TopNav } from './components/TopNav'
-import { SideNav } from './components/SideNav'
+import { LeftPanel } from './components/LeftPanel'
+import { RightPanel } from './components/RightPanel'
 import { BottomNav } from './components/BottomNav'
 import { ToastContainer } from './components/Toast'
 import { CreateShipModal } from './components/CreateShipModal'
@@ -39,36 +40,52 @@ function LoadingScreen() {
   )
 }
 
-function AppShell({ children }: { children: React.ReactNode }) {
+function AppShell({ children, rightPanel = true }: { children: React.ReactNode; rightPanel?: boolean }) {
+  const { user } = useAuth()
   const [showCreateShip, setShowCreateShip] = useState(false)
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <TopNav />
-      <div style={{
-        display: 'flex',
-        minHeight: 'calc(100vh - 64px)',
-      }}>
-        {/* Desktop SideNav */}
-        <div className="side-nav-desktop">
-          <SideNav />
-        </div>
 
-        {/* Main content */}
+      {/* 3-column LinkedIn layout */}
+      <div style={{
+        maxWidth: 'var(--layout-max)',
+        margin: '0 auto',
+        padding: 'var(--space-4) var(--space-4)',
+        display: 'flex',
+        gap: 'var(--layout-gap)',
+        alignItems: 'flex-start',
+        minHeight: 'calc(100vh - var(--header-height))',
+      }}>
+        {/* Left panel — profile card (desktop only) */}
+        {user && (
+          <div className="side-nav-desktop" style={{ position: 'sticky', top: 'calc(var(--header-height) + 16px)' }}>
+            <LeftPanel />
+          </div>
+        )}
+
+        {/* Center — main content */}
         <main style={{
           flex: 1,
-          paddingTop: 'var(--space-6)',
-          paddingBottom: 80,
           minWidth: 0,
+          maxWidth: 'var(--col-center-width)',
+          paddingBottom: 80,
         }}>
           {children}
         </main>
+
+        {/* Right panel — trending (desktop only) */}
+        {rightPanel && (
+          <div className="side-nav-desktop" style={{ position: 'sticky', top: 'calc(var(--header-height) + 16px)' }}>
+            <RightPanel />
+          </div>
+        )}
       </div>
 
       {/* Mobile bottom nav */}
       <BottomNav />
 
-      {/* Global create ship modal (triggered from SideNav CTA, navigating to /ships/new) */}
       <CreateShipModal open={showCreateShip} onClose={() => setShowCreateShip(false)} />
     </div>
   )

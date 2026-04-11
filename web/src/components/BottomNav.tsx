@@ -11,8 +11,8 @@ export function BottomNav() {
     { icon: '⚡', label: 'Feed',       path: '/feed' },
     { icon: '🔥', label: 'Trending',   path: '/trending' },
     { icon: '📦', label: 'Projects',   path: '/projects' },
-    { icon: '🔔', label: 'Alerts',     path: '/notifications' },
-    { icon: '👤', label: 'Profile',    path: user ? `/profile/${user.username}` : '/auth' },
+    { icon: '🤝', label: 'Network',    path: '/collaborations' },
+    { icon: '👤', label: 'Me',         path: user ? `/profile/${user.username}` : '/auth' },
   ]
 
   return (
@@ -24,6 +24,7 @@ export function BottomNav() {
       display: 'none',
       alignItems: 'center', justifyContent: 'space-around',
       zIndex: 100,
+      boxShadow: '0 -1px 0 var(--color-border)',
     }}>
       {items.map(item => {
         const active = location.pathname === item.path
@@ -34,7 +35,7 @@ export function BottomNav() {
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             gap: 2, textDecoration: 'none',
             fontSize: 10, fontWeight: active ? 600 : 500,
-            color: active ? 'var(--color-brand-dim)' : 'var(--color-text-muted)',
+            color: active ? 'var(--color-brand)' : 'var(--color-text-muted)',
             padding: '6px 12px',
             transition: 'color var(--transition-fast)',
           }}>
