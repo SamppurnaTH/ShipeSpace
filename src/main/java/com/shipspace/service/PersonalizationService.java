@@ -50,6 +50,36 @@ public class PersonalizationService {
         return interestProfileService.getProfile(userId);
     }
 
+    /**
+     * Facade for backward compatibility: looks up Ship/Project by contentId then delegates to ContentScoringService.
+     */
+    public double calculateRelevanceScore(UserInterestProfile profile, String contentId,
+                                          BehavioralSignal.ContentType type) {
+        Ship ship = null;
+        Project project = null;
+        if (type == BehavioralSignal.ContentType.SHIP) {
+            ship = shipRepository.findById(contentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Ship not found: " + contentId));
+            String projectId = ship.getProjectId();
+            if (projectId != null) {
+                project = projectRepository.findById(projectId).orElse(null);
+            }
+        } else {
+            project = projectRepository.findById(contentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Project not found: " + contentId));
+        }
+        return contentScoringService.relevanceScore(profile, ship, project);
+    }
+
+    /**
+     * Facade for backward compatibility: delegates to ContentScoringService.performanceScore(contentId).
+     * Full algorithm: cache-first, cohort percentile scoring, save on stale/miss.
+     * Throws IllegalArgumentException if content not found.
+     */
+    public double calculatePerformanceScore(String contentId) {
+        return contentScoringService.performanceScore(contentId);
+    }
+
     @Cacheable(value = "contentQualityScore", key = "#contentId")
     public double calculateQualityScore(String contentId, BehavioralSignal.ContentType type) {
         if (type == BehavioralSignal.ContentType.SHIP) {
@@ -59,7 +89,7 @@ public class PersonalizationService {
         } else {
             Project project = projectRepository.findById(contentId)
                     .orElseThrow(() -> new IllegalArgumentException("Project not found: " + contentId));
-            return 0.0; // project quality scoring delegated to ContentScoringService
+            return contentScoringService.qualityScore(project);
         }
     }
 

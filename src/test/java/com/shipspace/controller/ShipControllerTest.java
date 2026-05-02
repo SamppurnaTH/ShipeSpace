@@ -45,14 +45,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - PUT /api/ships/{shipId} - Update ship within edit window
  * - POST /api/ships/{shipId}/images - Upload images to ship
  */
-@WebMvcTest(controllers = ShipController.class, 
+@WebMvcTest(controllers = ShipController.class,
     excludeAutoConfiguration = {
         org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
         org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration.class
-    })
+    },
+    excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+        type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+        classes = com.shipspace.config.MongoAuditingConfig.class))
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(com.shipspace.config.MockMvcContextPathCustomizer.class)
 @DisplayName("ShipController Integration Tests")
-@org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration(enabled = true)
 class ShipControllerTest {
 
     @Autowired
@@ -66,6 +69,9 @@ class ShipControllerTest {
 
     @MockBean
     private com.shipspace.util.JwtUtil jwtUtil;
+
+    @MockBean
+    private com.shipspace.security.TokenBlacklistService tokenBlacklistService;
 
     private String testUserId;
     private String testProjectId;
@@ -286,6 +292,7 @@ class ShipControllerTest {
     // ========== Ship Retrieval Tests ==========
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/ships/{shipId} - Should return ship details")
     void getShip_Success() throws Exception {
         // Arrange
@@ -307,6 +314,7 @@ class ShipControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/ships/{shipId} - Should return 404 when ship not found")
     void getShip_NotFound() throws Exception {
         // Arrange
@@ -323,6 +331,7 @@ class ShipControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/ships/{shipId} - Should return ship with images")
     void getShip_WithImages() throws Exception {
         // Arrange

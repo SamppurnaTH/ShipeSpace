@@ -64,7 +64,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 100000) int shipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Act - Calculate level from shipScore
         int actualLevel = service.calculateLevel(shipScore);
@@ -125,7 +126,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 1, max = 30) int targetLevel
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Calculate the minimum shipScore for this level
         int minShipScore = (targetLevel - 1) * 40;
@@ -170,7 +172,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 50000) int shipScore2
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Ensure score1 <= score2
         int lowerScore = Math.min(shipScore1, shipScore2);
@@ -212,7 +215,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 1, max = 30) int level
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Act - Calculate rank from level
         RankTier actualRank = service.calculateRank(level);
@@ -263,7 +267,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 5) int rankIndex
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Get the rank tier at this index
         RankTier[] ranks = RankTier.values();
@@ -319,7 +324,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 1, max = 30) int level2
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Ensure level1 <= level2
         int lowerLevel = Math.min(level1, level2);
@@ -357,7 +363,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 1, max = 30) int currentLevel
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Calculate a valid shipScore for the current level
         // Use the minimum shipScore for this level: (currentLevel - 1) * 40
@@ -417,7 +424,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 39) int scoreOffset
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Calculate a shipScore within the current level's range
         // Level range is [(currentLevel-1)*40, currentLevel*40)
@@ -475,7 +483,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 1, max = 29) int currentLevel
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
 
         // Test at the exact minimum score for this level
         int minScoreForLevel = (currentLevel - 1) * 40;
@@ -523,7 +532,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 1000) int initialShipScore
     ) {
         // Arrange - Create service instance with real repositories
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         // Create a test user with initial shipScore
         String userId = "test-user-" + System.nanoTime();
@@ -596,7 +606,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 1000) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -659,7 +670,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 4) int existingEventCount
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -736,7 +748,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 500) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -808,7 +821,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 1000) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -873,7 +887,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 1000) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -940,7 +955,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 200) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -1009,7 +1025,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 200) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();
@@ -1086,7 +1103,8 @@ class ShipScoreServicePropertyTest {
             @ForAll @IntRange(min = 0, max = 1000) int initialShipScore
     ) {
         // Arrange - Create service instance
-        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository);
+        ShipScoreService service = new ShipScoreService(userRepository, scoreEventLogRepository,
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
         
         String userId = "test-user-" + System.nanoTime();
         String entityId = "test-entity-" + System.nanoTime();

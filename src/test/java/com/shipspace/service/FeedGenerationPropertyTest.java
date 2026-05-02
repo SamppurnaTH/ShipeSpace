@@ -47,7 +47,10 @@ class FeedGenerationPropertyTest {
         shipRepository = mock(ShipRepository.class);
         followingRepository = mock(FollowingRepository.class);
         cacheManager = new ConcurrentMapCacheManager("trendingFeed", "trendingFeedWithTimeWindow");
-        feedService = new FeedService(shipRepository, followingRepository);
+        feedService = new FeedService(shipRepository, followingRepository,
+                mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+                mock(DistributedLockService.class),
+                mock(com.shipspace.config.ScheduledJobMetrics.class));
     }
 
     /**

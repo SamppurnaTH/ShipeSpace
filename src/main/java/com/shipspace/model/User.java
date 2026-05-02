@@ -13,6 +13,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Set;
 
 /**
  * User document model representing a technical builder on the platform.
@@ -127,6 +128,18 @@ public class User {
      * Updated whenever the user's rank tier changes.
      */
     private Instant rankUpdatedAt;
+
+    /**
+     * User roles for RBAC. Default: USER. Admins have ADMIN role.
+     */
+    @Builder.Default
+    private Set<String> roles = Set.of("USER");
+
+    /**
+     * Soft-ban flag. Banned users cannot post but can still read.
+     */
+    @Builder.Default
+    private boolean banned = false;
 
     /**
      * Timestamp when the user account was created.

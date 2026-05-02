@@ -51,7 +51,7 @@ class SloEnforcementIntegrationTest extends AbstractIntegrationTest {
         @DisplayName("Level 0 (NORMAL): all features enabled")
         void level0_allFeaturesEnabled() {
             // System starts at NORMAL — all features should be on
-            assertThat(sloEnforcementService.getCurrentLevel())
+            assertThat(sloEnforcementService.getEffectiveLevel())
                     .as("System should start at NORMAL degradation level")
                     .isEqualTo(DegradationLevel.NORMAL);
             assertThat(sloEnforcementService.isPersonalizationDisabled())
@@ -125,7 +125,7 @@ class SloEnforcementIntegrationTest extends AbstractIntegrationTest {
                     .isGreaterThanOrEqualTo(3);
 
             // p95 should be computable (not NaN)
-            double p95 = engagementTimer.percentile(0.95);
+            double p95 = engagementTimer.percentile(0.95, TimeUnit.NANOSECONDS);
             assertThat(Double.isNaN(p95))
                     .as("p95 must not be NaN after recordings")
                     .isFalse();

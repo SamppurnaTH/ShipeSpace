@@ -184,6 +184,7 @@ class AuthControllerTest {
     void getCurrentUser_ValidAuthentication_ReturnsUserInfo() {
         // Arrange
         String userId = "user-id";
+        when(authentication.getPrincipal()).thenReturn(userDetails);
         when(userDetails.getUsername()).thenReturn(userId);
         CurrentUserResponse expectedResponse = CurrentUserResponse.builder()
                 .id(userId)

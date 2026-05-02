@@ -5,6 +5,7 @@ import com.shipspace.model.RankTier;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.service.ShipScoreService;
+import com.shipspace.service.UserService;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.IntRange;
 import net.jqwik.api.lifecycle.BeforeProperty;
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -34,6 +36,7 @@ class RankSummaryControllerPropertyTest {
 
     @Mock
     private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private ShipScoreService shipScoreService;
@@ -41,6 +44,7 @@ class RankSummaryControllerPropertyTest {
     @BeforeProperty
     void initMocks() {
         MockitoAnnotations.openMocks(this);
+        userService = mock(UserService.class);
     }
 
     /**
@@ -66,10 +70,10 @@ class RankSummaryControllerPropertyTest {
             @ForAll @IntRange(min = 0, max = 2000) Integer nextLevelScore
     ) {
         // Arrange - Create controller instance
-        RankSummaryController controller = new RankSummaryController(userRepository, shipScoreService);
+        RankSummaryController controller = new RankSummaryController(userService, shipScoreService);
         
         // Mock repository to return the user
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userService.getUserById(user.getId())).thenReturn(user);
         
         // Mock service to return nextLevelScore (null for level 30, otherwise a value)
         Integer expectedNextLevelScore = user.getLevel() >= 30 ? null : nextLevelScore;
@@ -129,10 +133,10 @@ class RankSummaryControllerPropertyTest {
             @ForAll("validUserWithRank") User user
     ) {
         // Arrange - Create controller instance
-        RankSummaryController controller = new RankSummaryController(userRepository, shipScoreService);
+        RankSummaryController controller = new RankSummaryController(userService, shipScoreService);
         
         // Mock repository to return the user
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userService.getUserById(user.getId())).thenReturn(user);
         
         // Mock service to return a nextLevelScore
         when(shipScoreService.calculateNextLevelScore(anyInt(), anyInt()))

@@ -7,7 +7,9 @@ import com.shipspace.exception.GitHubOAuthException;
 import com.shipspace.exception.InvalidTokenException;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.security.TokenBlacklistService;
 import com.shipspace.util.JwtUtil;
+import io.micrometer.core.instrument.Counter;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.NumericChars;
@@ -70,7 +72,13 @@ class AuthenticationPropertyTest {
         ReflectionTestUtils.setField(githubOAuthService, "userUrl", baseUrl + "user");
 
         // Set up AuthService
-        authService = new AuthService(jwtUtil, userRepository, githubOAuthService);
+        TokenBlacklistService tokenBlacklistService = mock(TokenBlacklistService.class);
+        when(tokenBlacklistService.isBlacklisted(any())).thenReturn(false);
+        Counter authSuccessCounter = mock(Counter.class);
+        Counter authFailureCounter = mock(Counter.class);
+        Counter tokenRefreshCounter = mock(Counter.class);
+        authService = new AuthService(jwtUtil, userRepository, githubOAuthService,
+                tokenBlacklistService, authSuccessCounter, authFailureCounter, tokenRefreshCounter);
         ReflectionTestUtils.setField(authService, "jwtExpiration", 86400000L);
     }
 

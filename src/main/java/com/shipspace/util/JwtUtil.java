@@ -71,11 +71,16 @@ public class JwtUtil {
      * Includes a unique jti claim for blacklist support.
      */
     public String generateToken(String userId, String username) {
+        return generateToken(userId, username, java.util.Set.of("USER"));
+    }
+
+    public String generateToken(String userId, String username, java.util.Set<String> roles) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("type", "access");
         claims.put("jti", java.util.UUID.randomUUID().toString());
+        claims.put("roles", roles);
         return createToken(claims, userId, expiration);
     }
 
@@ -118,6 +123,17 @@ public class JwtUtil {
 
     public String extractJti(String token) {
         return extractClaim(token, claims -> claims.get("jti", String.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    public java.util.Set<String> extractRoles(String token) {
+        try {
+            Object roles = extractClaim(token, claims -> claims.get("roles"));
+            if (roles instanceof java.util.Collection<?> c) {
+                return new java.util.HashSet<>((java.util.Collection<String>) c);
+            }
+        } catch (Exception ignored) {}
+        return java.util.Set.of("USER");
     }
 
     public Date extractExpiration(String token) {

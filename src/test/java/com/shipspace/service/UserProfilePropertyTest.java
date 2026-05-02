@@ -7,8 +7,10 @@ import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.util.DtoMapper;
+import com.shipspace.util.InputSanitizer;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.StringLength;
@@ -36,13 +38,19 @@ class UserProfilePropertyTest {
     private UserRepository userRepository;
     private ProjectRepository projectRepository;
     private ShipRepository shipRepository;
+    private UserCountRepository userCountRepository;
+    private InputSanitizer inputSanitizer;
 
     @BeforeTry
     void setUp() {
         userRepository = mock(UserRepository.class);
         projectRepository = mock(ProjectRepository.class);
         shipRepository = mock(ShipRepository.class);
-        userService = new UserService(userRepository, projectRepository, shipRepository, new DtoMapper());
+        userCountRepository = mock(UserCountRepository.class);
+        inputSanitizer = mock(InputSanitizer.class);
+        when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        userService = new UserService(userRepository, projectRepository, shipRepository,
+                new DtoMapper(), userCountRepository, inputSanitizer);
     }
 
     /**

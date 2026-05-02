@@ -3,18 +3,15 @@ package com.shipspace.service;
 import com.shipspace.model.BehavioralSignal;
 import com.shipspace.model.Project;
 import com.shipspace.model.Ship;
-import com.shipspace.repository.BehavioralSignalRepository;
-import com.shipspace.repository.ContentScoreRepository;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
-import com.shipspace.repository.UserInterestProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -29,14 +26,10 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for PersonalizationService.
- * 
- * These tests verify:
- * - Quality score calculation with various engagement metrics
- * - Age normalization prevents bias toward older content
- * - Score bounds are maintained (0.0 to 1.0)
- * - Proper handling of missing content
- * - Caching behavior
- * 
+ *
+ * Uses a real ContentScoringService backed by mocked repositories so that
+ * scoring logic runs end-to-end while remaining isolated from infrastructure.
+ *
  * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 8.3
  */
 @ExtendWith(MockitoExtension.class)
@@ -44,10 +37,10 @@ import static org.mockito.Mockito.*;
 class PersonalizationServiceTest {
 
     @Mock
-    private UserInterestProfileRepository userInterestProfileRepository;
+    private InterestProfileService interestProfileService;
 
     @Mock
-    private ContentScoreRepository contentScoreRepository;
+    private FeedBuilderService feedBuilderService;
 
     @Mock
     private ShipRepository shipRepository;
@@ -56,12 +49,15 @@ class PersonalizationServiceTest {
     private ProjectRepository projectRepository;
 
     @Mock
-    private BehavioralSignalRepository behavioralSignalRepository;
+    private com.shipspace.repository.BehavioralSignalRepository behavioralSignalRepository;
 
     @Mock
-    private FeedService feedService;
+    private com.shipspace.repository.ContentScoreRepository contentScoreRepository;
 
-    @InjectMocks
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    private ContentScoringService contentScoringService;
     private PersonalizationService personalizationService;
 
     private Ship testShip;
@@ -69,6 +65,16 @@ class PersonalizationServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Wire real ContentScoringService with mocked repositories
+        contentScoringService = new ContentScoringService(
+                shipRepository, projectRepository, behavioralSignalRepository,
+                contentScoreRepository, mongoTemplate);
+
+        // Wire PersonalizationService with the real ContentScoringService
+        personalizationService = new PersonalizationService(
+                interestProfileService, contentScoringService, feedBuilderService,
+                shipRepository, projectRepository);
+
         // Create test ship with engagement metrics
         testShip = Ship.builder()
                 .id("ship123")

@@ -16,6 +16,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +30,7 @@ import java.util.List;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -36,8 +40,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for UserController.
  * Tests all user profile management endpoints.
  */
-@WebMvcTest(UserController.class)
+@WebMvcTest(controllers = UserController.class,
+    excludeAutoConfiguration = {
+        org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration.class
+    },
+    excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+        type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+        classes = com.shipspace.config.MongoAuditingConfig.class))
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(com.shipspace.config.MockMvcContextPathCustomizer.class)
 @DisplayName("UserController Integration Tests")
 class UserControllerTest {
 
@@ -49,6 +61,12 @@ class UserControllerTest {
 
     @MockBean
     private UserService userService;
+
+    @MockBean
+    private com.shipspace.security.TokenBlacklistService tokenBlacklistService;
+
+    @MockBean
+    private com.shipspace.util.JwtUtil jwtUtil;
 
     private UserProfileResponse testProfile;
     private String testUserId;
@@ -72,6 +90,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/users/{userId} - Should return user profile")
     void getUserProfile_Success() throws Exception {
         // Arrange
@@ -93,6 +112,7 @@ class UserControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/users/{userId} - Should return 404 when user not found")
     void getUserProfile_NotFound() throws Exception {
         // Arrange
@@ -188,19 +208,20 @@ class UserControllerTest {
                 ProjectResponse.builder().id("proj2").userId(testUserId).name("Project 2").build()
         );
 
-        when(userService.getUserProjects(testUserId)).thenReturn(projects);
+        Page<ProjectResponse> projectPage = new PageImpl<>(projects);
+        when(userService.getUserProjects(eq(testUserId), any(Pageable.class))).thenReturn(projectPage);
 
         // Act & Assert
         mockMvc.perform(get("/api/users/me/projects"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[0].id").value("proj1"))
-                .andExpect(jsonPath("$[0].name").value("Project 1"))
-                .andExpect(jsonPath("$[1].id").value("proj2"))
-                .andExpect(jsonPath("$[1].name").value("Project 2"));
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].id").value("proj1"))
+                .andExpect(jsonPath("$.content[0].name").value("Project 1"))
+                .andExpect(jsonPath("$.content[1].id").value("proj2"))
+                .andExpect(jsonPath("$.content[1].name").value("Project 2"));
 
-        verify(userService).getUserProjects(testUserId);
+        verify(userService).getUserProjects(eq(testUserId), any(Pageable.class));
     }
 
     @Test
@@ -272,15 +293,16 @@ class UserControllerTest {
     @DisplayName("GET /api/users/me/projects - Should return empty list when no projects")
     void getCurrentUserProjects_EmptyList() throws Exception {
         // Arrange
-        when(userService.getUserProjects(testUserId)).thenReturn(Arrays.asList());
+        when(userService.getUserProjects(eq(testUserId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList()));
 
         // Act & Assert
         mockMvc.perform(get("/api/users/me/projects"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$", hasSize(0)));
+                .andExpect(jsonPath("$.content", hasSize(0)));
 
-        verify(userService).getUserProjects(testUserId);
+        verify(userService).getUserProjects(eq(testUserId), any(Pageable.class));
     }
 
     @Test

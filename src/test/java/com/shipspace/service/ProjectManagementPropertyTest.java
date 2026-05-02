@@ -11,6 +11,7 @@ import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
@@ -47,13 +48,23 @@ class ProjectManagementPropertyTest {
     private ProjectRepository projectRepository;
     private ShipRepository shipRepository;
     private UserService userService;
+    private org.springframework.data.mongodb.core.MongoTemplate mongoTemplate;
+    private ShipScoreService shipScoreService;
+    private CascadeDeleteService cascadeDeleteService;
+    private InputSanitizer inputSanitizer;
 
     @BeforeTry
     void setUp() {
         projectRepository = mock(ProjectRepository.class);
         shipRepository = mock(ShipRepository.class);
         userService = mock(UserService.class);
-        projectService = new ProjectService(projectRepository, shipRepository, userService);
+        mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
+        shipScoreService = mock(ShipScoreService.class);
+        cascadeDeleteService = mock(CascadeDeleteService.class);
+        inputSanitizer = mock(InputSanitizer.class);
+        when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        projectService = new ProjectService(projectRepository, shipRepository, userService,
+                mongoTemplate, shipScoreService, cascadeDeleteService, inputSanitizer);
     }
 
     /**

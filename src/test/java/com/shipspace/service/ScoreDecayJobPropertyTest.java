@@ -1,5 +1,6 @@
 package com.shipspace.service;
 
+import com.shipspace.config.ScheduledJobMetrics;
 import com.shipspace.model.RankTier;
 import com.shipspace.model.User;
 import com.shipspace.repository.UserRepository;
@@ -11,6 +12,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,11 +39,19 @@ class ScoreDecayJobPropertyTest {
     @Mock
     private ShipScoreService shipScoreService;
 
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private DistributedLockService distributedLockService;
+
+    @Mock
+    private ScheduledJobMetrics scheduledJobMetrics;
+
     @BeforeProperty
     void initMocks() {
         MockitoAnnotations.openMocks(this);
-        // Reset mocks before each property test iteration
-        reset(userRepository, shipScoreService);
+        reset(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
     }
 
     /**
@@ -64,7 +74,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 0, max = 10000) int initialShipScore
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create an inactive user (61 days old)
         Instant sixtyOneDaysAgo = Instant.now().minus(61, ChronoUnit.DAYS);
@@ -162,7 +172,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 1, max = 1000) int multiplier
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Test with scores that result in fractional decay values
         // For example: 105 * 0.9 = 94.5, should floor to 94
@@ -240,7 +250,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 100, max = 5000) int initialShipScore
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         Instant sixtyOneDaysAgo = Instant.now().minus(61, ChronoUnit.DAYS);
         String userId = "test-user-" + System.nanoTime();
@@ -318,7 +328,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 0, max = 29) int levelIndex
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Test at level boundaries: minimum score for each level
         int initialShipScore = levelIndex * 40; // Scores: 0, 40, 80, 120, ..., 1160
@@ -397,7 +407,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 61, max = 365) int daysInactive
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create an inactive user with a specific lastShipActivityAt timestamp
         Instant originalActivityTimestamp = Instant.now().minus(daysInactive, ChronoUnit.DAYS);
@@ -488,7 +498,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 61, max = 365) int daysInactive
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create an inactive user (more than 60 days old)
         Instant activityTimestamp = Instant.now().minus(daysInactive, ChronoUnit.DAYS);
@@ -569,7 +579,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 0, max = 59) int daysInactive
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create an active user (59 days or less)
         Instant activityTimestamp = Instant.now().minus(daysInactive, ChronoUnit.DAYS);
@@ -629,7 +639,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 0, max = 10000) int shipScore
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create a user with null lastShipActivityAt (never had activity)
         String userId = "test-user-" + System.nanoTime();
@@ -676,7 +686,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 0, max = 10000) int shipScore
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create a user with activity exactly 60 days ago (at the boundary)
         Instant exactlySixtyDaysAgo = Instant.now().minus(60, ChronoUnit.DAYS);
@@ -728,7 +738,7 @@ class ScoreDecayJobPropertyTest {
             @ForAll @IntRange(min = 61, max = 200) int days2
     ) {
         // Arrange - Create decay job instance
-        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService);
+        ScoreDecayJob decayJob = new ScoreDecayJob(userRepository, shipScoreService, mongoTemplate, distributedLockService, scheduledJobMetrics);
         
         // Create two inactive users with different activity timestamps
         Instant timestamp1 = Instant.now().minus(days1, ChronoUnit.DAYS);

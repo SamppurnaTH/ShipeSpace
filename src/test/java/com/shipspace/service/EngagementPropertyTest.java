@@ -12,8 +12,11 @@ import com.shipspace.model.User;
 import com.shipspace.repository.CommentRepository;
 import com.shipspace.repository.CommentUpvoteRepository;
 import com.shipspace.repository.LikeRepository;
+import com.shipspace.repository.ShipCountRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.service.NotificationDispatchService;
+import com.shipspace.util.InputSanitizer;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
@@ -63,8 +66,14 @@ class EngagementPropertyTest {
         userRepository = mock(UserRepository.class);
         commentQualificationService = mock(CommentQualificationService.class);
         shipScoreService = mock(ShipScoreService.class);
-        engagementService = new EngagementService(likeRepository, commentRepository, commentUpvoteRepository, 
-                shipRepository, userRepository, commentQualificationService, shipScoreService);
+        ShipCountRepository shipCountRepository = mock(ShipCountRepository.class);
+        org.springframework.data.mongodb.core.MongoTemplate mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
+        NotificationDispatchService notificationDispatchService = mock(NotificationDispatchService.class);
+        InputSanitizer inputSanitizer = mock(InputSanitizer.class);
+        when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        engagementService = new EngagementService(likeRepository, commentRepository, commentUpvoteRepository,
+                shipRepository, shipCountRepository, userRepository, commentQualificationService, shipScoreService,
+                mongoTemplate, notificationDispatchService, inputSanitizer);
     }
 
     /**

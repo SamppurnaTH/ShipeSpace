@@ -4,11 +4,15 @@ import com.shipspace.dto.ImageUploadProgress;
 import com.shipspace.dto.MultibaseUploadResponse;
 import com.shipspace.exception.MultibaseException;
 import com.shipspace.model.ImageReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -35,11 +39,19 @@ class MultibaseServiceTest {
         
         String baseUrl = mockWebServer.url("/").toString();
         WebClient.Builder webClientBuilder = WebClient.builder();
-        
+
+        @SuppressWarnings("unchecked")
+        RedisTemplate<String, String> redisTemplate = Mockito.mock(RedisTemplate.class);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOps = Mockito.mock(ValueOperations.class);
+        Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOps);
+
         multibaseService = new MultibaseService(
                 webClientBuilder,
                 baseUrl,
-                "test-api-key"
+                "test-api-key",
+                redisTemplate,
+                new ObjectMapper()
         );
     }
 

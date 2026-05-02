@@ -11,6 +11,15 @@ import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
 import net.jqwik.api.constraints.StringLength;
+import com.shipspace.config.ScheduledJobMetrics;
+import com.shipspace.repository.CommentRepository;
+import com.shipspace.repository.CommentUpvoteRepository;
+import com.shipspace.repository.FollowingRepository;
+import com.shipspace.repository.ShipCountRepository;
+import com.shipspace.service.CommentQualificationService;
+import com.shipspace.service.DistributedLockService;
+import com.shipspace.service.NotificationDispatchService;
+import com.shipspace.util.InputSanitizer;
 import net.jqwik.api.lifecycle.BeforeTry;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
@@ -83,7 +92,10 @@ class PerformancePropertyTest {
         Assume.that(requestCount >= 2); // Need at least 2 requests to test caching
         
         // Given: A feed service with ships in the database
-        feedService = new FeedService(shipRepository, null);
+        feedService = new FeedService(shipRepository, mock(FollowingRepository.class),
+                mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+                mock(DistributedLockService.class),
+                mock(ScheduledJobMetrics.class));
         
         Instant now = Instant.now();
         List<Ship> allShips = IntStream.range(0, totalShips)
@@ -162,7 +174,10 @@ class PerformancePropertyTest {
             @ForAll @IntRange(min = 0, max = 50) int totalShips) {
         
         // Given: A feed service with varying number of ships
-        feedService = new FeedService(shipRepository, null);
+        feedService = new FeedService(shipRepository, mock(FollowingRepository.class),
+                mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+                mock(DistributedLockService.class),
+                mock(ScheduledJobMetrics.class));
         
         Instant now = Instant.now();
         List<Ship> allShips = IntStream.range(0, totalShips)
@@ -372,12 +387,16 @@ class PerformancePropertyTest {
         // Given: An engagement service and a ship with initial like count
         engagementService = new EngagementService(
             likeRepository,
-            null,
-            null,
+            mock(CommentRepository.class),
+            mock(CommentUpvoteRepository.class),
             shipRepository,
+            mock(ShipCountRepository.class),
             userRepository,
-            null,
-            null
+            mock(CommentQualificationService.class),
+            mock(ShipScoreService.class),
+            mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+            mock(NotificationDispatchService.class),
+            mock(InputSanitizer.class)
         );
         
         Ship ship = createShip(shipId, "owner", "project1", Instant.now());
@@ -471,12 +490,16 @@ class PerformancePropertyTest {
         // Given: An engagement service with a ship and user
         engagementService = new EngagementService(
             likeRepository,
-            null,
-            null,
+            mock(CommentRepository.class),
+            mock(CommentUpvoteRepository.class),
             shipRepository,
+            mock(ShipCountRepository.class),
             userRepository,
-            null,
-            null
+            mock(CommentQualificationService.class),
+            mock(ShipScoreService.class),
+            mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+            mock(NotificationDispatchService.class),
+            mock(InputSanitizer.class)
         );
         
         Ship ship = createShip(shipId, "owner", "project1", Instant.now());

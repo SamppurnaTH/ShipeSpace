@@ -40,6 +40,10 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
+import com.shipspace.security.TokenBlacklistService;
+import com.shipspace.service.CascadeDeleteService;
+import com.shipspace.util.InputSanitizer;
+import io.micrometer.core.instrument.Counter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
@@ -99,7 +103,9 @@ class ApiConsistencyAndSecurityPropertyTest {
         ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L);
 
         // Set up JWT authentication filter
-        jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil);
+        TokenBlacklistService tokenBlacklistService = mock(TokenBlacklistService.class);
+        when(tokenBlacklistService.isBlacklisted(any())).thenReturn(false);
+        jwtAuthenticationFilter = new JwtAuthenticationFilter(jwtUtil, tokenBlacklistService);
 
         // Set up mock repositories
         projectRepository = mock(ProjectRepository.class);
@@ -109,9 +115,17 @@ class ApiConsistencyAndSecurityPropertyTest {
         // Set up services
         UserService userService = mock(UserService.class);
         MultibaseService multibaseService = mock(MultibaseService.class);
-        
-        projectService = new ProjectService(projectRepository, shipRepository, userService);
-        shipService = new ShipService(shipRepository, projectService, multibaseService);
+        org.springframework.data.mongodb.core.MongoTemplate mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
+        ShipScoreService shipScoreService = mock(ShipScoreService.class);
+        CascadeDeleteService cascadeDeleteService = mock(CascadeDeleteService.class);
+        InputSanitizer inputSanitizer = mock(InputSanitizer.class);
+        when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        Counter shipCreatedCounter = mock(Counter.class);
+
+        projectService = new ProjectService(projectRepository, shipRepository, userService,
+                mongoTemplate, shipScoreService, cascadeDeleteService, inputSanitizer);
+        shipService = new ShipService(shipRepository, projectService, multibaseService,
+                cascadeDeleteService, inputSanitizer, shipCreatedCounter);
     }
 
     @AfterTry

@@ -10,6 +10,8 @@ import com.shipspace.model.ImageReference;
 import com.shipspace.model.Project;
 import com.shipspace.model.Ship;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
+import io.micrometer.core.instrument.Counter;
 import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
@@ -42,13 +44,21 @@ class ShipManagementPropertyTest {
     private ShipRepository shipRepository;
     private ProjectService projectService;
     private MultibaseService multibaseService;
+    private CascadeDeleteService cascadeDeleteService;
+    private InputSanitizer inputSanitizer;
+    private Counter shipCreatedCounter;
 
     @BeforeTry
     void setUp() {
         shipRepository = mock(ShipRepository.class);
         projectService = mock(ProjectService.class);
         multibaseService = mock(MultibaseService.class);
-        shipService = new ShipService(shipRepository, projectService, multibaseService);
+        cascadeDeleteService = mock(CascadeDeleteService.class);
+        inputSanitizer = mock(InputSanitizer.class);
+        when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        shipCreatedCounter = mock(Counter.class);
+        shipService = new ShipService(shipRepository, projectService, multibaseService,
+                cascadeDeleteService, inputSanitizer, shipCreatedCounter);
     }
 
     /**

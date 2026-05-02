@@ -38,12 +38,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for ProjectController.
  * Tests all project management endpoints with authentication and authorization.
  */
-@WebMvcTest(controllers = ProjectController.class, 
+@WebMvcTest(controllers = ProjectController.class,
     excludeAutoConfiguration = {
         org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
         org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration.class
-    })
+    },
+    excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+        type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+        classes = com.shipspace.config.MongoAuditingConfig.class))
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(com.shipspace.config.MockMvcContextPathCustomizer.class)
 @DisplayName("ProjectController Integration Tests")
 class ProjectControllerTest {
 
@@ -61,6 +65,12 @@ class ProjectControllerTest {
 
     @MockBean
     private com.shipspace.service.ShipScoreService shipScoreService;
+
+    @MockBean
+    private com.shipspace.security.TokenBlacklistService tokenBlacklistService;
+
+    @MockBean
+    private com.shipspace.util.DtoMapper dtoMapper;
 
     private String testUserId;
     private String testProjectId;
@@ -189,6 +199,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId} - Should return project details")
     void getProject_Success() throws Exception {
         // Arrange
@@ -207,6 +218,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId} - Should return 404 when project not found")
     void getProject_NotFound() throws Exception {
         // Arrange
@@ -308,6 +320,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId}/ships - Should return project ships")
     void getProjectShips_Success() throws Exception {
         // Arrange
@@ -350,6 +363,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId}/ships - Should support pagination")
     void getProjectShips_WithPagination() throws Exception {
         // Arrange
@@ -378,6 +392,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId}/ships - Should return empty page when no ships")
     void getProjectShips_EmptyPage() throws Exception {
         // Arrange
@@ -395,6 +410,7 @@ class ProjectControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "user123")
     @DisplayName("GET /api/projects/{projectId}/ships - Should return 404 when project not found")
     void getProjectShips_ProjectNotFound() throws Exception {
         // Arrange

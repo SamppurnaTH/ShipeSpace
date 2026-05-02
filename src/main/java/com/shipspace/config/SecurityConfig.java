@@ -63,6 +63,7 @@ public class SecurityConfig {
                     ).permitAll();
                 }
 
+                auth.requestMatchers("/admin/**").hasRole("ADMIN");
                 auth.anyRequest().authenticated();
             })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

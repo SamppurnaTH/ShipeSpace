@@ -11,6 +11,8 @@ import net.jqwik.api.*;
 import net.jqwik.api.constraints.AlphaChars;
 import net.jqwik.api.constraints.IntRange;
 import net.jqwik.api.constraints.StringLength;
+import com.shipspace.repository.UserCountRepository;
+import com.shipspace.service.NotificationDispatchService;
 import net.jqwik.api.lifecycle.BeforeTry;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -47,7 +49,9 @@ class SocialFollowingPropertyTest {
     void setUp() {
         followingRepository = mock(FollowingRepository.class);
         userRepository = mock(UserRepository.class);
-        socialService = new SocialService(followingRepository, userRepository);
+        UserCountRepository userCountRepository = mock(UserCountRepository.class);
+        NotificationDispatchService notificationDispatchService = mock(NotificationDispatchService.class);
+        socialService = new SocialService(followingRepository, userRepository, userCountRepository, notificationDispatchService);
     }
 
     /**

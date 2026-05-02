@@ -35,8 +35,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Integration tests for SocialController.
  * Tests all social following system endpoints.
  */
-@WebMvcTest(SocialController.class)
+@WebMvcTest(controllers = SocialController.class,
+    excludeAutoConfiguration = {
+        org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
+        org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration.class
+    },
+    excludeFilters = @org.springframework.context.annotation.ComponentScan.Filter(
+        type = org.springframework.context.annotation.FilterType.ASSIGNABLE_TYPE,
+        classes = com.shipspace.config.MongoAuditingConfig.class))
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(com.shipspace.config.MockMvcContextPathCustomizer.class)
 @DisplayName("SocialController Integration Tests")
 class SocialControllerTest {
 
@@ -45,6 +53,12 @@ class SocialControllerTest {
 
     @MockBean
     private SocialService socialService;
+
+    @MockBean
+    private com.shipspace.security.TokenBlacklistService tokenBlacklistService;
+
+    @MockBean
+    private com.shipspace.util.JwtUtil jwtUtil;
 
     private String currentUserId;
     private String targetUserId;
@@ -276,7 +290,7 @@ class SocialControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
-                .andExpect(jsonPath("$.totalElements").value(15))
+                .andExpect(jsonPath("$.totalElements").value(11))
                 .andExpect(jsonPath("$.totalPages").value(2))
                 .andExpect(jsonPath("$.number").value(1))
                 .andExpect(jsonPath("$.size").value(10));
@@ -380,7 +394,7 @@ class SocialControllerTest {
                         .param("size", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(1)))
-                .andExpect(jsonPath("$.totalElements").value(12))
+                .andExpect(jsonPath("$.totalElements").value(11))
                 .andExpect(jsonPath("$.totalPages").value(3))
                 .andExpect(jsonPath("$.number").value(2))
                 .andExpect(jsonPath("$.size").value(5));

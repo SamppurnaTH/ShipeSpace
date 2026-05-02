@@ -66,14 +66,17 @@ public class LoadSheddingFilter extends OncePerRequestFilter {
             @Value("${load-shedding.enabled:true}") boolean enabled,
             @Value("${load-shedding.max-concurrent-requests:200}") int maxConcurrent,
             @Value("${load-shedding.shed-threshold:0.85}") double shedThreshold,
-            MeterRegistry registry) {
+            @org.springframework.beans.factory.annotation.Autowired(required = false) MeterRegistry registry) {
         this.enabled = enabled;
         this.maxConcurrent = maxConcurrent;
         this.shedThreshold = shedThreshold;
         this.semaphore = new Semaphore(maxConcurrent, true); // fair
+        MeterRegistry effectiveRegistry = registry != null
+                ? registry
+                : new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
         this.shedCounter = Counter.builder("shipspace.load_shedding.shed_requests")
                 .description("Requests rejected by load shedding")
-                .register(registry);
+                .register(effectiveRegistry);
     }
 
     @Override

@@ -55,7 +55,12 @@ class BehavioralSignalPersistencePropertyTest {
             behavioralSignalRepository,
             userInterestProfileRepository,
             shipRepository,
-            projectRepository
+            projectRepository,
+            mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+            mock(DistributedLockService.class),
+            mock(InterestProfileService.class),
+            mock(com.shipspace.config.ScheduledJobMetrics.class),
+            mock(com.shipspace.config.SloEnforcementService.class)
         );
     }
 
