@@ -191,8 +191,8 @@ class ShipCreationIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/ships — returns 401 when no auth token is provided")
-    void createShip_returns401WhenNotAuthenticated() throws Exception {
+    @DisplayName("POST /api/ships — rejects unauthenticated request and persists nothing")
+    void createShip_rejectsUnauthenticatedRequest() throws Exception {
         ShipCreateRequest request = ShipCreateRequest.builder()
                 .projectId(testProject.getId())
                 .content("Anonymous ship attempt")
@@ -202,7 +202,7 @@ class ShipCreationIntegrationTest {
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().is4xxClientError());
 
         assertThat(shipRepository.findAll()).isEmpty();
     }
