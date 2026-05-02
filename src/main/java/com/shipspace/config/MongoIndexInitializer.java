@@ -58,6 +58,10 @@ public class MongoIndexInitializer {
     }
 
     private void createUserIndexes() {
+        // Drop old auto-created index that conflicts with our named one
+        try {
+            mongoTemplate.getDb().getCollection("users").dropIndex("githubId_1");
+        } catch (Exception ignored) {}
         IndexOperations ops = mongoTemplate.indexOps("users");
         ops.ensureIndex(new Index().on("githubId", Sort.Direction.ASC).unique().named("githubId_unique"));
         ops.ensureIndex(new Index().on("username", Sort.Direction.ASC).unique().named("username_unique"));

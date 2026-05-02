@@ -26,3 +26,53 @@ DEMO_MODE = "false"
 GITHUB_REDIRECT_URI = "http://localhost:5000/auth/callback"
 MULTIBASE_API_URL = "http://localhost:5001"
 MULTIBASE_API_KEY = ""
+JWT_SECRET = "7419df33ed90f2d1d7430fe3a9efba7eaef7b0d49947054fd2d2c93fd1732b61"
+SPRING_PROFILES_ACTIVE = "dev"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash start-frontend.sh"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow]]
+name = "Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash start-backend.sh"
+waitForPort = 8080
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
