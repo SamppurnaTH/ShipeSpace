@@ -37,6 +37,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Uses the real local MongoDB (shipspace-integration-test database) and Redis.
  * Flapdoodle embedded MongoDB is explicitly excluded — it cannot download its
  * binary in this environment.
+ *
+ * MockMvc path convention: post("/api/ships").contextPath("/api")
+ *   - The URI must include the context path prefix.
+ *   - .contextPath("/api") tells MockMvc the prefix so it sets servletPath = /ships.
+ *   - The DispatcherServlet then routes /ships to ShipController correctly.
  */
 @SpringBootTest(properties = {
         "spring.data.mongodb.uri=mongodb://localhost:27017/shipspace-integration-test",
@@ -46,6 +51,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @DisplayName("Ship Creation Integration Tests")
 class ShipCreationIntegrationTest {
+
+    private static final String SHIPS_URL = "/api/ships";
+    private static final String CONTEXT_PATH = "/api";
 
     @Autowired
     private MockMvc mockMvc;
@@ -109,7 +117,7 @@ class ShipCreationIntegrationTest {
                 .content("Shipped my first feature today!")
                 .build();
 
-        mockMvc.perform(post("/ships").contextPath("/api")
+        mockMvc.perform(post(SHIPS_URL).contextPath(CONTEXT_PATH)
                         .with(csrf())
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -142,7 +150,7 @@ class ShipCreationIntegrationTest {
                 .content("Shipping a feature to verify shipCount")
                 .build();
 
-        mockMvc.perform(post("/ships").contextPath("/api")
+        mockMvc.perform(post(SHIPS_URL).contextPath(CONTEXT_PATH)
                         .with(csrf())
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +180,7 @@ class ShipCreationIntegrationTest {
                 .content("Trying to ship on someone else's project")
                 .build();
 
-        mockMvc.perform(post("/ships").contextPath("/api")
+        mockMvc.perform(post(SHIPS_URL).contextPath(CONTEXT_PATH)
                         .with(csrf())
                         .header("Authorization", "Bearer " + otherToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -190,7 +198,7 @@ class ShipCreationIntegrationTest {
                 .content("Anonymous ship attempt")
                 .build();
 
-        mockMvc.perform(post("/ships").contextPath("/api")
+        mockMvc.perform(post(SHIPS_URL).contextPath(CONTEXT_PATH)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -207,7 +215,7 @@ class ShipCreationIntegrationTest {
                 .content("Ship for a ghost project")
                 .build();
 
-        mockMvc.perform(post("/ships").contextPath("/api")
+        mockMvc.perform(post(SHIPS_URL).contextPath(CONTEXT_PATH)
                         .with(csrf())
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

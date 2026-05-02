@@ -1,0 +1,80 @@
+Great direction — reliability scoring is genuinely additive to the engine. Let me read the match engine and users schema in parallel before writing anything:
+
+
+5 actions
+Let me read the rest of the scoring function and relevant OpenAPI schemas in parallel:
+
+
+8 actions
+Got the full picture. Let me read the matches route (ready/late endpoints) before writing:
+
+
+3 actions
+Now I have the full picture. All pieces at once — schema, DB push, hooks, engine, API, UI — everything in parallel:
+
+
+3 actions
+I have all the context. Let me write all changes simultaneously — schema, OpenAPI, routes, engine, and UI:
+
+
+3 actions
+Now pushing the DB schema and running codegen in parallel while I write all three route/engine files:
+
+
+6 actions
+Need to add sql and and to the imports in matches.ts, then do the engine, admin route, and admin UI all in parallel:
+
+
+4 actions
+Continuing — apply the reliability bonus to the group merge scorer, add the columns to the route query, update the admin route and UI, all in parallel:
+
+
+4 actions
+Now running codegen and updating the admin UI in parallel:
+
+
+3 actions
+Codegen done. Now updating the Users tab in the admin UI to show reliability badges:
+
+
+2 actions
+Let me typecheck both packages and restart the server in parallel:
+
+
+3 actions
+Both packages are clean — only the two pre-existing errors remain. Restarting the server and taking a screenshot:
+
+
+4 actions
+Admin requires a login — let me do a quick API-level smoke test and check logs to confirm everything is wired correctly:
+
+
+3 actions
+Everything is live and clean. The API response already shows the new fields:
+
+"onTimeCount": 0, "lateCount": 0, "reliabilityScore": 0
+
+Here's a complete summary of the Reliability Scoring system that was just built:
+
+What was built — 5 integrated layers:
+
+1. Database counters — on_time_count and late_count added directly to the users table. Zero schema bloat, always up to date.
+
+2. Event hooks (existing actions, new side effects)
+
+Tapping "I'm Ready" → increments onTimeCount once per match (guard prevents double-counting if tapped again)
+Tapping "Running Late" → increments lateCount once per match, same guard
+3. Match engine influence — Formula: score = (onTimeCount × 1.0) + (lateCount × -0.5). Applied to both pair scoring and group-of-3 merge scoring:
+
+Both/all reliable (avg ≥ 2): +10 bonus — they rise to the top of the candidate list
+At least one frequently late (avg ≤ -1): −10 penalty — pushed down in preference
+4. Admin Users tab — Each user now shows a colour-coded badge:
+
+Reliable (green) — score ≥ 2
+Average (blue) — score between −1 and 2
+Often Late (red) — score ≤ −1
+New (grey) — no events yet
+Sub-label shows raw counts: 3✓ 1✗
+5. Fully internal — Nothing is exposed to employees. No public ranking, no shame, no notification. Pure engine intelligence.
+
+Next, I can add a scheduled "readiness reminder" that sends a WhatsApp nudge 30 minutes before shift to users who haven't tapped "I'm Ready" yet — prioritizing "Often Late" users to get them to confirm earlier. Would you like me to do that?

@@ -1,0 +1,168 @@
+You’ve diagnosed the issue correctly—this isn’t a controller bug, it’s a **MockMvc vs context-path mismatch**. Spring Boot does **not** automatically apply `server.servlet.context-path` in MockMvc, so your requests are effectively hitting:
+
+```
+/api/api/ships   ❌ (what Spring thinks)
+```
+
+instead of:
+
+```
+/api/ships       ✅ (actual mapping)
+```
+
+---
+
+# ✅ Correct Fix
+
+You need to explicitly set the context path in every MockMvc request:
+
+```java
+mockMvc.perform(post("/ships")
+        .contextPath("/api")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content(requestJson)
+        .header("Authorization", "Bearer " + jwt))
+```
+
+### Why this works:
+
+* `.contextPath("/api")` tells MockMvc:
+
+  > “Pretend this request is coming through `/api` as the servlet root”
+
+* Then `/ships` maps correctly to:
+
+  ```
+  /api/ships
+  ```
+
+---
+
+# ⚠️ Common Mistake (Avoid This)
+
+Do **NOT** do this:
+
+```java
+post("/api/ships")   // ❌ wrong in MockMvc with contextPath
+```
+
+Combined with `.contextPath("/api")`, this becomes:
+
+```
+/api/api/ships
+```
+
+---
+
+# 🔧 Apply This Consistently
+
+Update all requests in `ShipCreationIntegrationTest`:
+
+### POST
+
+```java
+post("/ships").contextPath("/api")
+```
+
+### GET
+
+```java
+get("/ships/{id}", shipId).contextPath("/api")
+```
+
+### Any other endpoint
+
+Same pattern.
+
+---
+
+# 🧪 Optional Improvement (Cleaner Setup)
+
+Instead of repeating `.contextPath("/api")` everywhere, you can centralize it:
+
+```java
+@BeforeEach
+void setup() {
+    this.mockMvc = MockMvcBuilders.webAppContextSetup(context)
+        .defaultRequest(get("/").contextPath("/api"))
+        .build();
+}
+```
+
+👉 Then all requests inherit the context path automatically.
+
+---
+
+# 🔍 What This Reveals (Architectural Insight)
+
+This bug is a symptom of:
+
+* Tight coupling between:
+
+  * Deployment config (`/api`)
+  * Test assumptions (root `/`)
+
+👉 In production:
+
+* Reverse proxies (NGINX, API Gateway) often handle this
+
+👉 In tests:
+
+* You must simulate it explicitly
+
+---
+
+# ✅ After This Fix, Validate 3 Things
+
+Once tests pass, don’t stop—verify actual behavior:
+
+### 1. Ship persistence
+
+* Confirm document exists in MongoDB
+* Validate fields (not just status 200)
+
+### 2. Score side effects
+
+* XP increment actually stored
+* Idempotency still holds
+
+### 3. Response correctness
+
+* JSON matches real DTO (not assumptions)
+
+---
+
+# 🚀 Where You Stand Now
+
+You’ve progressed significantly:
+
+| Stage                               | Status              |
+| ----------------------------------- | ------------------- |
+| Broken tests                        | ❌                   |
+| Mock-only safety net                | ⚠️                  |
+| Integration tests (real DB + Redis) | ✅ (almost complete) |
+
+👉 After this fix, you’ll have:
+
+> **A materially reliable backend validation layer**
+
+---
+
+# 📌 Final Note
+
+This is exactly the kind of issue that:
+
+* Never shows up in unit tests
+* Breaks real environments
+* Is caught only via integration testing
+
+👉 Which means your shift away from mock-only tests is already paying off.
+
+---
+
+If you want next:
+
+* I can help you **validate the scoring side-effects in DB (very important)**
+* Or design a **feed ranking correctness test (edge-case heavy)**
+
+Those are your next hidden risk zones.
