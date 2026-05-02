@@ -1,0 +1,28 @@
+modules = ["java-graalvm22.3", "nodejs-20", "web"]
+[agent]
+expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+MONGODB_URI = "mongodb://localhost:27017/shipspace"
+REDIS_HOST = "localhost"
+REDIS_PORT = "6379"
+REDIS_PASSWORD = ""
+PORT = "8080"
+CORS_ALLOWED_ORIGINS = "http://localhost:5000,http://localhost:3000,http://localhost:5173"
+JWT_EXPIRATION = "900000"
+JWT_REFRESH_EXPIRATION = "604800000"
+SWAGGER_ENABLED = "true"
+RATE_LIMIT_ENABLED = "true"
+CACHE_ENABLED = "true"
+DECAY_ENABLED = "true"
+AUDIT_ENABLED = "true"
+DEMO_MODE = "false"
+GITHUB_REDIRECT_URI = "http://localhost:5000/auth/callback"
+MULTIBASE_API_URL = "http://localhost:5001"
+MULTIBASE_API_KEY = ""
