@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shipspace.dto.ProjectCreateRequest;
 import com.shipspace.dto.ProjectResponse;
 import com.shipspace.dto.ProjectUpdateRequest;
+import com.shipspace.dto.ShipResponse;
 import com.shipspace.exception.ForbiddenException;
 import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.ExternalLink;
@@ -18,6 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -345,8 +347,15 @@ class ProjectControllerTest {
                         .build()
         );
 
-        Page<Ship> shipPage = new PageImpl<>(ships);
+        Page<Ship> shipPage = new PageImpl<>(ships, PageRequest.of(0, 20), ships.size());
         when(projectService.getProjectShips(testProjectId, 0, 20)).thenReturn(shipPage);
+        when(dtoMapper.toShipResponse(any(Ship.class))).thenAnswer(invocation -> {
+            Ship s = invocation.getArgument(0);
+            return ShipResponse.builder()
+                    .id(s.getId()).userId(s.getUserId()).projectId(s.getProjectId())
+                    .content(s.getContent()).likeCount(s.getLikeCount())
+                    .commentCount(s.getCommentCount()).build();
+        });
 
         // Act & Assert
         mockMvc.perform(get("/api/projects/{projectId}/ships", testProjectId))
@@ -377,8 +386,13 @@ class ProjectControllerTest {
                         .build()
         );
 
-        Page<Ship> shipPage = new PageImpl<>(ships);
+        Page<Ship> shipPage = new PageImpl<>(ships, PageRequest.of(1, 10), ships.size());
         when(projectService.getProjectShips(testProjectId, 1, 10)).thenReturn(shipPage);
+        when(dtoMapper.toShipResponse(any(Ship.class))).thenAnswer(invocation -> {
+            Ship s = invocation.getArgument(0);
+            return ShipResponse.builder()
+                    .id(s.getId()).content(s.getContent()).build();
+        });
 
         // Act & Assert
         mockMvc.perform(get("/api/projects/{projectId}/ships", testProjectId)
@@ -396,7 +410,7 @@ class ProjectControllerTest {
     @DisplayName("GET /api/projects/{projectId}/ships - Should return empty page when no ships")
     void getProjectShips_EmptyPage() throws Exception {
         // Arrange
-        Page<Ship> emptyPage = new PageImpl<>(Arrays.asList());
+        Page<Ship> emptyPage = new PageImpl<>(Arrays.asList(), PageRequest.of(0, 20), 0);
         when(projectService.getProjectShips(testProjectId, 0, 20)).thenReturn(emptyPage);
 
         // Act & Assert

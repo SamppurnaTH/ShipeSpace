@@ -173,7 +173,7 @@ class RankSummaryControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.level").value(30))
                 .andExpect(jsonPath("$.rank").value("FLEET_ADMIRAL"))
-                .andExpect(jsonPath("$.nextLevelScore").value(nullValue()));
+                .andExpect(jsonPath("$.nextLevelScore").doesNotExist());
 
         verify(userService).getUserById(testUserId);
         verify(shipScoreService).calculateNextLevelScore(30, 1200);

@@ -18,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -208,7 +209,7 @@ class UserControllerTest {
                 ProjectResponse.builder().id("proj2").userId(testUserId).name("Project 2").build()
         );
 
-        Page<ProjectResponse> projectPage = new PageImpl<>(projects);
+        Page<ProjectResponse> projectPage = new PageImpl<>(projects, PageRequest.of(0, 20), projects.size());
         when(userService.getUserProjects(eq(testUserId), any(Pageable.class))).thenReturn(projectPage);
 
         // Act & Assert
@@ -294,7 +295,7 @@ class UserControllerTest {
     void getCurrentUserProjects_EmptyList() throws Exception {
         // Arrange
         when(userService.getUserProjects(eq(testUserId), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Arrays.asList()));
+                .thenReturn(new PageImpl<>(Arrays.asList(), PageRequest.of(0, 20), 0));
 
         // Act & Assert
         mockMvc.perform(get("/api/users/me/projects"))
