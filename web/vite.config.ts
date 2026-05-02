@@ -7,6 +7,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5000,
     allowedHosts: 'all',
+    headers: {
+      'X-Frame-Options': 'ALLOWALL',
+      'Content-Security-Policy': "frame-ancestors *",
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
