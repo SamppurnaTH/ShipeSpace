@@ -254,11 +254,11 @@ resilience4j:
 logging:
   level:
     root: INFO
-    com.shipspace: DEBUG
-    org.springframework.data.mongodb: INFO
-    org.springframework.security: INFO
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
+    com.shipspace: INFO
+    org.springframework.data.mongodb: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

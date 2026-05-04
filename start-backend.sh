@@ -8,8 +8,16 @@ if ! pgrep -x mongod > /dev/null; then
          --logpath /tmp/mongodb-log/mongod.log \
          --port 27017 \
          --bind_ip 127.0.0.1 \
+         --replSet rs0 \
          --fork
   echo "MongoDB started"
+  # Initialise replica set if not already done
+  sleep 2
+  mongosh --quiet --eval "
+    try { rs.status().ok } catch(e) {
+      rs.initiate({_id:'rs0',members:[{_id:0,host:'127.0.0.1:27017'}]});
+    }
+  " || true
 else
   echo "MongoDB already running"
 fi
@@ -28,5 +36,13 @@ fi
 echo "=== Waiting for services ==="
 sleep 2
 
-echo "=== Building and starting Spring Boot ==="
-exec mvn spring-boot:run -Dmaven.test.skip=true -Dspring-boot.run.jvmArguments="-Xms256m -Xmx512m"
+echo "=== Building production JAR ==="
+mvn -B package -DskipTests -q
+
+echo "=== Starting ShipSpace (production) ==="
+exec java \
+  -XX:+UseContainerSupport \
+  -XX:MaxRAMPercentage=75.0 \
+  -XX:+ExitOnOutOfMemoryError \
+  -Djava.security.egd=file:/dev/./urandom \
+  -jar target/shipspace-mvp-1.0.0.jar
