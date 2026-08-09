@@ -5,11 +5,11 @@ import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.User;
 import com.shipspace.repository.ScoreEventLogRepository;
 import com.shipspace.repository.UserRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -42,12 +42,15 @@ class ShipScoreServiceTest {
     @Mock
     private ScoreEventLogRepository scoreEventLogRepository;
 
-    @InjectMocks
     private ShipScoreService shipScoreService;
 
     @BeforeEach
     void setUp() {
-        // Service is initialized with mocked repositories via @InjectMocks
+        shipScoreService = new ShipScoreService(
+            userRepository,
+            scoreEventLogRepository,
+            new SimpleMeterRegistry()
+        );
     }
 
     // ========== calculateLevel Tests ==========
@@ -386,7 +389,10 @@ class ShipScoreServiceTest {
         String entityId = "project456";
 
         // Mock: Event does not exist in the log
-        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(userId, eventType, entityId))
+        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
+            org.mockito.ArgumentMatchers.eq(userId),
+            org.mockito.ArgumentMatchers.eq(eventType),
+            org.mockito.ArgumentMatchers.anyString()))
             .thenReturn(false);
 
         // Mock: User exists with initial score
@@ -459,7 +465,10 @@ class ShipScoreServiceTest {
         String entityId = "project456";
 
         // Mock: Event is not a duplicate
-        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(userId, eventType, entityId))
+        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
+            org.mockito.ArgumentMatchers.eq(userId),
+            org.mockito.ArgumentMatchers.eq(eventType),
+            org.mockito.ArgumentMatchers.anyString()))
             .thenReturn(false);
 
         // Mock: User has only 4 PROJECT_UPDATED events today (under cap of 5)
@@ -494,7 +503,10 @@ class ShipScoreServiceTest {
         String entityId = "project456";
 
         // Mock: Event is not a duplicate
-        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(userId, eventType, entityId))
+        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
+            org.mockito.ArgumentMatchers.eq(userId),
+            org.mockito.ArgumentMatchers.eq(eventType),
+            org.mockito.ArgumentMatchers.anyString()))
             .thenReturn(false);
 
         // Mock: User has already reached the daily cap of 5 PROJECT_UPDATED events
@@ -520,7 +532,10 @@ class ShipScoreServiceTest {
         String entityId = "project456";
 
         // Mock: Event is not a duplicate
-        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(userId, eventType, entityId))
+        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(
+            org.mockito.ArgumentMatchers.eq(userId),
+            org.mockito.ArgumentMatchers.eq(eventType),
+            org.mockito.ArgumentMatchers.anyString()))
             .thenReturn(false);
 
         // Mock: User has exceeded the daily cap (6 events when cap is 5)

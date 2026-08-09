@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { TopNav } from './components/TopNav'
 import { LeftPanel } from './components/LeftPanel'
@@ -7,7 +7,7 @@ import { RightPanel } from './components/RightPanel'
 import { BottomNav } from './components/BottomNav'
 import { ToastContainer } from './components/Toast'
 import { CreateShipModal } from './components/CreateShipModal'
-import { Spinner } from './components/Spinner'
+import { PageLoader } from './components/common/Loading'
 
 // Pages
 import { FeedPage } from './pages/FeedPage'
@@ -22,25 +22,33 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ErrorPage } from './pages/ErrorPage'
 import { EmptyStatePage } from './pages/EmptyStatePage'
-import { DebugPage } from './pages/DebugPage'
 import { SearchPage } from './pages/SearchPage'
 import { CollaborationsPage } from './pages/CollaborationsPage'
-import { ContentDetailPage } from './pages/ContentDetailPage'
+import { AuthenticatedHomePage } from './components/home/AuthenticatedHomePage'
+import {
+  AdminAccessRequired,
+  AdminDashboardPage,
+  AdminForbiddenPage,
+  AdminReportsPage,
+  AdminUserDetailPage,
+  AdminUsersPage,
+} from './pages/admin/AdminConsole'
 
 function LoadingScreen() {
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      minHeight: '100vh', gap: 16,
-    }}>
-      <span style={{ fontSize: 32 }}>🚀</span>
-      <Spinner size={24} />
-    </div>
-  )
+  return <PageLoader message="Preparing your builder workspace..." />
 }
 
-function AppShell({ children, rightPanel = true }: { children: React.ReactNode; rightPanel?: boolean }) {
+function AppShell({
+  children,
+  rightPanel = true,
+  leftPanel = true,
+  wideMain = false,
+}: {
+  children: React.ReactNode
+  rightPanel?: boolean
+  leftPanel?: boolean
+  wideMain?: boolean
+}) {
   const { user } = useAuth()
   const [showCreateShip, setShowCreateShip] = useState(false)
 
@@ -59,7 +67,7 @@ function AppShell({ children, rightPanel = true }: { children: React.ReactNode; 
         minHeight: 'calc(100vh - var(--header-height))',
       }}>
         {/* Left panel — profile card (desktop only) */}
-        {user && (
+        {user && leftPanel && (
           <div className="side-nav-desktop" style={{ position: 'sticky', top: 'calc(var(--header-height) + 16px)' }}>
             <LeftPanel />
           </div>
@@ -69,7 +77,7 @@ function AppShell({ children, rightPanel = true }: { children: React.ReactNode; 
         <main style={{
           flex: 1,
           minWidth: 0,
-          maxWidth: 'var(--col-center-width)',
+          maxWidth: wideMain ? 'none' : 'var(--col-center-width)',
           paddingBottom: 80,
         }}>
           {children}
@@ -98,6 +106,25 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <AdminAccessRequired />
+  if (!user.roles?.some(role => role === 'ADMIN' || role === 'ROLE_ADMIN')) return <AdminForbiddenPage />
+  return <>{children}</>
+}
+
+function ProtectedHomeRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/" />
+  return (
+    <AppShell leftPanel={false} rightPanel={false} wideMain>
+      <AuthenticatedHomePage />
+    </AppShell>
+  )
+}
+
 function PublicWithShell({ children }: { children: React.ReactNode }) {
   const { loading } = useAuth()
   if (loading) return <LoadingScreen />
@@ -116,6 +143,18 @@ function CreateShipRoute() {
   const { user } = useAuth()
 
   if (!user) return <Navigate to="/" />
+  if (user.banned) {
+    return (
+      <AppShell>
+        <div className="blocked-write-panel" role="status">
+          <p className="home-eyebrow">Writes blocked</p>
+          <h1>Ship creation is unavailable for this account.</h1>
+          <p>You can still browse public ships, view builders, and manage your session.</p>
+        </div>
+        <FeedPage />
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -128,6 +167,11 @@ function CreateShipRoute() {
   )
 }
 
+function ContentRedirectRoute() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={id ? `/ships/${id}` : '/trending'} replace />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -135,22 +179,27 @@ function AppRoutes() {
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
       <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
+      <Route path="/signup" element={<PublicRoute><AuthPage /></PublicRoute>} />
 
       {/* Protected */}
-      <Route path="/feed" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+      <Route path="/feed" element={<ProtectedHomeRoute />} />
       <Route path="/feed/personalized" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
       <Route path="/ships/new" element={<CreateShipRoute />} />
       <Route path="/ships/:id" element={<PublicWithShell><ShipDetailPage /></PublicWithShell>} />
-      <Route path="/content/:id" element={<PublicWithShell><ContentDetailPage /></PublicWithShell>} />
+      <Route path="/content/:id" element={<ContentRedirectRoute />} />
       <Route path="/profile/:id" element={<PublicWithShell><ProfilePage /></PublicWithShell>} />
       <Route path="/projects" element={<ProtectedRoute><ProjectListPage /></ProtectedRoute>} />
       <Route path="/projects/:id" element={<PublicWithShell><ProjectDetailPage /></PublicWithShell>} />
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/collaborations" element={<ProtectedRoute><CollaborationsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/trending" element={<PublicWithShell><FeedPage /></PublicWithShell>} />
+      <Route path="/trending" element={<PublicWithShell><FeedPage feedType="trending" /></PublicWithShell>} />
       <Route path="/search" element={<PublicWithShell><SearchPage /></PublicWithShell>} />
-      <Route path="/debug" element={<ProtectedRoute><DebugPage /></ProtectedRoute>} />
+
+      <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
+      <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetailPage /></AdminRoute>} />
+      <Route path="/admin/reports" element={<AdminRoute><AdminReportsPage /></AdminRoute>} />
 
       {/* Utility */}
       <Route path="/error/:code" element={<ErrorPage />} />

@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { getShip, getComments, likeShip, unlikeShip, addComment, deleteShip } from '../api/endpoints'
-import { Spinner } from '../components/Spinner'
 import { Badge } from '../components/Badge'
 import { CommentThread } from '../components/CommentThread'
 import { Modal } from '../components/Modal'
 import { toastSuccess, toastError } from '../components/Toast'
+import { ButtonLoader, ShipCardSkeleton } from '../components/common/Loading'
+import { Icon } from '../components/Icon'
 
 interface ShipDetail {
   id: string
@@ -67,6 +68,10 @@ export function ShipDetailPage() {
 
   const handleLike = async () => {
     if (!ship || !me) return
+    if (me.banned) {
+      toastError('Writes are blocked for this account.')
+      return
+    }
     const was = liked
     setLiked(!was)
     setShip(prev => prev ? { ...prev, likeCount: prev.likeCount + (was ? -1 : 1) } : prev)
@@ -80,6 +85,10 @@ export function ShipDetailPage() {
 
   const handleComment = async () => {
     if (!id || !commentText.trim()) return
+    if (me?.banned) {
+      toastError('Writes are blocked for this account.')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await addComment(id, commentText.trim())
@@ -123,22 +132,33 @@ export function ShipDetailPage() {
   }
 
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}><Spinner size={28} /></div>
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-4)' }} aria-busy="true">
+        <ShipCardSkeleton media />
+        <div className="skeleton-card">
+          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}>
+            COMMENTS
+          </div>
+          <ShipCardSkeleton />
+        </div>
+      </div>
+    )
   }
 
   if (!ship) {
     return (
       <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
-        <div style={{ fontSize: 48, marginBottom: 'var(--space-3)' }}>🔍</div>
+        <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="search" size={48} /></div>
         <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>Ship not found</div>
         <Link to="/feed" style={{ color: 'var(--color-brand)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-3)', display: 'inline-block' }}>
-          ← Back to feed
+          Back to feed
         </Link>
       </div>
     )
   }
 
   const isOwner = me && (ship.userId === me.id || ship.user?.username === me.username)
+  const isWriteBlocked = Boolean(me?.banned)
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-4)' }}>
@@ -153,7 +173,7 @@ export function ShipDetailPage() {
           padding: '4px 0',
         }}
       >
-        ← Back
+        <Icon name="chevronLeft" size={16} /> Back
       </button>
 
       {/* Ship card */}
@@ -193,7 +213,7 @@ export function ShipDetailPage() {
               {ship.project && (
                 <Link to={`/projects/${ship.project.id}`}
                   style={{ fontSize: 'var(--text-sm)', color: 'var(--color-brand)', textDecoration: 'none' }}>
-                  {ship.project.name} →
+                  {ship.project.name}
                 </Link>
               )}
               <time style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
@@ -243,7 +263,7 @@ export function ShipDetailPage() {
                   transition: 'all var(--transition-fast)',
                 }}
               >
-                🔗 {link.type || 'Link'}
+                <Icon name="externalLink" size={14} /> {link.type || 'Link'}
               </a>
             ))}
           </div>
@@ -255,16 +275,16 @@ export function ShipDetailPage() {
           borderTop: '1px solid var(--color-border)',
           paddingTop: 'var(--space-3)',
         }}>
-          <button onClick={handleLike} disabled={!me} style={{
+          <button onClick={handleLike} disabled={!me || isWriteBlocked} style={{
             display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
             background: liked ? 'var(--color-like-bg)' : 'none',
             border: 'none', borderRadius: 'var(--radius-sm)',
-            padding: '6px 12px', cursor: me ? 'pointer' : 'default',
+            padding: '6px 12px', cursor: me && !isWriteBlocked ? 'pointer' : 'default',
             color: liked ? 'var(--color-like)' : 'var(--color-text-muted)',
             fontSize: 'var(--text-sm)', fontFamily: 'inherit',
             transition: 'all var(--transition-fast)',
           }}>
-            <span style={{ fontSize: 16 }}>{liked ? '♥' : '♡'}</span>
+            <Icon name="thumb" size={16} />
             {ship.likeCount}
           </button>
 
@@ -272,7 +292,7 @@ export function ShipDetailPage() {
             display: 'flex', alignItems: 'center', gap: 'var(--space-1)',
             fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)',
           }}>
-            <span>💬</span> {ship.commentCount}
+            <Icon name="comment" size={16} /> {ship.commentCount}
           </span>
 
           {/* Edit window countdown */}
@@ -286,7 +306,7 @@ export function ShipDetailPage() {
               fontSize: 'var(--text-xs)', fontWeight: 600,
               color: 'var(--color-warning)',
             }}>
-              ✏️ Edit closes in {fmtCountdown(editCountdown)}
+              <Icon name="edit" size={14} /> Edit closes in {fmtCountdown(editCountdown)}
             </span>
           )}
 
@@ -303,7 +323,7 @@ export function ShipDetailPage() {
               onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error)'; e.currentTarget.style.background = 'var(--color-error-bg)' }}
               onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'none' }}
             >
-              🗑 Delete
+              <Icon name="trash" size={14} /> Delete
             </button>
           )}
         </div>
@@ -321,7 +341,13 @@ export function ShipDetailPage() {
         </div>
 
         {/* Comment compose */}
-        {me && (
+        {isWriteBlocked && (
+          <div className="blocked-write-banner" role="status">
+            Writes are blocked for this account. You can still read public ships and comments.
+          </div>
+        )}
+
+        {me && !isWriteBlocked && (
           <div style={{
             display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-5)',
             padding: 'var(--space-3)',
@@ -368,7 +394,7 @@ export function ShipDetailPage() {
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  {submitting ? 'Posting...' : 'Post'}
+                  {submitting ? <ButtonLoader label="Posting..." /> : 'Post'}
                 </button>
               </div>
             </div>
@@ -377,8 +403,8 @@ export function ShipDetailPage() {
 
         {/* Comments list */}
         {commentsLoading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)' }}>
-            <Spinner size={20} />
+          <div aria-busy="true">
+            <ShipCardSkeleton />
           </div>
         ) : comments.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 'var(--space-6)', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>

@@ -1,10 +1,13 @@
 import { useParams, Link } from 'react-router-dom'
+import { Icon } from '../components/Icon'
 
-const ERROR_CONFIG: Record<string, { icon: string; title: string; message: string }> = {
-  '404': { icon: '🔭', title: 'Page not found', message: "This page doesn't exist or was moved." },
-  '429': { icon: '⏱', title: 'Too many requests', message: 'Slow down — you\'re being rate limited. Try again in a moment.' },
-  '503': { icon: '⚡', title: 'Service unavailable', message: 'The server is under high load. Hang tight and retry shortly.' },
-  'default': { icon: '💥', title: 'Something went wrong', message: 'An unexpected error occurred.' },
+type ErrorIcon = Parameters<typeof Icon>[0]['name']
+
+const ERROR_CONFIG: Record<string, { icon: ErrorIcon; title: string; message: string }> = {
+  '404': { icon: 'search', title: 'Page not found', message: "This page doesn't exist or was moved." },
+  '429': { icon: 'alert', title: 'Too many requests', message: "You're being rate limited. Try again in a moment." },
+  '503': { icon: 'alert', title: 'Service unavailable', message: 'The server is under high load. Retry shortly.' },
+  default: { icon: 'alert', title: 'Something went wrong', message: 'An unexpected error occurred.' },
 }
 
 export function ErrorPage() {
@@ -17,7 +20,9 @@ export function ErrorPage() {
       justifyContent: 'center', minHeight: '100vh',
       background: 'var(--color-bg)', textAlign: 'center', padding: 'var(--space-6)',
     }}>
-      <div style={{ fontSize: 56, marginBottom: 'var(--space-5)' }}>{cfg.icon}</div>
+      <div style={{ display: 'inline-flex', marginBottom: 'var(--space-5)', color: 'var(--color-brand)' }}>
+        <Icon name={cfg.icon} size={56} />
+      </div>
       {code && (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
           HTTP {code}
@@ -30,10 +35,11 @@ export function ErrorPage() {
         {cfg.message}
       </p>
       <Link to="/" style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         padding: '10px 24px', borderRadius: 'var(--radius-md)', border: 'none',
         background: 'linear-gradient(135deg, var(--color-brand), var(--color-brand-dim))',
-        color: '#fff', fontWeight: 600, fontSize: 'var(--text-sm)',
-      }}>← Go Home</Link>
+        color: '#fff', fontWeight: 600, fontSize: 'var(--text-sm)', textDecoration: 'none',
+      }}>Go home</Link>
     </div>
   )
 }

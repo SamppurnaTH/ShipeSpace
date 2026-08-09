@@ -70,7 +70,7 @@ export function RightPanel() {
               >
                 <div>
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 1 }}>
-                    #{i + 1} · Tech
+                    #{i + 1} - Tech
                   </div>
                   <div style={{
                     fontSize: 'var(--text-sm)', fontWeight: 600,
@@ -100,7 +100,7 @@ export function RightPanel() {
             onMouseEnter={e => e.currentTarget.style.background = 'var(--color-brand-light)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            Show more →
+            Show more
           </Link>
         </div>
       )}
@@ -110,7 +110,7 @@ export function RightPanel() {
         {['About', 'Help', 'Privacy', 'Terms'].map(l => (
           <span key={l} style={{ fontSize: 10, color: 'var(--color-text-muted)', cursor: 'default' }}>{l}</span>
         ))}
-        <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>· ShipSpace © 2025</span>
+        <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>- ShipSpace (c) 2025</span>
       </div>
     </aside>
   )

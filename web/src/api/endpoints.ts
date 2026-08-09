@@ -1,6 +1,55 @@
 import { api } from './client'
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+  first?: boolean
+  last?: boolean
+  empty?: boolean
+}
+
+export interface AdminUser {
+  id: string
+  githubId?: string
+  username: string
+  email?: string
+  avatarUrl?: string
+  bio?: string
+  location?: string
+  websiteUrl?: string
+  followerCount?: number
+  followingCount?: number
+  projectCount?: number
+  shipScore?: number
+  level?: number
+  rank?: string
+  roles?: string[]
+  banned?: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface AdminReport {
+  id: string
+  reporterId?: string
+  targetId?: string
+  targetType?: 'SHIP' | 'PROJECT' | 'USER' | 'COMMENT'
+  reason?: 'SPAM' | 'HARASSMENT' | 'INAPPROPRIATE_CONTENT' | 'MISINFORMATION' | 'OTHER'
+  details?: string
+  status?: 'PENDING' | 'REVIEWED' | 'DISMISSED' | 'ACTION_TAKEN'
+  resolvedBy?: string
+  resolutionNote?: string
+  createdAt?: string
+  resolvedAt?: string
+}
+
+export interface AdminStats {
+  totalUsers: number
+  pendingReports: number
+}
 
 export const authGitHub = (code: string, state: string) =>
   api.post('/auth/github', { code, state })
@@ -17,8 +66,6 @@ export const getMe = () =>
 export const logout = (refreshToken?: string) =>
   api.post('/auth/logout', refreshToken ? { refreshToken } : undefined)
 
-// ── Users ─────────────────────────────────────────────────────────────────────
-
 export const getUserProfile = (userId: string) =>
   api.get(`/users/${userId}`)
 
@@ -27,8 +74,6 @@ export const updateMyProfile = (data: { bio?: string; location?: string; website
 
 export const getMyActivity = (page = 0, size = 20) =>
   api.get('/users/me/activity', { params: { page, size } })
-
-// ── Social ────────────────────────────────────────────────────────────────────
 
 export const followUser = (userId: string) =>
   api.post(`/social/follow/${userId}`)
@@ -51,8 +96,6 @@ export const getSentCollabs = (page = 0, size = 20) =>
 export const getRankSummary = (userId: string) =>
   api.get(`/v1/users/${userId}/rank-summary`)
 
-// ── Feed ──────────────────────────────────────────────────────────────────────
-
 export const getTrendingFeed = (page = 0, size = 20) =>
   api.get('/feeds/trending', { params: { page, size } })
 
@@ -64,8 +107,6 @@ export const getPersonalizedFeed = (page = 0, size = 20) =>
 
 export const getFollowingFeed = (page = 0, size = 20) =>
   api.get('/feeds/following', { params: { page, size } })
-
-// ── Ships ─────────────────────────────────────────────────────────────────────
 
 export const createShip = (data: { projectId: string; content: string; externalLinks?: { url: string; type: string }[] }) =>
   api.post('/ships', data)
@@ -84,15 +125,11 @@ export const uploadShipImages = (shipId: string, formData: FormData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 
-// ── Engagement ────────────────────────────────────────────────────────────────
-
 export const likeShip = (shipId: string) =>
   api.put(`/ships/${shipId}/like`)
 
 export const unlikeShip = (shipId: string) =>
   api.delete(`/ships/${shipId}/like`)
-
-// ── Comments ──────────────────────────────────────────────────────────────────
 
 export const getComments = (shipId: string, page = 0, size = 20) =>
   api.get(`/ships/${shipId}/comments`, { params: { page, size } })
@@ -105,8 +142,6 @@ export const deleteComment = (commentId: string) =>
 
 export const upvoteComment = (commentId: string) =>
   api.put(`/ships/comments/${commentId}/upvote`)
-
-// ── Projects ──────────────────────────────────────────────────────────────────
 
 export const createProject = (data: {
   name: string; description: string;
@@ -135,8 +170,6 @@ export const getMyProjects = () =>
 export const getUserShips = (userId: string, page = 0, size = 20) =>
   api.get(`/users/${userId}/ships`, { params: { page, size } })
 
-// ── Notifications ─────────────────────────────────────────────────────────────
-
 export const getNotifications = (page = 0, size = 20) =>
   api.get('/notifications', { params: { page, size } })
 
@@ -148,8 +181,6 @@ export const markNotificationRead = (notificationId: string) =>
 
 export const markAllNotificationsRead = () =>
   api.put('/notifications/read-all')
-
-// ── Collaborations ────────────────────────────────────────────────────────────
 
 export const requestCollaboration = (projectId: string, message?: string) =>
   api.post('/collaborations', { projectId, message })
@@ -163,7 +194,26 @@ export const acceptCollaboration = (collabId: string) =>
 export const declineCollaboration = (collabId: string) =>
   api.post(`/collaborations/${collabId}/decline`)
 
-// ── Search ────────────────────────────────────────────────────────────────────
-
 export const searchShipsAndUsers = (query: string, size = 10) =>
   api.get<{ users: any[]; ships: any[] }>('/search', { params: { q: query, size } })
+
+export const getAdminStats = () =>
+  api.get<AdminStats>('/admin/stats')
+
+export const getAdminUsers = (page = 0, size = 20) =>
+  api.get<PageResponse<AdminUser>>('/admin/users', { params: { page, size } })
+
+export const getAdminUser = (userId: string) =>
+  api.get<AdminUser>(`/admin/users/${userId}`)
+
+export const banAdminUser = (userId: string) =>
+  api.patch<{ userId: string; banned: boolean }>(`/admin/users/${userId}/ban`, { banned: 'true' })
+
+export const unbanAdminUser = (userId: string) =>
+  api.patch<{ userId: string; banned: boolean }>(`/admin/users/${userId}/ban`, { banned: 'false' })
+
+export const getAdminReports = (status = 'PENDING', page = 0, size = 20) =>
+  api.get<PageResponse<AdminReport>>('/admin/reports', { params: { status, page, size } })
+
+export const resolveAdminReport = (reportId: string, status: AdminReport['status'], note = '') =>
+  api.patch<AdminReport>(`/admin/reports/${reportId}/resolve`, { status, note })

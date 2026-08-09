@@ -56,13 +56,15 @@ Every piece of content on ShipSpace is a **Ship** — a project update anchored 
 | **Primary Database** | MongoDB 6+ | Users, ships, projects, notifications |
 | **Cache** | Redis 7+ (Lettuce client) | Trending feed, rate limiting, token blacklist |
 | **Authentication** | GitHub OAuth 2.0 + JWT (JJWT 0.12.3) | Secure, builder-quality identity |
-| **Image Storage** | Multibase (content-addressed) | Immutable media, EXIF-stripped |
+| **Image Storage** | Multibase (content-addressed) | Image upload backend integration |
 | **Reverse Proxy** | Nginx | SSL termination, routing |
 | **API Docs** | SpringDoc OpenAPI 3 (Swagger UI) | Dev/staging only |
 | **Async Processing** | Spring `@Async` + bounded thread pool | Non-blocking background tasks |
 | **Scheduled Jobs** | Spring `@Scheduled` | Score decay, trending recalculation |
 | **Containerization** | Docker + Docker Compose | Portable, reproducible deployments |
 | **CI/CD** | GitHub Actions | Lint, type-check, automated tests |
+
+> Current implementation note: the frontend is React/Vite, the backend is Spring Boot, and persistence is MongoDB/Redis. Older Supabase/Postgres/Next.js architecture notes are not part of the current MVP implementation.
 
 ---
 
@@ -181,6 +183,7 @@ Gamified reputation system that rewards consistent shipping and meaningful engag
 | Method | Endpoint | Auth | Description |
 |--------|----------|:----:|-------------|
 | `GET` | `/users/{id}` | — | Public profile |
+| `GET` | `/users/{id}/ships` | — | Public ships for a user |
 | `PUT` | `/users/me` | ✅ | Update own profile |
 | `GET` | `/users/me/projects` | ✅ | List my projects |
 | `GET` | `/users/me/activity` | ✅ | My activity timeline |
@@ -204,7 +207,8 @@ Gamified reputation system that rewards consistent shipping and meaningful engag
 | `PUT` | `/ships/{id}` | ✅ | Edit ship (10-min window) |
 | `DELETE` | `/ships/{id}` | ✅ | Delete ship |
 | `POST` | `/ships/{id}/images` | ✅ | Upload images |
-| `POST` | `/ships/{id}/like` | ✅ | Toggle like (🚀) |
+| `PUT` | `/ships/{id}/like` | ✅ | Like a ship |
+| `DELETE` | `/ships/{id}/like` | ✅ | Unlike a ship |
 | `POST` | `/ships/{id}/comments` | ✅ | Add comment |
 | `GET` | `/ships/{id}/comments` | — | Get comments |
 | `DELETE` | `/ships/comments/{id}` | ✅ | Delete comment |
@@ -232,6 +236,10 @@ Gamified reputation system that rewards consistent shipping and meaningful engag
 | Method | Endpoint | Auth | Description |
 |--------|----------|:----:|-------------|
 | `GET` | `/health` | — | Health check |
+
+### MVP Public Route Policy
+
+Anonymous users can read public profiles, public user ships, public project details, public project ships, public ship details, public comments/likes, rank summaries, trending feeds, search, health, and auth bootstrap endpoints. Mutations require authentication. Banned users can still read and log out, but cannot perform write actions.
 
 ---
 
@@ -272,6 +280,7 @@ JWT_REFRESH_EXPIRATION=604800000
 GITHUB_CLIENT_ID=<your-github-oauth-app-client-id>
 GITHUB_CLIENT_SECRET=<your-github-oauth-app-client-secret>
 GITHUB_REDIRECT_URI=http://localhost:3000/auth/callback
+ADMIN_GITHUB_IDS=<comma-separated-github-numeric-ids-for-admins>
 
 # CORS
 CORS_ALLOWED_ORIGINS=http://localhost:3000
@@ -322,7 +331,8 @@ docker-compose -f docker-compose.observability.yml up
 | **Swagger UI** | Disabled by default. Enable with `SWAGGER_ENABLED=true` in dev/staging only. |
 | **Score Decay** | Runs daily at 2:00 AM. Requires `@EnableScheduling` (already enabled). |
 | **Trending** | Recalculated every 15 minutes. Tune via `feed.trending.recalculation-interval-ms`. |
-| **Media Security** | All uploaded images are EXIF-stripped. Served via signed URLs. |
+| **Media Security** | Backend validates file size and image magic bytes before Multibase upload. EXIF stripping, malware scanning, and signed/public delivery must be verified against Multibase before production release. |
+| **Admin Bootstrap** | Set `ADMIN_GITHUB_IDS` to grant initial admins on GitHub login. |
 | **Branch Strategy** | `main` → Production · `develop` → Staging |
 
 ---

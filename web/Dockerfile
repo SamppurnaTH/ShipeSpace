@@ -8,7 +8,7 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Build args become VITE_ env vars at build time
-ARG VITE_API_BASE_URL=http://localhost:8086/api
+ARG VITE_API_BASE_URL=/api
 ARG VITE_GITHUB_CLIENT_ID
 ARG VITE_GITHUB_REDIRECT_URI=http://localhost:3005/auth/callback
 ARG VITE_DEMO_MODE=false

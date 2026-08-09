@@ -9,6 +9,8 @@ import com.shipspace.model.ExternalLink;
 import com.shipspace.model.ImageReference;
 import com.shipspace.model.Ship;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,15 @@ class ShipServiceTest {
     @Mock
     private MultibaseService multibaseService;
 
+    @Mock
+    private CascadeDeleteService cascadeDeleteService;
+
+    @Mock
+    private InputSanitizer inputSanitizer;
+
+    @Mock
+    private Counter shipCreatedCounter;
+
     @InjectMocks
     private ShipService shipService;
 
@@ -92,6 +103,9 @@ class ShipServiceTest {
         updateRequest = ShipUpdateRequest.builder()
                 .content("Updated ship content")
                 .build();
+
+        lenient().when(inputSanitizer.sanitize(anyString(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     // ========== Ship Creation Tests (Requirement 4.1, 4.2, 4.4) ==========

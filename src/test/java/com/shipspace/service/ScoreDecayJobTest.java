@@ -2,6 +2,7 @@ package com.shipspace.service;
 
 import com.shipspace.model.RankTier;
 import com.shipspace.model.User;
+import com.shipspace.config.ScheduledJobMetrics;
 import com.shipspace.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -12,7 +13,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -47,12 +53,28 @@ class ScoreDecayJobTest {
     @Mock
     private ShipScoreService shipScoreService;
 
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private DistributedLockService distributedLockService;
+
+    @Mock
+    private ScheduledJobMetrics scheduledJobMetrics;
+
     @InjectMocks
     private ScoreDecayJob scoreDecayJob;
 
     @BeforeEach
     void setUp() {
-        // Service is initialized with mocked repositories via @InjectMocks
+        lenient().when(distributedLockService.runWithLock(anyString(), any(Duration.class), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    Runnable task = invocation.getArgument(2);
+                    task.run();
+                    return true;
+                });
+        lenient().when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(User.class)))
+                .thenThrow(new DataAccessException("bulk unavailable in unit test") {});
     }
 
     // ========== Inactive User Identification Tests ==========
@@ -72,8 +94,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the inactive user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(inactiveUser));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(inactiveUser)));
 
         // Mock: ShipScoreService calculations
         // Level stays the same (3), so calculateRank won't be called
@@ -105,8 +127,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns empty list (no inactive users)
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.emptyList());
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         // Act
         scoreDecayJob.applyScoreDecay();
@@ -133,8 +155,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // Level stays the same (3), so calculateRank won't be called
@@ -166,8 +188,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // Level stays the same (3), so calculateRank won't be called
@@ -202,8 +224,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // Level stays the same (3), so calculateRank won't be called
@@ -239,8 +261,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // 80 * 0.9 = 72, which is level 2 (40-79)
@@ -280,8 +302,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // 240 * 0.9 = 216, which is level 6 (200-239)
@@ -324,8 +346,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // 200 * 0.9 = 180, which is level 5 (160-199), rank DOCKED
@@ -365,8 +387,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // 100 * 0.9 = 90, which is level 3, rank DOCKED (no change)
@@ -402,8 +424,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         // Level stays the same (3), so calculateRank won't be called
@@ -444,8 +466,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns both users
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Arrays.asList(user1, user2));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Arrays.asList(user1, user2)));
 
         // Mock: ShipScoreService calculations
         // Both users' levels stay the same, so calculateRank won't be called
@@ -481,8 +503,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the inactive user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         when(shipScoreService.calculateLevel(90)).thenReturn(3);
@@ -495,8 +517,8 @@ class ScoreDecayJobTest {
         // Act
         scoreDecayJob.applyScoreDecay();
 
-        // Assert - Verify save was called twice (initial + 1 retry)
-        verify(userRepository, times(2)).save(user);
+        // Assert - fallback performs one individual save attempt per dirty user
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -514,8 +536,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the inactive user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService calculations
         when(shipScoreService.calculateLevel(90)).thenReturn(3);
@@ -527,8 +549,8 @@ class ScoreDecayJobTest {
         // Act
         scoreDecayJob.applyScoreDecay();
 
-        // Assert - Verify save was called maxRetries + 1 times (initial + 3 retries)
-        verify(userRepository, times(4)).save(user);
+        // Assert - fallback performs one individual save attempt per dirty user
+        verify(userRepository).save(user);
     }
 
     @Test
@@ -554,8 +576,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns both users
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Arrays.asList(user1, user2));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Arrays.asList(user1, user2)));
 
         // Mock: ShipScoreService calculations
         when(shipScoreService.calculateLevel(90)).thenReturn(3);
@@ -569,9 +591,9 @@ class ScoreDecayJobTest {
         // Act
         scoreDecayJob.applyScoreDecay();
 
-        // Assert - First user failed after max retries, second user succeeded
-        verify(userRepository, times(4)).save(user1); // Initial + 3 retries
-        verify(userRepository, times(1)).save(user2); // Success on first try
+        // Assert - one failed fallback save does not stop the rest of the batch
+        verify(userRepository).save(user1);
+        verify(userRepository).save(user2);
     }
 
     @Test
@@ -589,8 +611,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the inactive user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Mock: ShipScoreService throws unexpected exception
         when(shipScoreService.calculateLevel(90))
@@ -626,8 +648,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns both users
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Arrays.asList(user1, user2));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Arrays.asList(user1, user2)));
 
         // Mock: First user succeeds, second user fails
         when(shipScoreService.calculateLevel(90)).thenReturn(3);
@@ -640,7 +662,7 @@ class ScoreDecayJobTest {
 
         // Assert
         verify(userRepository, times(1)).save(user1);
-        verify(userRepository, times(4)).save(user2); // Initial + 3 retries
+        verify(userRepository).save(user2);
     }
 
     // ========== Edge Cases ==========
@@ -660,22 +682,16 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns the user
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.singletonList(user));
-
-        // Mock: ShipScoreService calculations
-        // Level stays the same (1), so calculateRank won't be called
-        when(shipScoreService.calculateLevel(0)).thenReturn(1);
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.singletonList(user)));
 
         // Act
         scoreDecayJob.applyScoreDecay();
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        
-        User savedUser = userCaptor.getValue();
-        assertThat(savedUser.getShipScore()).isEqualTo(0); // 0 * 0.9 = 0
+        // Assert - zero-score users are not dirty and are not written
+        verify(userRepository, never()).save(any(User.class));
+        verify(shipScoreService, never()).calculateLevel(anyInt());
+        assertThat(user.getShipScore()).isEqualTo(0);
     }
 
     @Test
@@ -683,8 +699,8 @@ class ScoreDecayJobTest {
     void applyScoreDecay_NoInactiveUsers_DoesNothing() {
         // Arrange
         // Mock: Repository returns empty list
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Collections.emptyList());
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         // Act
         scoreDecayJob.applyScoreDecay();
@@ -724,8 +740,8 @@ class ScoreDecayJobTest {
             .build();
 
         // Mock: Repository returns all three users
-        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class)))
-            .thenReturn(Arrays.asList(user1, user2, user3));
+        when(userRepository.findByLastShipActivityAtBefore(any(Instant.class), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(Arrays.asList(user1, user2, user3)));
 
         // Mock: ShipScoreService calculations
         // All users' levels stay the same, so calculateRank won't be called

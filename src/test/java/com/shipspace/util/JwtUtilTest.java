@@ -20,6 +20,7 @@ class JwtUtilTest {
         ReflectionTestUtils.setField(jwtUtil, "secret", "test-secret-key-for-jwt-token-generation-minimum-256-bits-required");
         ReflectionTestUtils.setField(jwtUtil, "expiration", 86400000L); // 24 hours
         ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L); // 7 days
+        jwtUtil.init();
     }
 
     @Test

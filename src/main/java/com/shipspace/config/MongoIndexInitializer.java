@@ -31,6 +31,22 @@ import java.time.Duration;
 @Profile("!test")
 public class MongoIndexInitializer {
 
+    public static final java.util.Set<String> INDEXED_COLLECTIONS = java.util.Set.of(
+            "users",
+            "ships",
+            "projects",
+            "likes",
+            "comments",
+            "comment_upvotes",
+            "following",
+            "notifications",
+            "behavioral_signals",
+            "score_event_log",
+            "content_scores",
+            "collaboration_requests",
+            "audit_logs"
+    );
+
     private final MongoTemplate mongoTemplate;
 
     @EventListener(ApplicationReadyEvent.class)

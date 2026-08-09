@@ -88,6 +88,11 @@ github:
     token-url: https://github.com/login/oauth/access_token
     user-url: https://api.github.com/user
 
+# Initial/admin bootstrap. Comma-separated GitHub numeric IDs receive ADMIN
+# when they authenticate. Keep empty until production admin ownership is known.
+admin:
+  github-ids: ${ADMIN_GITHUB_IDS:}
+
 # Multibase Configuration
 multibase:
   api-url: ${MULTIBASE_API_URL:http://localhost:5001}
@@ -353,6 +358,3 @@ search:
     disable-threshold-ms: ${SEARCH_FALLBACK_DISABLE_MS:200}
     enable-threshold-ms: ${SEARCH_FALLBACK_ENABLE_MS:120}
     window-size: ${SEARCH_FALLBACK_WINDOW_SIZE:20}
-
-# Feature flags
-SWAGGER_ENABLED: ${SWAGGER_ENABLED:false}

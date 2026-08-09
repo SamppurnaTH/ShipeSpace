@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { Icon } from './Icon'
 
 interface ModalProps {
   open: boolean
@@ -71,7 +72,7 @@ export function Modal({ open, onClose, title, size = 'md', children }: ModalProp
               aria-label="Close"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                fontSize: 20, color: 'var(--color-text-muted)',
+                color: 'var(--color-text-muted)',
                 width: 32, height: 32, borderRadius: 'var(--radius-sm)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all var(--transition-fast)',
@@ -84,7 +85,9 @@ export function Modal({ open, onClose, title, size = 'md', children }: ModalProp
                 e.currentTarget.style.background = 'none'
                 e.currentTarget.style.color = 'var(--color-text-muted)'
               }}
-            >✕</button>
+            >
+              <Icon name="close" size={18} />
+            </button>
           </div>
         )}
         <div style={{ padding: 'var(--space-6)', overflowY: 'auto', flex: 1 }}>

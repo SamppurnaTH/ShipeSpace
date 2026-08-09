@@ -1,12 +1,13 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useUnreadCount } from '../hooks/useUnreadCount'
+import { Icon } from './Icon'
 
 const NAV_ITEMS = [
-  { icon: '🚀', label: 'Feed',          path: '/feed' },
-  { icon: '🔥', label: 'Trending',      path: '/trending' },
-  { icon: '📦', label: 'Projects',      path: '/projects' },
-  { icon: '🔔', label: 'Notifications', path: '/notifications' },
+  { icon: 'home' as const, label: 'Feed', path: '/feed' },
+  { icon: 'trending' as const, label: 'Trending', path: '/trending' },
+  { icon: 'box' as const, label: 'Projects', path: '/projects' },
+  { icon: 'bell' as const, label: 'Notifications', path: '/notifications' },
 ]
 
 export function SideNav() {
@@ -62,7 +63,9 @@ export function SideNav() {
               }
             }}
           >
-            <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{item.icon}</span>
+            <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}>
+              <Icon name={item.icon} size={18} />
+            </span>
             {item.label}
             {item.path === '/notifications' && unread > 0 && (
               <span style={{
@@ -101,7 +104,7 @@ export function SideNav() {
               e.currentTarget.style.background = location.pathname.startsWith('/profile') ? 'var(--color-brand-light)' : 'transparent'
             }}
           >
-            <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>👤</span>
+            <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}><Icon name="user" size={18} /></span>
             My Profile
           </Link>
           <Link
@@ -117,14 +120,13 @@ export function SideNav() {
               e.currentTarget.style.background = location.pathname === '/settings' ? 'var(--color-brand-light)' : 'transparent'
             }}
           >
-            <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>⚙️</span>
+            <span style={{ width: 24, display: 'inline-flex', justifyContent: 'center' }}><Icon name="settings" size={18} /></span>
             Settings
           </Link>
         </>
       )}
 
-      {/* Ship it button at bottom */}
-      {user && (
+      {user && !user.banned && (
         <div style={{ marginTop: 'auto', padding: 'var(--space-4)' }}>
           <Link
             to="/ships/new"
@@ -149,7 +151,7 @@ export function SideNav() {
               e.currentTarget.style.transform = 'none'
             }}
           >
-            ✨ Ship Something
+            <Icon name="ship" size={16} /> Ship Something
           </Link>
         </div>
       )}

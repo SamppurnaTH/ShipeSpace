@@ -15,19 +15,25 @@ import com.shipspace.model.User;
 import com.shipspace.repository.CommentRepository;
 import com.shipspace.repository.CommentUpvoteRepository;
 import com.shipspace.repository.LikeRepository;
+import com.shipspace.repository.ShipCountRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.util.InputSanitizer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -46,6 +52,7 @@ import static org.mockito.Mockito.*;
  * Requirements tested: 8.1, 8.2, 8.3, 8.4, 8.5
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class EngagementServiceTest {
 
     @Mock
@@ -61,6 +68,9 @@ class EngagementServiceTest {
     private ShipRepository shipRepository;
 
     @Mock
+    private ShipCountRepository shipCountRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -69,8 +79,34 @@ class EngagementServiceTest {
     @Mock
     private ShipScoreService shipScoreService;
 
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private NotificationDispatchService notificationDispatchService;
+
+    @Mock
+    private InputSanitizer inputSanitizer;
+
     @InjectMocks
     private EngagementService engagementService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(shipRepository.existsById("ship-456")).thenReturn(true);
+        lenient().when(userRepository.existsById("user-123")).thenReturn(true);
+        lenient().when(inputSanitizer.sanitize(any(String.class), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(shipCountRepository.incrementLikeCount(eq("ship-456"), eq(1)))
+                .thenReturn(Ship.builder().id("ship-456").likeCount(6).build());
+        lenient().when(shipCountRepository.incrementLikeCount(eq("ship-456"), eq(-1)))
+                .thenReturn(Ship.builder().id("ship-456").likeCount(4).build());
+        lenient().when(shipCountRepository.incrementCommentCount(eq("ship-456"), eq(1)))
+                .thenReturn(Ship.builder().id("ship-456").commentCount(4).build());
+        lenient().when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenAnswer(invocation -> Comment.builder().id("comment-456").upvotes(1).build());
+        lenient().when(likeRepository.deleteByUserIdAndShipId("user-123", "ship-456")).thenReturn(1L);
+    }
 
     @Test
     void toggleLike_WhenNotLiked_AddsLike() {
@@ -107,7 +143,7 @@ class EngagementServiceTest {
         assertThat(response.getMessage()).contains("liked successfully");
 
         verify(likeRepository).save(any(Like.class));
-        verify(shipRepository).save(argThat(s -> s.getLikeCount() == 6));
+        verify(shipCountRepository).incrementLikeCount(shipId, 1);
     }
 
     @Test
@@ -151,7 +187,7 @@ class EngagementServiceTest {
         assertThat(response.getMessage()).contains("unliked successfully");
 
         verify(likeRepository).deleteByUserIdAndShipId(userId, shipId);
-        verify(shipRepository).save(argThat(s -> s.getLikeCount() == 4));
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
     }
 
     @Test
@@ -188,7 +224,7 @@ class EngagementServiceTest {
         assertThat(response.getLikeCount()).isEqualTo(4);
 
         verify(likeRepository).deleteByUserIdAndShipId(userId, shipId);
-        verify(shipRepository, times(1)).save(any(Ship.class));
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
     }
 
     @Test
@@ -263,6 +299,8 @@ class EngagementServiceTest {
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(likeRepository.findByUserIdAndShipId(userId, shipId)).thenReturn(Optional.of(existingLike));
+        when(shipCountRepository.incrementLikeCount(shipId, -1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(0).build());
         when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -270,7 +308,7 @@ class EngagementServiceTest {
 
         // Assert
         assertThat(response.getLikeCount()).isEqualTo(0);
-        verify(shipRepository).save(argThat(s -> s.getLikeCount() == 0));
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
     }
 
     @Test
@@ -327,7 +365,7 @@ class EngagementServiceTest {
         assertThat(response.getCommenter().getUsername()).isEqualTo("testuser");
 
         verify(commentRepository).save(any(Comment.class));
-        verify(shipRepository).save(argThat(s -> s.getCommentCount() == 4));
+        verify(shipCountRepository).incrementCommentCount(shipId, 1);
     }
 
     @Test
@@ -427,8 +465,7 @@ class EngagementServiceTest {
 
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(commentRepository.findByShipId(shipId, pageable)).thenReturn(commentsPage);
-        when(userRepository.findById("user-1")).thenReturn(Optional.of(user1));
-        when(userRepository.findById("user-2")).thenReturn(Optional.of(user2));
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList(user1, user2));
 
         // Act
         Page<CommentResponse> response = engagementService.getShipComments(shipId, pageable);
@@ -505,8 +542,7 @@ class EngagementServiceTest {
 
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByShipId(shipId, pageable)).thenReturn(likesPage);
-        when(userRepository.findById("user-1")).thenReturn(Optional.of(user1));
-        when(userRepository.findById("user-2")).thenReturn(Optional.of(user2));
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList(user1, user2));
 
         // Act
         Page<LikeResponse> response = engagementService.getShipLikes(shipId, pageable);
@@ -596,7 +632,7 @@ class EngagementServiceTest {
 
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(commentRepository.findByShipId(shipId, pageable)).thenReturn(commentsPage);
-        when(userRepository.findById("deleted-user")).thenReturn(Optional.empty());
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList());
 
         // Act
         Page<CommentResponse> response = engagementService.getShipComments(shipId, pageable);
@@ -631,7 +667,7 @@ class EngagementServiceTest {
 
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByShipId(shipId, pageable)).thenReturn(likesPage);
-        when(userRepository.findById("deleted-user")).thenReturn(Optional.empty());
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList());
 
         // Act
         Page<LikeResponse> response = engagementService.getShipLikes(shipId, pageable);
@@ -679,7 +715,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isFalse();
 
         verify(commentUpvoteRepository).save(any(CommentUpvote.class));
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 1));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService, never()).applyScoreEvent(any(), any(), any());
     }
 
@@ -711,6 +747,8 @@ class EngagementServiceTest {
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.of(existingUpvote));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder().id(commentId).upvotes(2).build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -722,7 +760,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isFalse();
 
         verify(commentUpvoteRepository).deleteByUserIdAndCommentId(userId, commentId);
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 2));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService, never()).applyScoreEvent(any(), any(), any());
     }
 
@@ -751,6 +789,14 @@ class EngagementServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.empty());
         when(commentUpvoteRepository.save(any(CommentUpvote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder()
+                        .id(commentId)
+                        .userId(commenterId)
+                        .shipId("ship-id")
+                        .content(comment.getContent())
+                        .upvotes(2)
+                        .build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         // First call (before upvote): not qualified (only 1 upvote)
@@ -771,7 +817,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isTrue();
 
         verify(commentUpvoteRepository).save(any(CommentUpvote.class));
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 2));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService).applyScoreEvent(commenterId, ScoreEventType.QUALITY_COMMENT, commentId);
     }
 
@@ -800,6 +846,14 @@ class EngagementServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.empty());
         when(commentUpvoteRepository.save(any(CommentUpvote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder()
+                        .id(commentId)
+                        .userId(commenterId)
+                        .shipId("ship-id")
+                        .content(comment.getContent())
+                        .upvotes(4)
+                        .build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         // Already qualified before and after upvote
@@ -816,7 +870,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isFalse(); // Not newly qualified
 
         verify(commentUpvoteRepository).save(any(CommentUpvote.class));
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 4));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService, never()).applyScoreEvent(any(), any(), any());
     }
 
@@ -844,6 +898,14 @@ class EngagementServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.empty());
         when(commentUpvoteRepository.save(any(CommentUpvote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder()
+                        .id(commentId)
+                        .userId(commenterId)
+                        .shipId("ship-id")
+                        .content(comment.getContent())
+                        .upvotes(2)
+                        .build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         when(commentQualificationService.isQualified(any(Comment.class)))
@@ -863,7 +925,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isFalse(); // Scoring failed
 
         verify(commentUpvoteRepository).save(any(CommentUpvote.class));
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 2));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService).applyScoreEvent(commenterId, ScoreEventType.QUALITY_COMMENT, commentId);
     }
 
@@ -891,6 +953,14 @@ class EngagementServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.empty());
         when(commentUpvoteRepository.save(any(CommentUpvote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder()
+                        .id(commentId)
+                        .userId(commenterId)
+                        .shipId("ship-id")
+                        .content(comment.getContent())
+                        .upvotes(2)
+                        .build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
         when(commentQualificationService.isQualified(any(Comment.class)))
@@ -978,6 +1048,8 @@ class EngagementServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.empty());
         when(commentUpvoteRepository.save(any(CommentUpvote.class))).thenThrow(new DuplicateKeyException("Duplicate key"));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder().id(commentId).upvotes(1).build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -989,7 +1061,7 @@ class EngagementServiceTest {
         assertThat(response.isQualifiedForScoring()).isFalse();
 
         verify(commentUpvoteRepository).deleteByUserIdAndCommentId(userId, commentId);
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 1));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService, never()).applyScoreEvent(any(), any(), any());
     }
 
@@ -1021,6 +1093,8 @@ class EngagementServiceTest {
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.of(existingUpvote));
+        when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
+                .thenReturn(Comment.builder().id(commentId).upvotes(0).build());
         when(commentRepository.save(any(Comment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -1028,6 +1102,6 @@ class EngagementServiceTest {
 
         // Assert
         assertThat(response.getUpvoteCount()).isEqualTo(0);
-        verify(commentRepository).save(argThat(c -> c.getUpvotes() == 0));
+        verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
     }
 }

@@ -18,8 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -44,7 +45,16 @@ class MultibaseServiceTest {
         RedisTemplate<String, String> redisTemplate = Mockito.mock(RedisTemplate.class);
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> valueOps = Mockito.mock(ValueOperations.class);
+        Map<String, String> redisStore = new ConcurrentHashMap<>();
         Mockito.when(redisTemplate.opsForValue()).thenReturn(valueOps);
+        Mockito.when(valueOps.get(Mockito.anyString()))
+                .thenAnswer(invocation -> redisStore.get(invocation.getArgument(0)));
+        Mockito.doAnswer(invocation -> {
+            redisStore.put(invocation.getArgument(0), invocation.getArgument(1));
+            return null;
+        }).when(valueOps).set(Mockito.anyString(), Mockito.anyString(), Mockito.any());
+        Mockito.when(redisTemplate.delete(Mockito.anyString()))
+                .thenAnswer(invocation -> redisStore.remove(invocation.getArgument(0)) != null);
 
         multibaseService = new MultibaseService(
                 webClientBuilder,
@@ -67,7 +77,7 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
         String mockResponse = """
@@ -127,7 +137,7 @@ class MultibaseServiceTest {
                 MultibaseException.class,
                 () -> multibaseService.uploadImage(file)
         );
-        assertTrue(exception.getMessage().contains("must be an image"));
+        assertTrue(exception.getMessage().contains("content type"));
     }
 
     @Test
@@ -156,7 +166,7 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
         mockWebServer.enqueue(new MockResponse()
@@ -178,7 +188,7 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
         String mockResponse = """
@@ -230,7 +240,7 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
         String mockResponse = """
@@ -269,22 +279,18 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
-        // Don't enqueue a response - upload will fail
-        
-        // Act & Assert - Try to get reference before completion
-        try {
-            CompletableFuture<String> future = multibaseService.uploadImageAsync(file);
-            // This should fail or timeout
-            future.get(2, java.util.concurrent.TimeUnit.SECONDS);
-            fail("Expected upload to fail without mock response");
-        } catch (Exception e) {
-            // Expected - upload will fail without mock response
-            assertTrue(e instanceof java.util.concurrent.TimeoutException || 
-                      e instanceof ExecutionException);
-        }
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(500)
+                .setBody("Internal Server Error"));
+
+        MultibaseException exception = assertThrows(
+                MultibaseException.class,
+                () -> multibaseService.uploadImageAsync(file)
+        );
+        assertTrue(exception.getMessage().contains("Failed to upload image to Multibase"));
     }
 
     @Test
@@ -294,7 +300,7 @@ class MultibaseServiceTest {
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "test image content".getBytes()
+                jpegBytes()
         );
         
         String mockResponse = """
@@ -338,7 +344,7 @@ class MultibaseServiceTest {
                 "file",
                 "photo.jpg",
                 "image/jpeg",
-                "jpeg content".getBytes()
+                jpegBytes()
         );
         
         String mockResponse = """
@@ -369,7 +375,7 @@ class MultibaseServiceTest {
                 "file",
                 "graphic.png",
                 "image/png",
-                "png content".getBytes()
+                pngBytes()
         );
         
         String mockResponse = """
@@ -401,5 +407,37 @@ class MultibaseServiceTest {
                 () -> multibaseService.uploadImage(null)
         );
         assertTrue(exception.getMessage().contains("empty or null"));
+    }
+
+    @Test
+    void testUploadImage_RenamedExecutableRejectedByMagicBytes() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "malware.png",
+                "image/png",
+                new byte[] {0x4D, 0x5A, 0x00, 0x00, 0x01, 0x02}
+        );
+
+        MultibaseException exception = assertThrows(
+                MultibaseException.class,
+                () -> multibaseService.uploadImage(file)
+        );
+        assertTrue(exception.getMessage().contains("supported image format"));
+    }
+
+    private static byte[] jpegBytes() {
+        return new byte[] {
+                (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0,
+                0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01,
+                0x01, 0x01, 0x00, 0x48, 0x00, 0x48
+        };
+    }
+
+    private static byte[] pngBytes() {
+        return new byte[] {
+                (byte) 0x89, 0x50, 0x4E, 0x47,
+                0x0D, 0x0A, 0x1A, 0x0A,
+                0x00, 0x00, 0x00, 0x0D
+        };
     }
 }

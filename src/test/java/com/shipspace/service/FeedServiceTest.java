@@ -2,6 +2,7 @@ package com.shipspace.service;
 
 import com.shipspace.model.Following;
 import com.shipspace.model.Ship;
+import com.shipspace.config.ScheduledJobMetrics;
 import com.shipspace.repository.FollowingRepository;
 import com.shipspace.repository.ShipRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +14,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -39,6 +42,18 @@ class FeedServiceTest {
 
     @Mock
     private FollowingRepository followingRepository;
+
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private DistributedLockService lockService;
+
+    @Mock
+    private ScheduledJobMetrics scheduledJobMetrics;
+
+    @Mock
+    private BulkOperations bulkOperations;
 
     @InjectMocks
     private FeedService feedService;
@@ -89,6 +104,10 @@ class FeedServiceTest {
                 .createdAt(now.minus(3, ChronoUnit.HOURS))
                 .updatedAt(now.minus(3, ChronoUnit.HOURS))
                 .build();
+
+        lenient().when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(Ship.class)))
+                .thenReturn(bulkOperations);
+        lenient().when(bulkOperations.updateOne(any(), any())).thenReturn(bulkOperations);
     }
 
     @Test
@@ -110,7 +129,8 @@ class FeedServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Ship> shipsPage = new PageImpl<>(Arrays.asList(ship1, ship2), pageable, 2);
 
-        when(followingRepository.findByFollowerId(userId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         when(shipRepository.findByUserIdIn(eq(followeeIds), any(Pageable.class))).thenReturn(shipsPage);
 
         // Act
@@ -122,7 +142,7 @@ class FeedServiceTest {
         assertThat(result.getContent()).containsExactly(ship1, ship2);
         assertThat(result.getTotalElements()).isEqualTo(2);
 
-        verify(followingRepository).findByFollowerId(userId);
+        verify(followingRepository).findByFollowerId(eq(userId), any(Pageable.class));
         
         // Verify that the pageable passed to shipRepository has DESC ordering by createdAt
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
@@ -138,7 +158,8 @@ class FeedServiceTest {
     void getFollowingFeed_NoFollowing_ReturnsEmptyPage() {
         // Arrange
         Pageable pageable = PageRequest.of(0, 20);
-        when(followingRepository.findByFollowerId(userId)).thenReturn(Collections.emptyList());
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         // Act
         Page<Ship> result = feedService.getFollowingFeed(userId, pageable);
@@ -148,7 +169,7 @@ class FeedServiceTest {
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(0);
 
-        verify(followingRepository).findByFollowerId(userId);
+        verify(followingRepository).findByFollowerId(eq(userId), any(Pageable.class));
         verify(shipRepository, never()).findByUserIdIn(any(), any());
     }
 
@@ -167,7 +188,8 @@ class FeedServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         Page<Ship> emptyPage = Page.empty(pageable);
 
-        when(followingRepository.findByFollowerId(userId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         when(shipRepository.findByUserIdIn(eq(followeeIds), any(Pageable.class))).thenReturn(emptyPage);
 
         // Act
@@ -178,7 +200,7 @@ class FeedServiceTest {
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isEqualTo(0);
 
-        verify(followingRepository).findByFollowerId(userId);
+        verify(followingRepository).findByFollowerId(eq(userId), any(Pageable.class));
         verify(shipRepository).findByUserIdIn(eq(followeeIds), any(Pageable.class));
     }
 
@@ -293,7 +315,7 @@ class FeedServiceTest {
         verify(shipRepository).findByCreatedAtAfter(instantCaptor.capture(), any(Pageable.class));
         
         Instant capturedStartTime = instantCaptor.getValue();
-        Instant expectedStartTime = now.minus(2, ChronoUnit.WEEKS);
+        Instant expectedStartTime = now.minus(14, ChronoUnit.DAYS);
         assertThat(capturedStartTime).isBetween(
                 expectedStartTime.minus(1, ChronoUnit.SECONDS),
                 expectedStartTime.plus(1, ChronoUnit.SECONDS)
@@ -413,26 +435,19 @@ class FeedServiceTest {
 
         List<Ship> allShips = Arrays.asList(oldShip, newShip);
 
-        when(shipRepository.findAll()).thenReturn(allShips);
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
+        when(shipRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(allShips));
         // Act
         feedService.calculateTrendingScores();
 
         // Assert
-        verify(shipRepository).findAll();
-        verify(shipRepository, times(2)).save(any(Ship.class));
+        verify(shipRepository).findAll(any(Pageable.class));
+        verify(mongoTemplate).bulkOps(any(BulkOperations.BulkMode.class), eq(Ship.class));
+        verify(bulkOperations, times(2)).updateOne(any(), any());
+        verify(bulkOperations).execute();
 
         // Verify that scores were calculated (new ship should have higher score due to recency)
-        ArgumentCaptor<Ship> shipCaptor = ArgumentCaptor.forClass(Ship.class);
-        verify(shipRepository, times(2)).save(shipCaptor.capture());
-        
-        List<Ship> savedShips = shipCaptor.getAllValues();
-        assertThat(savedShips).hasSize(2);
-        
-        // Both ships should have non-zero scores
-        assertThat(savedShips.get(0).getTrendingScore()).isGreaterThan(0.0);
-        assertThat(savedShips.get(1).getTrendingScore()).isGreaterThan(0.0);
+        assertThat(oldShip.getTrendingScore()).isGreaterThan(0.0);
+        assertThat(newShip.getTrendingScore()).isGreaterThan(0.0);
     }
 
     @Test
@@ -450,14 +465,15 @@ class FeedServiceTest {
                 .createdAt(now.minus(1, ChronoUnit.HOURS))
                 .build();
 
-        when(shipRepository.findAll()).thenReturn(Collections.singletonList(shipWithCorrectScore));
+        when(shipRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(shipWithCorrectScore)));
 
         // Act
         feedService.calculateTrendingScores();
 
         // Assert
-        verify(shipRepository).findAll();
-        verify(shipRepository, never()).save(any(Ship.class));
+        verify(shipRepository).findAll(any(Pageable.class));
+        verify(mongoTemplate, never()).bulkOps(any(BulkOperations.BulkMode.class), eq(Ship.class));
     }
 
     @Test
@@ -475,34 +491,29 @@ class FeedServiceTest {
                 .createdAt(now.minus(1, ChronoUnit.HOURS))
                 .build();
 
-        when(shipRepository.findAll()).thenReturn(Collections.singletonList(shipWithNulls));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
+        when(shipRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(shipWithNulls)));
         // Act
         feedService.calculateTrendingScores();
 
         // Assert
-        verify(shipRepository).findAll();
-        verify(shipRepository).save(any(Ship.class));
-
-        ArgumentCaptor<Ship> shipCaptor = ArgumentCaptor.forClass(Ship.class);
-        verify(shipRepository).save(shipCaptor.capture());
-        
-        Ship savedShip = shipCaptor.getValue();
-        assertThat(savedShip.getTrendingScore()).isEqualTo(0.0);
+        verify(shipRepository).findAll(any(Pageable.class));
+        verify(bulkOperations).updateOne(any(), any());
+        verify(bulkOperations).execute();
+        assertThat(shipWithNulls.getTrendingScore()).isEqualTo(0.0);
     }
 
     @Test
     @DisplayName("Should handle empty ship list")
     void calculateTrendingScores_EmptyList() {
         // Arrange
-        when(shipRepository.findAll()).thenReturn(Collections.emptyList());
+        when(shipRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(Collections.emptyList()));
 
         // Act
         feedService.calculateTrendingScores();
 
         // Assert
-        verify(shipRepository).findAll();
-        verify(shipRepository, never()).save(any(Ship.class));
+        verify(shipRepository).findAll(any(Pageable.class));
+        verify(mongoTemplate, never()).bulkOps(any(BulkOperations.BulkMode.class), eq(Ship.class));
     }
 }

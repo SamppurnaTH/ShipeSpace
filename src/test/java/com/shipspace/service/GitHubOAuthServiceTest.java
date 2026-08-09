@@ -53,6 +53,7 @@ class GitHubOAuthServiceTest {
         ReflectionTestUtils.setField(githubOAuthService, "redirectUri", "http://localhost:3000/callback");
         ReflectionTestUtils.setField(githubOAuthService, "tokenUrl", baseUrl + "login/oauth/access_token");
         ReflectionTestUtils.setField(githubOAuthService, "userUrl", baseUrl + "user");
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", "");
     }
 
     @AfterEach
@@ -175,7 +176,7 @@ class GitHubOAuthServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> githubOAuthService.authenticateWithGitHub(invalidCode))
                 .isInstanceOf(GitHubOAuthException.class)
-                .hasMessageContaining("Failed to authenticate with GitHub");
+                .hasMessageContaining("GitHub OAuth authentication failed");
 
         verify(userRepository, never()).save(any(User.class));
     }
@@ -200,7 +201,7 @@ class GitHubOAuthServiceTest {
         // Act & Assert
         assertThatThrownBy(() -> githubOAuthService.authenticateWithGitHub(oauthCode))
                 .isInstanceOf(GitHubOAuthException.class)
-                .hasMessageContaining("Failed to authenticate with GitHub");
+                .hasMessageContaining("GitHub OAuth authentication failed");
 
         verify(userRepository, never()).save(any(User.class));
     }

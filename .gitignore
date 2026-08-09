@@ -52,3 +52,9 @@ web/.env
 # Frontend build artifacts
 web/node_modules/
 web/dist/
+web/.npm-cache/
+web/ts-output*.txt
+
+# Local data/artifacts
+dump.rdb
+attached_assets/

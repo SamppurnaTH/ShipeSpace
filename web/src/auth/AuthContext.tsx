@@ -9,6 +9,8 @@ interface User {
   shipScore: number
   level: number
   rank: string
+  roles?: string[]
+  banned?: boolean
   bio?: string
   location?: string
   websiteUrl?: string
@@ -17,7 +19,7 @@ interface User {
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (accessToken: string, refreshToken: string) => Promise<void>
+  login: (accessToken: string, refreshToken: string) => Promise<User>
   logout: () => Promise<void>
 }
 
@@ -34,21 +36,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('access_token')
-    if (!token) { setLoading(false); return }
+    if (!token) {
+      setLoading(false)
+      return
+    }
     getMe()
       .then(res => setUser(res.data))
       .catch(() => clearTokens())
       .finally(() => setLoading(false))
   }, [])
 
-  const login = async (accessToken: string, refreshToken: string): Promise<void> => {
+  const login = async (accessToken: string, refreshToken: string): Promise<User> => {
     localStorage.setItem('access_token', accessToken)
     localStorage.setItem('refresh_token', refreshToken)
     try {
       const res = await getMe()
       setUser(res.data)
+      return res.data
     } catch {
-      // Tokens stored but /me failed — clear everything to avoid broken state
       clearTokens()
       throw new Error('Login succeeded but failed to load user profile. Please try again.')
     }
@@ -56,12 +61,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const doLogout = async (): Promise<void> => {
     const rt = localStorage.getItem('refresh_token')
-    // Fire-and-forget server-side revocation — clear locally regardless of outcome
     try {
       await apiLogout(rt ?? undefined)
     } catch {
-      // Intentionally swallowed: local session must always be cleared even if
-      // the revocation request fails (e.g. network error, token already expired)
+      // Local session must always be cleared even if server revocation fails.
     } finally {
       clearTokens()
       setUser(null)

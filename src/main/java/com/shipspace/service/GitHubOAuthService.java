@@ -53,6 +53,9 @@ public class GitHubOAuthService {
     @Value("${github.oauth.user-url}")
     private String userUrl;
 
+    @Value("${admin.github-ids:}")
+    private String adminGithubIds;
+
     /**
      * Authenticates a user with GitHub OAuth code.
      * Protected by a circuit breaker — if GitHub API is down, the circuit opens
@@ -179,6 +182,7 @@ public class GitHubOAuthService {
             log.debug("Updating existing user: {}", user.getUsername());
             
             updateUserFromGitHub(user, githubUser);
+            applyConfiguredRoles(user, githubId);
             user.setUpdatedAt(Instant.now());
             
             return userRepository.save(user);
@@ -187,6 +191,7 @@ public class GitHubOAuthService {
             log.debug("Creating new user from GitHub data");
             
             User newUser = mapGitHubUserToUser(githubUser);
+            applyConfiguredRoles(newUser, githubId);
             newUser.setCreatedAt(Instant.now());
             newUser.setUpdatedAt(Instant.now());
             
@@ -213,6 +218,25 @@ public class GitHubOAuthService {
                 .followingCount(0)
                 .projectCount(0)
                 .build();
+    }
+
+    private void applyConfiguredRoles(User user, String githubId) {
+        java.util.Set<String> roles = new java.util.HashSet<>(
+                user.getRoles() == null ? java.util.Set.of("USER") : user.getRoles());
+        roles.add("USER");
+        if (isConfiguredAdmin(githubId)) {
+            roles.add("ADMIN");
+        }
+        user.setRoles(java.util.Set.copyOf(roles));
+    }
+
+    private boolean isConfiguredAdmin(String githubId) {
+        if (adminGithubIds == null || adminGithubIds.isBlank()) {
+            return false;
+        }
+        return java.util.Arrays.stream(adminGithubIds.split(","))
+                .map(String::trim)
+                .anyMatch(githubId::equals);
     }
 
     /**

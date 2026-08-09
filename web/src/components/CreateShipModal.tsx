@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Modal } from './Modal'
 import { createShip, uploadShipImages, getMyProjects } from '../api/endpoints'
 import { toastSuccess, toastError } from './Toast'
+import { ButtonLoader, LoadingSpinner, UploadProgress } from './common/Loading'
+import { Icon } from './Icon'
 
 interface CreateShipModalProps {
   open: boolean
@@ -14,6 +16,11 @@ interface Project {
   name: string
 }
 
+type UploadStatus = 'idle' | 'loading' | 'success' | 'error'
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
 export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<Project[]>([])
@@ -23,6 +30,8 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
   const [images, setImages] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [loadingProjects, setLoadingProjects] = useState(true)
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
+  const [uploadMessage, setUploadMessage] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -46,6 +55,8 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
   const handleSubmit = async () => {
     if (!selectedProjectId || !content.trim()) return
     setSubmitting(true)
+    setUploadStatus('idle')
+    setUploadMessage('')
     try {
       const validLinks = links.filter(l => l.url.trim())
       const res = await createShip({
@@ -59,14 +70,26 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
       if (images.length > 0 && shipId) {
         const formData = new FormData()
         images.forEach(f => formData.append('images', f))
-        await uploadShipImages(shipId, formData).catch(() => {})
+        setUploadStatus('loading')
+        setUploadMessage(`Uploading ${images.length} image${images.length === 1 ? '' : 's'}...`)
+        try {
+          await uploadShipImages(shipId, formData)
+          setUploadStatus('success')
+          setUploadMessage('Image upload complete.')
+        } catch {
+          setUploadStatus('error')
+          setUploadMessage('Ship created, but images could not be uploaded.')
+          toastError('Ship created, but image upload failed')
+        }
       }
 
-      toastSuccess('Ship has sailed! 🚀')
+      toastSuccess('Ship published')
       onClose()
       setContent('')
       setLinks([])
       setImages([])
+      setUploadStatus('idle')
+      setUploadMessage('')
       setSelectedProjectId('')
       navigate(`/ships/${shipId}`)
     } catch {
@@ -78,7 +101,29 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setImages(prev => [...prev, ...Array.from(e.target.files!)])
+      const selected = Array.from(e.target.files)
+      const valid: File[] = []
+
+      for (const file of selected) {
+        if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+          setUploadStatus('error')
+          setUploadMessage('Use JPG, PNG, WebP, or GIF images only.')
+          continue
+        }
+        if (file.size > MAX_IMAGE_BYTES) {
+          setUploadStatus('error')
+          setUploadMessage('Each image must be 10 MB or smaller.')
+          continue
+        }
+        valid.push(file)
+      }
+
+      if (valid.length > 0) {
+        setUploadStatus('idle')
+        setUploadMessage('')
+        setImages(prev => [...prev, ...valid])
+      }
+      e.currentTarget.value = ''
     }
   }
 
@@ -88,7 +133,10 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
       <div style={{ marginBottom: 'var(--space-5)' }}>
         <label style={labelStyle}>Project *</label>
         {loadingProjects ? (
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>Loading projects...</div>
+          <div className="inline-loading" aria-live="polite" aria-busy="true">
+            <LoadingSpinner size={16} label="Loading projects" />
+            <span>Loading projects...</span>
+          </div>
         ) : projects.length === 0 ? (
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-warning)' }}>
             No projects yet. Create a project first.
@@ -145,7 +193,7 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
             <button onClick={() => removeLink(i)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--color-text-muted)', fontSize: 16,
-            }}>✕</button>
+            }} aria-label="Remove link"><Icon name="close" size={14} /></button>
           </div>
         ))}
         <button onClick={addLink} style={{
@@ -174,7 +222,7 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
           color: 'var(--color-text-secondary)',
           transition: 'all var(--transition-fast)',
         }}>
-          📎 Attach images
+          <Icon name="upload" size={16} /> Attach images
           <input type="file" accept="image/*" multiple onChange={handleImageSelect} style={{ display: 'none' }} />
         </label>
         {images.length > 0 && (
@@ -192,10 +240,13 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
                     background: 'rgba(0,0,0,0.6)', border: 'none',
                     color: '#fff', fontSize: 10, cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>✕</button>
+                  }} aria-label="Remove image"><Icon name="close" size={12} /></button>
               </div>
             ))}
           </div>
+        )}
+        {uploadStatus !== 'idle' && uploadMessage && (
+          <UploadProgress label={uploadMessage} tone={uploadStatus} />
         )}
       </div>
 
@@ -220,7 +271,7 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
             transition: 'all var(--transition-fast)',
           }}
         >
-          {submitting ? 'Shipping...' : 'Ship It →'}
+          {submitting ? <ButtonLoader label="Shipping..." /> : 'Publish ship'}
         </button>
       </div>
     </Modal>

@@ -3,8 +3,10 @@ package com.shipspace.config;
 import com.shipspace.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -23,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectProvider<BannedUserWriteFilter> bannedUserWriteFilter;
 
     @Value("${SWAGGER_ENABLED:false}")
     private boolean swaggerEnabled;
@@ -54,6 +57,16 @@ public class SecurityConfig {
                         "/demo/data"
                 ).permitAll();
 
+                auth.requestMatchers(HttpMethod.GET,
+                        "/users/*",
+                        "/projects/*",
+                        "/projects/*/ships",
+                        "/ships/*",
+                        "/ships/*/comments",
+                        "/ships/*/likes",
+                        "/v1/users/*/rank-summary"
+                ).permitAll();
+
                 // Swagger only when explicitly enabled (dev/staging)
                 if (swaggerEnabled) {
                     auth.requestMatchers(
@@ -67,6 +80,9 @@ public class SecurityConfig {
                 auth.anyRequest().authenticated();
             })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        bannedUserWriteFilter.ifAvailable(filter ->
+                http.addFilterAfter(filter, JwtAuthenticationFilter.class));
 
         return http.build();
     }

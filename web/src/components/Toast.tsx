@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from './Icon'
 
 type ToastVariant = 'success' | 'error' | 'warning' | 'info'
 interface Toast { id: string; message: string; variant: ToastVariant }
@@ -30,14 +31,18 @@ export const useToast = () => {
   return { toast }
 }
 
-const ICONS: Record<ToastVariant, string> = {
-  success: '✓', error: '✕', warning: '⚠', info: 'ℹ',
-}
 const COLORS: Record<ToastVariant, string> = {
   success: 'var(--color-brand)',
   error:   'var(--color-error)',
   warning: 'var(--color-warning)',
   info:    'var(--color-brand-dim)',
+}
+
+const ICONS: Record<ToastVariant, Parameters<typeof Icon>[0]['name']> = {
+  success: 'check',
+  error: 'close',
+  warning: 'alert',
+  info: 'info',
 }
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) {
@@ -53,7 +58,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
       display: 'flex', alignItems: 'center', gap: 10,
       padding: '10px 16px',
       background: 'var(--color-surface)',
-      border: `1px solid var(--color-border)`,
+      border: '1px solid var(--color-border)',
       borderLeft: `3px solid ${COLORS[toast.variant]}`,
       borderRadius: 'var(--radius-md)',
       boxShadow: 'var(--shadow-md)',
@@ -64,8 +69,8 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: () => void }) 
       cursor: 'pointer',
       pointerEvents: 'auto',
     }} onClick={() => { setLeaving(true); setTimeout(onRemove, 300) }}>
-      <span style={{ color: COLORS[toast.variant], fontWeight: 700, flexShrink: 0 }}>
-        {ICONS[toast.variant]}
+      <span style={{ color: COLORS[toast.variant], flexShrink: 0, display: 'inline-flex' }}>
+        <Icon name={ICONS[toast.variant]} size={16} />
       </span>
       {toast.message}
     </div>

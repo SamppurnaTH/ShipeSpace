@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { searchShipsAndUsers } from '../api/endpoints'
+import { useAuth } from '../auth/AuthContext'
+import { likeShip, searchShipsAndUsers, unlikeShip } from '../api/endpoints'
 import { Spinner } from '../components/Spinner'
 import { Badge } from '../components/Badge'
 import { ShipCard } from '../components/ShipCard'
+import { Icon } from '../components/Icon'
 
 interface SearchResult {
   users: any[]
@@ -13,6 +15,7 @@ interface SearchResult {
 const DEBOUNCE_MS = 350
 
 export function SearchPage() {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q') || ''
   const [searchInput, setSearchInput] = useState(q)
@@ -20,6 +23,7 @@ export function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'users' | 'ships'>('all')
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
   // Holds the AbortController for the in-flight request so we can cancel it
   const abortRef = useRef<AbortController | null>(null)
 
@@ -77,6 +81,39 @@ export function SearchPage() {
     if (searchInput.trim()) setSearchParams({ q: searchInput.trim() })
   }
 
+  const toggleLike = async (shipId: string) => {
+    if (!user || user.banned) return
+    const liked = likedIds.has(shipId)
+    setLikedIds(prev => {
+      const next = new Set(prev)
+      if (liked) next.delete(shipId)
+      else next.add(shipId)
+      return next
+    })
+    setResults(prev => prev ? {
+      ...prev,
+      ships: prev.ships.map(ship => ship.id === shipId
+        ? { ...ship, likeCount: Math.max(0, (ship.likeCount ?? 0) + (liked ? -1 : 1)) }
+        : ship),
+    } : prev)
+    try {
+      await (liked ? unlikeShip(shipId) : likeShip(shipId))
+    } catch {
+      setLikedIds(prev => {
+        const next = new Set(prev)
+        if (liked) next.add(shipId)
+        else next.delete(shipId)
+        return next
+      })
+      setResults(prev => prev ? {
+        ...prev,
+        ships: prev.ships.map(ship => ship.id === shipId
+          ? { ...ship, likeCount: Math.max(0, (ship.likeCount ?? 0) + (liked ? 1 : -1)) }
+          : ship),
+      } : prev)
+    }
+  }
+
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }}>
       {/* Search Header */}
@@ -122,7 +159,7 @@ export function SearchPage() {
           textAlign: 'center', padding: 'var(--space-10)',
           color: 'var(--color-text-muted)',
         }}>
-          <div style={{ fontSize: 48, marginBottom: 'var(--space-3)' }}>🔍</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="search" size={48} /></div>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>
             Type something to explore ShipSpace
           </div>
@@ -137,7 +174,7 @@ export function SearchPage() {
           borderRadius: 'var(--radius-lg)',
           color: 'var(--color-error)',
         }}>
-          <div style={{ fontSize: 32, marginBottom: 'var(--space-3)' }}>⚠</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="alert" size={32} /></div>
           <div style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{error}</div>
         </div>
       )}
@@ -224,9 +261,9 @@ export function SearchPage() {
                     ship={s}
                     user={s.user}
                     project={s.project}
-                    liked={false}
-                    canLike={false}
-                    onLike={() => {}}
+                    liked={likedIds.has(s.id)}
+                    canLike={!!user && !user.banned}
+                    onLike={() => toggleLike(s.id)}
                   />
                 ))}
               </div>

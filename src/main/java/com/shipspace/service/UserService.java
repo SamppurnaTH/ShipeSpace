@@ -232,6 +232,8 @@ public class UserService {
                 .shipScore(user.getShipScore())
                 .level(user.getLevel())
                 .rank(user.getRank())
+                .roles(user.getRoles())
+                .banned(user.isBanned())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

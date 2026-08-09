@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RankBadge } from './RankBadge'
+import { Icon } from './Icon'
 
 interface Ship {
   id: string; content: string; likeCount: number; commentCount: number
@@ -52,21 +53,9 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
   const displayContent = truncated && !expanded ? ship.content.slice(0, 280) + '…' : ship.content
 
   return (
-    <article style={{
-      background: 'var(--color-surface)',
-      border: '1px solid var(--color-border)',
-      borderRadius: 'var(--radius-lg)',
-      marginBottom: 'var(--space-2)',
-      boxShadow: 'var(--shadow-sm)',
-      overflow: 'hidden',
-      animation: 'fadeIn 200ms ease',
-      transition: 'box-shadow var(--transition-fast)',
-    }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = 'var(--shadow-md)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'var(--shadow-sm)')}
-    >
+    <article className="ship-feed-card">
       {/* Card body */}
-      <div style={{ padding: 'var(--space-4)' }}>
+      <div className="ship-feed-card-body">
         {/* Header */}
         <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', alignItems: 'flex-start' }}>
           <Link to={user ? `/profile/${user.username}` : '#'} style={{ flexShrink: 0 }}>
@@ -85,7 +74,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
             )}
           </Link>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="ship-feed-meta">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <Link to={user ? `/profile/${user.username}` : '#'}
                 style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
@@ -95,17 +84,18 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
                 <RankBadge rank={user.rank} level={user.level} />
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <div className="ship-feed-project-line">
               {project && (
                 <Link to={`/projects/${project.id}`} style={{
-                  fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)',
+                  fontSize: 'var(--text-xs)', color: 'var(--color-brand-dim)',
                   textDecoration: 'none',
+                  fontWeight: 700,
                   transition: 'color var(--transition-fast)',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--color-brand-dim)')}
                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-text-muted)')}
                 >
-                  {project.name}
+                  shipped to {project.name}
                 </Link>
               )}
               {project && <span style={{ color: 'var(--color-border)', fontSize: 10 }}>·</span>}
@@ -126,7 +116,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
               }}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'none'}
-              >···</button>
+              >...</button>
               {menuOpen && (
                 <div style={{
                   position: 'absolute', right: 0, top: '100%', marginTop: 4,
@@ -158,10 +148,10 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
 
         {/* Content */}
         <p style={{
-          fontSize: 'var(--text-base)', lineHeight: 'var(--leading-normal)',
-          color: 'var(--color-text-secondary)',
+          fontSize: '15px', lineHeight: 1.62,
+          color: 'var(--color-text-primary)',
           whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          marginBottom: 'var(--space-3)',
+          marginBottom: 'var(--space-4)',
         }}>
           {displayContent}
           {truncated && (
@@ -170,10 +160,17 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
               color: 'var(--color-brand-dim)', fontSize: 'var(--text-sm)',
               fontFamily: 'inherit', padding: '0 4px',
             }}>
-              {expanded ? 'see less' : '…see more'}
+              {expanded ? 'see less' : 'see more'}
             </button>
           )}
         </p>
+
+        {project && (
+          <Link className="ship-project-chip" to={`/projects/${project.id}`}>
+            <span>Project</span>
+            <strong>{project.name}</strong>
+          </Link>
+        )}
 
         {/* Tech tags */}
         {project?.techTags && project.techTags.length > 0 && (
@@ -223,7 +220,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-brand)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
               >
-                🔗 {l.type || 'link'}
+                <Icon name="externalLink" size={13} /> {l.type || 'link'}
               </a>
             ))}
           </div>
@@ -238,7 +235,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
           }}>
             {ship.likeCount > 0 && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 12 }}>👍</span>
+                <Icon name="thumb" size={13} />
                 {ship.likeCount}
               </span>
             )}
@@ -251,34 +248,35 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
         )}
       </div>
 
-      {/* Action bar — LinkedIn style */}
-      <div style={{
-        display: 'flex',
-        borderTop: '1px solid var(--color-border)',
-        padding: '2px var(--space-2)',
-      }}>
+      <div className="ship-feed-actions">
         <ActionBtn
           onClick={canLike ? onLike : undefined}
           active={liked}
           disabled={!canLike}
           icon={<LikeIcon filled={liked} />}
-          label={liked ? 'Liked' : 'Like'}
+          label={liked ? 'Appreciated' : 'Appreciate'}
           activeColor="var(--color-brand)"
         />
         <Link to={`/ships/${ship.id}`} style={{ flex: 1, textDecoration: 'none' }}>
           <ActionBtn icon={<CommentIcon />} label="Comment" />
         </Link>
-        <ActionBtn
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({ url: `${window.location.origin}/ships/${ship.id}` }).catch(() => {})
-            } else {
-              navigator.clipboard.writeText(`${window.location.origin}/ships/${ship.id}`)
-            }
-          }}
-          icon={<ShareIcon />}
-          label="Share"
-        />
+        {project ? (
+          <Link to={`/projects/${project.id}`} style={{ flex: 1, textDecoration: 'none' }}>
+            <ActionBtn icon={<ShareIcon />} label="View Project" />
+          </Link>
+        ) : (
+          <ActionBtn
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({ url: `${window.location.origin}/ships/${ship.id}` }).catch(() => {})
+              } else {
+                navigator.clipboard.writeText(`${window.location.origin}/ships/${ship.id}`)
+              }
+            }}
+            icon={<ShareIcon />}
+            label="Share"
+          />
+        )}
       </div>
     </article>
   )
@@ -319,3 +317,4 @@ function ActionBtn({
     </button>
   )
 }
+

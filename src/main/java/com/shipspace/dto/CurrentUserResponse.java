@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Set;
 
 /**
  * DTO for current authenticated user response.
@@ -32,6 +33,8 @@ public class CurrentUserResponse {
     private Integer shipScore;
     private Integer level;
     private RankTier rank;
+    private Set<String> roles;
+    private boolean banned;
     private Instant createdAt;
     private Instant updatedAt;
 }

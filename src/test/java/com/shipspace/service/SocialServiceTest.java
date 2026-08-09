@@ -6,6 +6,7 @@ import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.Following;
 import com.shipspace.model.User;
 import com.shipspace.repository.FollowingRepository;
+import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +45,12 @@ class SocialServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private UserCountRepository userCountRepository;
+
+    @Mock
+    private NotificationDispatchService notificationDispatchService;
+
     @InjectMocks
     private SocialService socialService;
 
@@ -80,6 +87,9 @@ class SocialServiceTest {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+
+        lenient().when(userRepository.existsById(followerId)).thenReturn(true);
+        lenient().when(userRepository.existsById(followeeId)).thenReturn(true);
     }
 
     @Test
@@ -87,24 +97,22 @@ class SocialServiceTest {
     void followUser_Success() {
         // Arrange
         when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.of(followeeUser));
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
         when(followingRepository.save(any(Following.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(followingRepository.countByFollowerId(followerId)).thenReturn(11L);
-        when(followingRepository.countByFolloweeId(followeeId)).thenReturn(21L);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         socialService.followUser(followerId, followeeId);
 
         // Assert
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
         verify(followingRepository).existsByFollowerIdAndFolloweeId(followerId, followeeId);
         verify(followingRepository).save(any(Following.class));
-        verify(followingRepository).countByFollowerId(followerId);
-        verify(followingRepository).countByFolloweeId(followeeId);
-        verify(userRepository, times(2)).save(any(User.class));
+        verify(userCountRepository).incrementFollowingCount(followerId, 1);
+        verify(userCountRepository).incrementFollowerCount(followeeId, 1);
+        verify(notificationDispatchService).dispatch(eq(followeeId), eq("FOLLOW"), anyString(),
+                eq(followerId), any(), eq(followerId), eq("/users/" + followerId));
     }
 
     @Test
@@ -126,14 +134,14 @@ class SocialServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when follower user not found")
     void followUser_FollowerNotFound_ThrowsException() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.empty());
+        when(userRepository.existsById(followerId)).thenReturn(false);
 
         // Act & Assert
         assertThatThrownBy(() -> socialService.followUser(followerId, followeeId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("User not found");
 
-        verify(userRepository).findById(followerId);
+        verify(userRepository).existsById(followerId);
         verify(followingRepository, never()).save(any(Following.class));
     }
 
@@ -141,16 +149,15 @@ class SocialServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when followee user not found")
     void followUser_FolloweeNotFound_ThrowsException() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.empty());
+        when(userRepository.existsById(followeeId)).thenReturn(false);
 
         // Act & Assert
         assertThatThrownBy(() -> socialService.followUser(followerId, followeeId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("User not found");
 
-        verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(followingRepository, never()).save(any(Following.class));
     }
 
@@ -158,79 +165,70 @@ class SocialServiceTest {
     @DisplayName("Should handle duplicate follow attempts gracefully (idempotent)")
     void followUser_DuplicateFollow_Idempotent() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.of(followeeUser));
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
 
         // Act
         socialService.followUser(followerId, followeeId);
 
         // Assert
-        verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(followingRepository).existsByFollowerIdAndFolloweeId(followerId, followeeId);
         verify(followingRepository, never()).save(any(Following.class));
-        verify(userRepository, never()).save(any(User.class));
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
     }
 
     @Test
     @DisplayName("Should successfully remove a following relationship")
     void unfollowUser_Success() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.of(followeeUser));
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
         doNothing().when(followingRepository).deleteByFollowerIdAndFolloweeId(followerId, followeeId);
-        when(followingRepository.countByFollowerId(followerId)).thenReturn(9L);
-        when(followingRepository.countByFolloweeId(followeeId)).thenReturn(19L);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
         socialService.unfollowUser(followerId, followeeId);
 
         // Assert
-        verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(followingRepository).existsByFollowerIdAndFolloweeId(followerId, followeeId);
         verify(followingRepository).deleteByFollowerIdAndFolloweeId(followerId, followeeId);
-        verify(followingRepository).countByFollowerId(followerId);
-        verify(followingRepository).countByFolloweeId(followeeId);
-        verify(userRepository, times(2)).save(any(User.class));
+        verify(userCountRepository).incrementFollowingCount(followerId, -1);
+        verify(userCountRepository).incrementFollowerCount(followeeId, -1);
     }
 
     @Test
     @DisplayName("Should handle unfollow when relationship doesn't exist (idempotent)")
     void unfollowUser_NoRelationship_Idempotent() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.of(followeeUser));
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
 
         // Act
         socialService.unfollowUser(followerId, followeeId);
 
         // Assert
-        verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(followingRepository).existsByFollowerIdAndFolloweeId(followerId, followeeId);
         verify(followingRepository, never()).deleteByFollowerIdAndFolloweeId(anyString(), anyString());
-        verify(userRepository, never()).save(any(User.class));
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
     }
 
     @Test
     @DisplayName("Should throw ResourceNotFoundException when unfollowing non-existent user")
     void unfollowUser_UserNotFound_ThrowsException() {
         // Arrange
-        when(userRepository.findById(followerId)).thenReturn(Optional.of(followerUser));
-        when(userRepository.findById(followeeId)).thenReturn(Optional.empty());
+        when(userRepository.existsById(followeeId)).thenReturn(false);
 
         // Act & Assert
         assertThatThrownBy(() -> socialService.unfollowUser(followerId, followeeId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("User not found");
 
-        verify(userRepository).findById(followerId);
-        verify(userRepository).findById(followeeId);
+        verify(userRepository).existsById(followerId);
+        verify(userRepository).existsById(followeeId);
         verify(followingRepository, never()).deleteByFollowerIdAndFolloweeId(anyString(), anyString());
     }
 
@@ -278,8 +276,7 @@ class SocialServiceTest {
 
         when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.findByFolloweeId(followeeId, pageable)).thenReturn(followingPage);
-        when(userRepository.findById("user789")).thenReturn(Optional.of(follower1));
-        when(userRepository.findById("user101")).thenReturn(Optional.of(follower2));
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList(follower1, follower2));
 
         // Act
         Page<UserProfileResponse> result = socialService.getFollowers(followeeId, pageable);
@@ -353,8 +350,7 @@ class SocialServiceTest {
 
         when(userRepository.existsById(followerId)).thenReturn(true);
         when(followingRepository.findByFollowerId(followerId, pageable)).thenReturn(followingPage);
-        when(userRepository.findById("user789")).thenReturn(Optional.of(followee1));
-        when(userRepository.findById("user101")).thenReturn(Optional.of(followee2));
+        when(userRepository.findAllById(any())).thenReturn(Arrays.asList(followee1, followee2));
 
         // Act
         Page<UserProfileResponse> result = socialService.getFollowing(followerId, pageable);
@@ -402,7 +398,8 @@ class SocialServiceTest {
 
         List<Following> followingList = Arrays.asList(following1, following2);
 
-        when(followingRepository.findByFollowerId(followerId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(followerId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
 
         // Act
         List<String> result = socialService.getFollowingUserIds(followerId);
@@ -411,14 +408,15 @@ class SocialServiceTest {
         assertThat(result).isNotNull();
         assertThat(result).hasSize(2);
         assertThat(result).containsExactly("user789", "user101");
-        verify(followingRepository).findByFollowerId(followerId);
+        verify(followingRepository).findByFollowerId(eq(followerId), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Should return empty list when user is not following anyone")
     void getFollowingUserIds_EmptyList() {
         // Arrange
-        when(followingRepository.findByFollowerId(followerId)).thenReturn(Arrays.asList());
+        when(followingRepository.findByFollowerId(eq(followerId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList()));
 
         // Act
         List<String> result = socialService.getFollowingUserIds(followerId);
@@ -426,7 +424,7 @@ class SocialServiceTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result).isEmpty();
-        verify(followingRepository).findByFollowerId(followerId);
+        verify(followingRepository).findByFollowerId(eq(followerId), any(Pageable.class));
     }
 
     @Test

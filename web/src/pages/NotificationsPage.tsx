@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Spinner } from '../components/Spinner'
-import { useToast } from '../components/Toast'
+import { toastError, toastSuccess } from '../components/Toast'
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/endpoints'
+import { Icon } from '../components/Icon'
 
-const TYPE_ICONS: Record<string, string> = {
-  SHIP_LIKE: '♥', SHIP_COMMENT: '💬', NEW_FOLLOWER: '👤', MENTION: '@',
+const TYPE_ICONS: Record<string, Parameters<typeof Icon>[0]['name']> = {
+  SHIP_LIKE: 'thumb',
+  SHIP_COMMENT: 'comment',
+  NEW_FOLLOWER: 'user',
+  MENTION: 'info',
 }
 
 const POLL_INTERVAL_MS = 30_000
@@ -23,24 +27,22 @@ function timeAgo(iso: string) {
 export function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const { toast } = useToast()
   const navigate = useNavigate()
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const fetchNotifications = (showLoader = false) => {
+  const fetchNotifications = useCallback((showLoader = false) => {
     if (showLoader) setLoading(true)
     return getNotifications()
       .then(r => setNotifications(r.data.content ?? []))
-      .catch(() => { if (showLoader) toast('Could not load notifications', 'error') })
+      .catch(() => { if (showLoader) toastError('Could not load notifications') })
       .finally(() => { if (showLoader) setLoading(false) })
-  }
+  }, [])
 
   useEffect(() => {
     fetchNotifications(true)
-    // Poll every 30s while the page is open
     pollRef.current = setInterval(() => fetchNotifications(false), POLL_INTERVAL_MS)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [])
+  }, [fetchNotifications])
 
   const handleClick = async (n: any) => {
     if (!n.read) {
@@ -51,9 +53,9 @@ export function NotificationsPage() {
   }
 
   const handleMarkAll = async () => {
-    await markAllNotificationsRead().catch(() => toast('Failed', 'error'))
+    await markAllNotificationsRead().catch(() => toastError('Could not mark notifications read'))
     setNotifications(p => p.map(x => ({ ...x, read: true })))
-    toast('All marked as read', 'success')
+    toastSuccess('All notifications marked as read')
   }
 
   const unreadCount = notifications.filter(n => !n.read).length
@@ -86,7 +88,9 @@ export function NotificationsPage() {
 
       {!loading && notifications.length === 0 && (
         <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 'var(--space-4)' }}>🔔</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-4)' }}>
+            <Icon name="bell" size={40} />
+          </div>
           <div style={{ fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>No notifications yet</div>
           <div style={{ fontSize: 'var(--text-sm)' }}>When someone likes or comments on your ships, you'll see it here.</div>
         </div>
@@ -113,8 +117,8 @@ export function NotificationsPage() {
                 width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                 background: 'var(--color-surface-3)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16,
-              }}>{TYPE_ICONS[n.type] ?? '🔔'}</div>
+                color: 'var(--color-text-muted)',
+              }}><Icon name={TYPE_ICONS[n.type] ?? 'bell'} size={18} /></div>
             )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', lineHeight: 1.5 }}>

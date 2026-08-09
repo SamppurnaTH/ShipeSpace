@@ -57,11 +57,13 @@ services:
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:?GITHUB_CLIENT_ID must be set}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:?GITHUB_CLIENT_SECRET must be set}
       - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://localhost:3005/auth/callback}
+      - ADMIN_GITHUB_IDS=${ADMIN_GITHUB_IDS:-}
       - MULTIBASE_API_URL=${MULTIBASE_API_URL:-http://localhost:5001}
       - MULTIBASE_API_KEY=${MULTIBASE_API_KEY:-}
       - SWAGGER_ENABLED=${SWAGGER_ENABLED:-false}
       - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
       - DEMO_MODE=${DEMO_MODE:-false}
+      - MANAGEMENT_TRACING_ENABLED=${MANAGEMENT_TRACING_ENABLED:-false}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -76,7 +78,7 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=http://localhost:3005/api
+        - VITE_API_BASE_URL=/api
         - VITE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-CHANGE_ME}
         - VITE_GITHUB_REDIRECT_URI=http://localhost:3005/auth/callback
         - VITE_DEMO_MODE=${DEMO_MODE:-false}

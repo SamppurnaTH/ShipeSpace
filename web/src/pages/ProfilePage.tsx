@@ -4,8 +4,9 @@ import { useAuth } from '../auth/AuthContext'
 import { useProfile } from '../hooks/useProfile'
 import { ShipCard } from '../components/ShipCard'
 import { ShipCardSkeleton } from '../components/ShipCardSkeleton'
-import { Spinner } from '../components/Spinner'
+import { BuilderCardSkeleton } from '../components/common/Loading'
 import { getUserShips, likeShip, unlikeShip } from '../api/endpoints'
+import { Icon } from '../components/Icon'
 
 const RANK_COLORS: Record<string, string> = {
   DOCKED: '#94a3b8',
@@ -35,20 +36,41 @@ export function ProfilePage() {
 
   const toggleLike = async (shipId: string) => {
     if (!me) return
+    if (me.banned) return
     const liked = likedIds.has(shipId)
-    setLikedIds(p => { const n = new Set(p); liked ? n.delete(shipId) : n.add(shipId); return n })
+    setLikedIds(p => {
+      const n = new Set(p)
+      if (liked) {
+        n.delete(shipId)
+      } else {
+        n.add(shipId)
+      }
+      return n
+    })
     setShips(p => p.map(s => s.id === shipId ? { ...s, likeCount: s.likeCount + (liked ? -1 : 1) } : s))
     try { await (liked ? unlikeShip(shipId) : likeShip(shipId)) }
     catch {
-      setLikedIds(p => { const n = new Set(p); liked ? n.add(shipId) : n.delete(shipId); return n })
+      setLikedIds(p => {
+        const n = new Set(p)
+        if (liked) {
+          n.add(shipId)
+        } else {
+          n.delete(shipId)
+        }
+        return n
+      })
       setShips(p => p.map(s => s.id === shipId ? { ...s, likeCount: s.likeCount + (liked ? 1 : -1) } : s))
     }
   }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}>
-        <Spinner size={28} />
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }} aria-busy="true">
+        <BuilderCardSkeleton />
+        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-muted)', margin: 'var(--space-6) 0 var(--space-3)', fontFamily: 'var(--font-mono)' }}>
+          SHIPS
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => <ShipCardSkeleton key={i} />)}
       </div>
     )
   }
@@ -56,13 +78,14 @@ export function ProfilePage() {
   if (!profile) {
     return (
       <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
-        <div style={{ fontSize: 48, marginBottom: 'var(--space-3)' }}>🔍</div>
+        <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="search" size={48} /></div>
         <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600 }}>User not found</div>
       </div>
     )
   }
 
   const isOwnProfile = me && profile && me.username === profile.username
+  const isWriteBlocked = Boolean(me?.banned)
   const rankColor = RANK_COLORS[profile.rank] || 'var(--color-brand)'
   const progressPercent = rankSummary
     ? rankSummary.level >= 30 ? 100 : ((rankSummary.shipScore % 40) / 40) * 100
@@ -114,11 +137,11 @@ export function ProfilePage() {
             )}
 
             <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
-              {profile.location && <span>📍 {profile.location}</span>}
+              {profile.location && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Icon name="location" size={14} /> {profile.location}</span>}
               {profile.websiteUrl && (
                 <a href={profile.websiteUrl} target="_blank" rel="noopener noreferrer"
                   style={{ color: 'var(--color-brand)', textDecoration: 'none' }}>
-                  🔗 {profile.websiteUrl.replace(/https?:\/\//, '')}
+                  <Icon name="externalLink" size={14} /> {profile.websiteUrl.replace(/https?:\/\//, '')}
                 </a>
               )}
             </div>
@@ -161,25 +184,32 @@ export function ProfilePage() {
             textDecoration: 'none',
             transition: 'all var(--transition-fast)',
           }}>
-            ✏️ Edit Profile
+            <Icon name="edit" size={14} /> Edit Profile
           </Link>
         ) : (
           <button
             onClick={toggleFollow}
+            disabled={isWriteBlocked}
             style={{
               padding: '8px 24px', borderRadius: 'var(--radius-md)',
               border: profile.isFollowing ? '1px solid var(--color-border)' : 'none',
-              background: profile.isFollowing ? 'var(--color-surface)' : 'var(--color-brand)',
-              color: profile.isFollowing ? 'var(--color-text-primary)' : '#fff',
+              background: isWriteBlocked ? 'var(--color-surface-2)' : profile.isFollowing ? 'var(--color-surface)' : 'var(--color-brand)',
+              color: isWriteBlocked ? 'var(--color-text-muted)' : profile.isFollowing ? 'var(--color-text-primary)' : '#fff',
               fontSize: 'var(--text-sm)', fontWeight: 600,
-              cursor: 'pointer', fontFamily: 'inherit',
+              cursor: isWriteBlocked ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
               transition: 'all var(--transition-fast)',
             }}
           >
-            {profile.isFollowing ? 'Following ✓' : 'Follow'}
+            {isWriteBlocked ? 'Writes blocked' : profile.isFollowing ? 'Following' : 'Follow'}
           </button>
         )}
       </div>
+
+      {isWriteBlocked && (
+        <div className="blocked-write-banner" role="status">
+          Follow, like, and ship actions are unavailable for this account. Public browsing remains available.
+        </div>
+      )}
 
       {/* Rank Progression */}
       {rankSummary && (
@@ -215,7 +245,7 @@ export function ProfilePage() {
           </div>
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' }}>
             {rankSummary.level >= 30
-              ? '🌟 Maximum Level Reached'
+              ? 'Maximum level reached'
               : `${rankSummary.pointsToNext} XP to Level ${rankSummary.level + 1}`}
           </div>
         </div>
@@ -234,18 +264,18 @@ export function ProfilePage() {
           border: '1px solid var(--color-border)', padding: 'var(--space-10)',
           textAlign: 'center', color: 'var(--color-text-muted)',
         }}>
-          <div style={{ fontSize: 32, marginBottom: 'var(--space-3)' }}>🚢</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="ship" size={32} /></div>
           <div style={{ fontSize: 'var(--text-sm)' }}>
             {isOwnProfile ? "You haven't shipped anything yet." : 'No ships yet.'}
           </div>
-          {isOwnProfile && (
+          {isOwnProfile && !isWriteBlocked && (
             <Link to="/ships/new" style={{
               display: 'inline-block', marginTop: 'var(--space-4)',
               padding: '8px 20px', borderRadius: 'var(--radius-md)',
               background: 'var(--color-brand)', color: '#fff',
               fontSize: 'var(--text-sm)', fontWeight: 600, textDecoration: 'none',
             }}>
-              Ship something →
+              Ship something
             </Link>
           )}
         </div>
@@ -258,7 +288,7 @@ export function ProfilePage() {
           user={profile ? { id: profile.id, username: profile.username, avatarUrl: profile.avatarUrl, rank: profile.rank, level: profile.level } : undefined}
           project={s.project}
           liked={likedIds.has(s.id)}
-          canLike={!!me}
+          canLike={!!me && !isWriteBlocked}
           onLike={() => toggleLike(s.id)}
           isOwner={!!me && me.id === profile?.id}
         />

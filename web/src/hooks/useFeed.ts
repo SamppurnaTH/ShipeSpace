@@ -130,7 +130,15 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
     const liked = likedIds.has(id)
 
     // Optimistic
-    setLikedIds(prev => { const n = new Set(prev); liked ? n.delete(id) : n.add(id); return n })
+    setLikedIds(prev => {
+      const n = new Set(prev)
+      if (liked) {
+        n.delete(id)
+      } else {
+        n.add(id)
+      }
+      return n
+    })
     setItems(prev => prev.map(i =>
       i.ship.id === id
         ? { ...i, ship: { ...i.ship, likeCount: i.ship.likeCount + (liked ? -1 : 1) } }
@@ -141,7 +149,15 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
       await (liked ? unlikeShip(id) : likeShip(id))
     } catch {
       // Revert
-      setLikedIds(prev => { const n = new Set(prev); liked ? n.add(id) : n.delete(id); return n })
+      setLikedIds(prev => {
+        const n = new Set(prev)
+        if (liked) {
+          n.add(id)
+        } else {
+          n.delete(id)
+        }
+        return n
+      })
       setItems(prev => prev.map(i =>
         i.ship.id === id
           ? { ...i, ship: { ...i.ship, likeCount: i.ship.likeCount + (liked ? 1 : -1) } }

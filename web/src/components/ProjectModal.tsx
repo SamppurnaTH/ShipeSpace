@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
 import { createProject, updateProject } from '../api/endpoints'
 import { toastSuccess, toastError } from './Toast'
+import { ButtonLoader } from './common/Loading'
+import { Icon } from './Icon'
 
 interface ProjectModalProps {
   open: boolean
@@ -68,7 +70,7 @@ export function ProjectModal({ open, onClose, onSuccess, editProject }: ProjectM
         toastSuccess('Project updated')
       } else {
         await createProject(data)
-        toastSuccess('Project created! 🎉')
+        toastSuccess('Project created')
       }
       onSuccess()
       onClose()
@@ -130,7 +132,7 @@ export function ProjectModal({ open, onClose, onSuccess, editProject }: ProjectM
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--color-info)', fontSize: 12, padding: 0,
                 lineHeight: 1,
-              }}>✕</button>
+              }} aria-label={`Remove ${tag}`}><Icon name="close" size={12} /></button>
             </span>
           ))}
         </div>
@@ -168,7 +170,7 @@ export function ProjectModal({ open, onClose, onSuccess, editProject }: ProjectM
             <button onClick={() => removeLink(i)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--color-text-muted)', fontSize: 16,
-            }}>✕</button>
+            }} aria-label="Remove link"><Icon name="close" size={14} /></button>
           </div>
         ))}
         <button onClick={addLink} style={{
@@ -199,7 +201,7 @@ export function ProjectModal({ open, onClose, onSuccess, editProject }: ProjectM
             fontSize: 'var(--text-sm)', fontWeight: 600, fontFamily: 'inherit',
           }}
         >
-          {submitting ? (isEdit ? 'Saving...' : 'Creating...') : (isEdit ? 'Save Changes' : 'Create Project')}
+          {submitting ? <ButtonLoader label={isEdit ? 'Saving...' : 'Creating...'} /> : (isEdit ? 'Save Changes' : 'Create Project')}
         </button>
       </div>
     </Modal>

@@ -106,10 +106,32 @@ public class SearchController {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+        String remoteAddr = request.getRemoteAddr();
+        if (isTrustedProxy(remoteAddr)) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return forwarded.split(",")[0].trim();
+            }
+            String realIp = request.getHeader("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return realIp;
+            }
         }
-        return request.getRemoteAddr();
+        return remoteAddr;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        if (remoteAddr == null) return false;
+        return remoteAddr.equals("127.0.0.1")
+                || remoteAddr.equals("::1")
+                || remoteAddr.startsWith("10.")
+                || remoteAddr.startsWith("172.16.")
+                || remoteAddr.startsWith("172.17.")
+                || remoteAddr.startsWith("172.18.")
+                || remoteAddr.startsWith("172.19.")
+                || remoteAddr.startsWith("172.2")
+                || remoteAddr.startsWith("172.30.")
+                || remoteAddr.startsWith("172.31.")
+                || remoteAddr.startsWith("192.168.");
     }
 }

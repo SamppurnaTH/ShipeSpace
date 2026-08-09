@@ -37,7 +37,7 @@ The number of unique users per week who publish at least one meaningful Project 
 ## 3. Product Features & User Experience
 
 ### 3.1 Authentication & Profile
-- **Identity:** Mandatory GitHub OAuth 2.0 (Supabase Auth). No email/password for MVP to ensure user quality.
+- **Identity:** Mandatory GitHub OAuth 2.0 with ShipSpace-issued JWT access/refresh tokens. No email/password for MVP to ensure user quality.
 - **Profiles:** Displays avatar, bio, tech stack tags, and a **"Shipper Badge"** for active builders.
 - **Progression (ShipScore):** A gamified system where users earn points for shipping and engaging.
     - **Ranks:** DOCKED (Lvl 1-5) up to FLEET_ADMIRAL (Lvl 26-30).
@@ -57,11 +57,12 @@ The number of unique users per week who publish at least one meaningful Project 
 ## 4. Technical Architecture
 
 ### 4.1 Technology Stack
-- **Frontend:** Next.js 14 (App Router) on Vercel.
-- **Backend/API:** Supabase Edge Functions (Deno/TypeScript) for writes; PostgREST for reads.
-- **Database:** PostgreSQL 16 (Supabase Managed).
-- **Storage:** Cloudflare R2 (Private Bucket) for media, stripped of EXIF data.
-- **Caching:** Redis-backed caching for interest profiles and content scores.
+- **Frontend:** React 19 + TypeScript + Vite single-page application.
+- **Backend/API:** Spring Boot 3.2 on Java 17, implemented as a layered modular monolith.
+- **Database:** MongoDB for users, projects, ships, engagement, notifications, behavioral signals, scoring, and audit records.
+- **Cache/control plane:** Redis for cache entries, OAuth state, rate limiting, JWT blacklist, upload progress, SLO state, and scheduled-job locks.
+- **Storage integration:** Multibase image upload integration from the backend.
+- **Operations:** Docker/Docker Compose, GitHub Actions, Actuator, Micrometer, Prometheus, and Zipkin-compatible tracing.
 
 ### 4.2 System Design Decisions (ADR)
 - **ADR-001:** Projects as atomic units ensures high-signal content.
@@ -95,13 +96,17 @@ A sophisticated hybrid feed system was implemented:
 
 ### 6.1 Deployment Flow
 - **Branches:** `main` (Production), `develop` (Staging).
-- **CI/CD:** GitHub Actions for linting, type-checking, and automated testing.
-- **Database:** Migrations managed via Supabase CLI; direct console edits are forbidden.
+- **CI/CD:** GitHub Actions for backend verification, backend integration tests, frontend lint/build, security scanning, and Docker image build/push.
+- **Database:** MongoDB indexes are created by `MongoIndexInitializer`; Mongo transactions require a replica set.
 
 ### 6.2 Security Layer
-- **RLS (Row Level Security):** Enforced on all tables to ensure users only modify their own data.
-- **Rate Limiting:** Enforced on high-frequency actions (Follows, Ships).
-- **Data Protection:** EXIF stripping for privacy; No regulated financial or health data stored.
+- **Authentication:** GitHub OAuth with server-issued JWT access and refresh tokens.
+- **Authorization:** Route-level Spring Security plus service-level ownership checks for projects, ships, comments, and collaborations.
+- **Admin Bootstrap:** Comma-separated `ADMIN_GITHUB_IDS` config grants `ADMIN` role on login for matching GitHub numeric IDs.
+- **Banned Users:** Banned users can read/log out but are blocked from write actions by a backend filter.
+- **Rate Limiting:** Redis-backed rate limiting on auth/search and selected high-frequency operations.
+- **Data Protection:** Uploaded files are size-limited and magic-byte validated before Multibase upload. EXIF stripping, malware scanning, and signed/public delivery policy must be verified against the Multibase service before production release.
+- **MVP Token Storage:** The React app currently stores JWTs in `localStorage`; this is accepted only as a documented MVP risk unless moved to HttpOnly secure cookies.
 
 ---
 

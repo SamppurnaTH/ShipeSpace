@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import {
   getIncomingCollabs, getSentCollabs,
   acceptCollaboration, declineCollaboration,
@@ -8,6 +9,7 @@ import {
 import { Spinner } from '../components/Spinner'
 import { Modal } from '../components/Modal'
 import { toastSuccess, toastError } from '../components/Toast'
+import { Icon } from '../components/Icon'
 
 type Tab = 'incoming' | 'sent'
 
@@ -114,11 +116,13 @@ function SendRequestModal({ open, onClose, onSent }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function CollaborationsPage() {
+  const { user } = useAuth()
   const [tab, setTab] = useState<Tab>('incoming')
   const [incoming, setIncoming] = useState<any[]>([])
   const [sent, setSent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showSendModal, setShowSendModal] = useState(false)
+  const isBanned = Boolean(user?.banned)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -141,6 +145,10 @@ export function CollaborationsPage() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const handleAction = async (id: string, action: 'accept' | 'decline') => {
+    if (isBanned) {
+      toastError('Writes are blocked for this account.')
+      return
+    }
     try {
       if (action === 'accept') {
         await acceptCollaboration(id)
@@ -162,10 +170,20 @@ export function CollaborationsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
         <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700 }}>Collaborations</h1>
-        <button onClick={() => setShowSendModal(true)} style={primaryBtn}>
-          + Send Request
+        <button
+          disabled={isBanned}
+          onClick={() => !isBanned && setShowSendModal(true)}
+          style={{ ...primaryBtn, opacity: isBanned ? 0.55 : 1, cursor: isBanned ? 'not-allowed' : 'pointer' }}
+        >
+          {isBanned ? 'Writes blocked' : '+ Send Request'}
         </button>
       </div>
+
+      {isBanned && (
+        <div className="blocked-write-banner" role="status">
+          Collaboration write actions are unavailable for this account. You can still review existing requests.
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: 'var(--space-5)' }}>
@@ -205,7 +223,7 @@ export function CollaborationsPage() {
       {!loading && tab === 'incoming' && (
         <>
           {incoming.length === 0 ? (
-            <EmptyState icon="🤝" title="No incoming requests" body="When someone wants to collaborate on your projects, you'll see them here." />
+            <EmptyState icon="network" title="No incoming requests" body="When someone wants to collaborate on your projects, you'll see them here." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {incoming.map(c => (
@@ -246,8 +264,8 @@ export function CollaborationsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
                         {c.status === 'PENDING' ? (
                           <>
-                            <button onClick={() => handleAction(c.id, 'accept')} style={primaryBtn}>Accept</button>
-                            <button onClick={() => handleAction(c.id, 'decline')} style={ghostBtn}>Decline</button>
+                            <button disabled={isBanned} onClick={() => handleAction(c.id, 'accept')} style={{ ...primaryBtn, opacity: isBanned ? 0.55 : 1, cursor: isBanned ? 'not-allowed' : 'pointer' }}>Accept</button>
+                            <button disabled={isBanned} onClick={() => handleAction(c.id, 'decline')} style={{ ...ghostBtn, opacity: isBanned ? 0.55 : 1, cursor: isBanned ? 'not-allowed' : 'pointer' }}>Decline</button>
                           </>
                         ) : (
                           <span style={{
@@ -272,7 +290,7 @@ export function CollaborationsPage() {
       {!loading && tab === 'sent' && (
         <>
           {sent.length === 0 ? (
-            <EmptyState icon="📤" title="No sent requests" body="Send a collaboration request from any project page." />
+            <EmptyState icon="upload" title="No sent requests" body="Send a collaboration request from any project page." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
               {sent.map(c => (
@@ -332,13 +350,13 @@ export function CollaborationsPage() {
   )
 }
 
-function EmptyState({ icon, title, body }: { icon: string; title: string; body: string }) {
+function EmptyState({ icon, title, body }: { icon: Parameters<typeof Icon>[0]['name']; title: string; body: string }) {
   return (
     <div style={{
       textAlign: 'center', padding: 'var(--space-12)',
       background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
     }}>
-      <div style={{ fontSize: 44, marginBottom: 'var(--space-4)' }}>{icon}</div>
+      <div style={{ display: 'inline-flex', marginBottom: 'var(--space-4)' }}><Icon name={icon} size={44} /></div>
       <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 'var(--space-2)' }}>{title}</div>
       <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>{body}</div>
     </div>

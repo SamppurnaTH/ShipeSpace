@@ -17,6 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
@@ -44,16 +47,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   - The DispatcherServlet then routes /ships to ShipController correctly.
  */
 @SpringBootTest(properties = {
-        "spring.data.mongodb.uri=mongodb://localhost:27017/shipspace-integration-test",
         "spring.autoconfigure.exclude=de.flapdoodle.embed.mongo.spring.autoconfigure.EmbeddedMongoAutoConfiguration",
         "spring.main.allow-bean-definition-overriding=true"
 })
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @DisplayName("Ship Creation Integration Tests")
 class ShipCreationIntegrationTest {
 
     private static final String SHIPS_URL = "/api/ships";
     private static final String CONTEXT_PATH = "/api";
+    private static final String DATABASE_NAME = "shipspace-integration-test-" + System.nanoTime();
+
+    @DynamicPropertySource
+    static void registerMongoProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", () -> "mongodb://localhost:27017/" + DATABASE_NAME);
+        registry.add("spring.data.mongodb.database", () -> DATABASE_NAME);
+        registry.add("spring.data.mongodb.auto-index-creation", () -> "false");
+        registry.add("management.endpoint.health.validate-group-membership", () -> "false");
+    }
 
     @Autowired
     private MockMvc mockMvc;

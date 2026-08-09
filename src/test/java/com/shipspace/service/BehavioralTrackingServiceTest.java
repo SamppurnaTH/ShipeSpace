@@ -6,6 +6,8 @@ import com.shipspace.model.BehavioralSignal.SignalType;
 import com.shipspace.model.Project;
 import com.shipspace.model.Ship;
 import com.shipspace.model.UserInterestProfile;
+import com.shipspace.config.ScheduledJobMetrics;
+import com.shipspace.config.SloEnforcementService;
 import com.shipspace.repository.BehavioralSignalRepository;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
@@ -18,8 +20,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,11 +63,27 @@ class BehavioralTrackingServiceTest {
     @Mock
     private ProjectRepository projectRepository;
 
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private DistributedLockService lockService;
+
+    @Mock
+    private InterestProfileService interestProfileService;
+
+    @Mock
+    private ScheduledJobMetrics scheduledJobMetrics;
+
+    @Mock
+    private SloEnforcementService sloEnforcementService;
+
     @InjectMocks
     private BehavioralTrackingService behavioralTrackingService;
 
     private Ship testShip;
     private Project testProject;
+    private Map<String, UserInterestProfile> profilesByUserId;
 
     @BeforeEach
     void setUp() {
@@ -81,6 +105,27 @@ class BehavioralTrackingServiceTest {
                 .techTags(List.of("Java", "Spring", "MongoDB"))
                 .createdAt(Instant.now())
                 .build();
+
+        profilesByUserId = new HashMap<>();
+        lenient().when(interestProfileService.getOrCreatePersistedProfile(anyString()))
+                .thenAnswer(invocation -> profilesByUserId.computeIfAbsent(
+                        invocation.getArgument(0),
+                        userId -> UserInterestProfile.builder()
+                                .userId(userId)
+                                .techTagScores(new HashMap<>())
+                                .followedBuilders(new HashSet<>())
+                                .totalSignals(0)
+                                .createdAt(Instant.now())
+                                .updatedAt(Instant.now())
+                                .build()));
+        lenient().when(userInterestProfileRepository.save(any(UserInterestProfile.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(lockService.runWithLock(anyString(), any(Duration.class), any(Runnable.class)))
+                .thenAnswer(invocation -> {
+                    Runnable task = invocation.getArgument(2);
+                    task.run();
+                    return true;
+                });
     }
 
     @Test
@@ -387,7 +432,7 @@ class BehavioralTrackingServiceTest {
         final UserInterestProfile[] currentProfile = {null};
         
         // Mock profile repository to maintain state across calls
-        when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
             currentProfile[0] == null ? Optional.empty() : Optional.of(currentProfile[0])
         );
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> {
@@ -437,7 +482,7 @@ class BehavioralTrackingServiceTest {
         final UserInterestProfile[] currentProfile = {null};
 
         // Mock profile repository to maintain state across calls
-        when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
             currentProfile[0] == null ? Optional.empty() : Optional.of(currentProfile[0])
         );
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> {
@@ -461,10 +506,10 @@ class BehavioralTrackingServiceTest {
         com.shipspace.model.UserInterestProfile savedProfile = profileCaptor.getValue();
         Map<String, Double> techTagScores = savedProfile.getTechTagScores();
 
-        // COMMENT signal has weight 2.0, but scores are capped at 1.0 by incrementTagScore
-        assertTrue(techTagScores.get("Java") <= 1.0, "Score should be capped at 1.0");
-        assertTrue(techTagScores.get("Spring") <= 1.0, "Score should be capped at 1.0");
-        assertTrue(techTagScores.get("MongoDB") <= 1.0, "Score should be capped at 1.0");
+        // COMMENT signal has weight 2.0 and scores now accumulate without a hard cap.
+        assertEquals(2.0, techTagScores.get("Java"), 0.001);
+        assertEquals(2.0, techTagScores.get("Spring"), 0.001);
+        assertEquals(2.0, techTagScores.get("MongoDB"), 0.001);
     }
 
 
@@ -479,7 +524,7 @@ class BehavioralTrackingServiceTest {
         final UserInterestProfile[] currentProfile = {null};
 
         // Mock profile repository to maintain state across calls
-        when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
             currentProfile[0] == null ? Optional.empty() : Optional.of(currentProfile[0])
         );
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> {
@@ -504,9 +549,9 @@ class BehavioralTrackingServiceTest {
         assertTrue(savedProfile.getFollowedBuilders().contains("builder456"), 
                    "Builder should be added to followed builders");
 
-        // FOLLOW signal has weight 3.0, but scores are capped at 1.0
+        // FOLLOW signal has weight 3.0 and scores now accumulate without a hard cap.
         Map<String, Double> techTagScores = savedProfile.getTechTagScores();
-        assertTrue(techTagScores.get("Java") <= 1.0, "Score should be capped at 1.0");
+        assertEquals(3.0, techTagScores.get("Java"), 0.001);
     }
 
 
@@ -521,7 +566,7 @@ class BehavioralTrackingServiceTest {
         final UserInterestProfile[] currentProfile = {null};
         
         // Mock profile repository to maintain state across calls
-        when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
             currentProfile[0] == null ? Optional.empty() : Optional.of(currentProfile[0])
         );
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> {
@@ -561,7 +606,7 @@ class BehavioralTrackingServiceTest {
         final UserInterestProfile[] currentProfile = {null};
 
         // Mock profile repository to maintain state across calls
-        when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenAnswer(invocation -> 
             currentProfile[0] == null ? Optional.empty() : Optional.of(currentProfile[0])
         );
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> {
@@ -598,7 +643,7 @@ class BehavioralTrackingServiceTest {
         // Arrange
         when(shipRepository.findById("ship123")).thenReturn(Optional.of(testShip));
         when(projectRepository.findById("project789")).thenReturn(Optional.of(testProject));
-        when(userInterestProfileRepository.findByUserId("user123")).thenReturn(Optional.empty());
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenReturn(Optional.empty());
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(behavioralSignalRepository.save(any(BehavioralSignal.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -625,7 +670,7 @@ class BehavioralTrackingServiceTest {
     void testExtractTechTags_FromProject() throws Exception {
         // Arrange
         when(projectRepository.findById("project789")).thenReturn(Optional.of(testProject));
-        when(userInterestProfileRepository.findByUserId("user123")).thenReturn(Optional.empty());
+        lenient().when(userInterestProfileRepository.findByUserId("user123")).thenReturn(Optional.empty());
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(behavioralSignalRepository.save(any(BehavioralSignal.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -669,7 +714,8 @@ class BehavioralTrackingServiceTest {
                 .lastSignalAt(Instant.now().minus(60, java.time.temporal.ChronoUnit.DAYS))
                 .build();
 
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of(profile1, profile2));
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(profile1, profile2)));
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -713,7 +759,8 @@ class BehavioralTrackingServiceTest {
                 .lastSignalAt(null)
                 .build();
 
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of(profileWithSignals, profileWithoutSignals));
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(profileWithSignals, profileWithoutSignals)));
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -747,7 +794,8 @@ class BehavioralTrackingServiceTest {
                 .lastSignalAt(null)
                 .build();
 
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of(profileWithTimestamp, profileWithoutTimestamp));
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(profileWithTimestamp, profileWithoutTimestamp)));
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
@@ -765,7 +813,8 @@ class BehavioralTrackingServiceTest {
     @DisplayName("applyTimeDecayToAllProfiles should handle empty profile list")
     void testApplyTimeDecayToAllProfiles_HandlesEmptyList() {
         // Arrange
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of());
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
 
         // Act
         behavioralTrackingService.applyTimeDecayToAllProfiles();
@@ -794,7 +843,8 @@ class BehavioralTrackingServiceTest {
                 .lastSignalAt(Instant.now().minus(15, java.time.temporal.ChronoUnit.DAYS))
                 .build();
 
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of(profile1, profile2));
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(profile1, profile2)));
         
         // Make the first save throw an exception, but second should succeed
         when(userInterestProfileRepository.save(any()))
@@ -822,7 +872,8 @@ class BehavioralTrackingServiceTest {
                 .updatedAt(oldTimestamp)
                 .build();
 
-        when(userInterestProfileRepository.findAll()).thenReturn(List.of(profile));
+        when(userInterestProfileRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(profile)));
         when(userInterestProfileRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act

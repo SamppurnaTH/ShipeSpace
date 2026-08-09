@@ -60,13 +60,14 @@ public class MultibaseService {
     @Async("taskExecutor")
     public CompletableFuture<String> uploadImageAsync(MultipartFile file) {
         String uploadId = UUID.randomUUID().toString();
-        log.info("Starting async upload for file: {} with uploadId: {}", file.getOriginalFilename(), uploadId);
+        log.info("Starting async upload for file: {} with uploadId: {}",
+                file == null ? "<null>" : file.getOriginalFilename(), uploadId);
 
         saveProgress(uploadId, ImageUploadProgress.builder()
                 .uploadId(uploadId)
                 .status(ImageUploadProgress.UploadStatus.PENDING)
                 .progressPercentage(0)
-                .filename(file.getOriginalFilename())
+                .filename(file == null ? null : file.getOriginalFilename())
                 .startedAt(System.currentTimeMillis())
                 .build());
 
@@ -101,7 +102,8 @@ public class MultibaseService {
     }
 
     public ImageReference uploadImage(MultipartFile file) {
-        log.info("Starting synchronous upload for file: {}", file.getOriginalFilename());
+        log.info("Starting synchronous upload for file: {}",
+                file == null ? "<null>" : file.getOriginalFilename());
         try {
             validateImageFile(file);
             byte[] fileBytes = file.getBytes();
@@ -193,6 +195,10 @@ public class MultibaseService {
         if (file == null || file.isEmpty()) {
             throw new MultibaseException("File is empty or null");
         }
+        String contentType = file.getContentType();
+        if (!isSupportedImageContentType(contentType)) {
+            throw new MultibaseException("File content type must be one of JPEG, PNG, GIF, or WebP");
+        }
         long maxSize = 10 * 1024 * 1024L;
         if (file.getSize() > maxSize) {
             throw new MultibaseException("File size exceeds maximum allowed size of 10MB");
@@ -211,6 +217,13 @@ public class MultibaseService {
             throw new MultibaseException(
                     "File content does not match a supported image format (JPEG, PNG, GIF, WebP)");
         }
+    }
+
+    private boolean isSupportedImageContentType(String contentType) {
+        return "image/jpeg".equalsIgnoreCase(contentType)
+                || "image/png".equalsIgnoreCase(contentType)
+                || "image/gif".equalsIgnoreCase(contentType)
+                || "image/webp".equalsIgnoreCase(contentType);
     }
 
     private boolean isValidImageMagicBytes(byte[] header) {

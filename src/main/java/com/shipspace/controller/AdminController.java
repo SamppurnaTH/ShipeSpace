@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -66,11 +67,22 @@ public class AdminController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<User> getUser(@PathVariable String userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.shipspace.exception.ResourceNotFoundException("User not found: " + userId));
+        return ResponseEntity.ok(user);
+    }
+
     @PatchMapping("/users/{userId}/ban")
     public ResponseEntity<Map<String, Object>> banUser(
             @PathVariable String userId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal UserDetails adminDetails) {
+        if (adminDetails != null && userId.equals(adminDetails.getUsername())) {
+            throw new AccessDeniedException("Admins cannot ban or unban their own account");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new com.shipspace.exception.ResourceNotFoundException("User not found: " + userId));
 

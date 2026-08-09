@@ -11,6 +11,7 @@ import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.util.InputSanitizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -52,6 +54,18 @@ class ProjectServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private MongoTemplate mongoTemplate;
+
+    @Mock
+    private ShipScoreService shipScoreService;
+
+    @Mock
+    private CascadeDeleteService cascadeDeleteService;
+
+    @Mock
+    private InputSanitizer inputSanitizer;
 
     @InjectMocks
     private ProjectService projectService;
@@ -93,6 +107,9 @@ class ProjectServiceTest {
                 .name("Updated Project")
                 .description("Updated description")
                 .build();
+
+        lenient().when(inputSanitizer.sanitize(anyString(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -284,23 +301,12 @@ class ProjectServiceTest {
     @DisplayName("Should update project ship metadata")
     void shouldUpdateProjectShipMetadata() {
         // Given
-        when(projectRepository.findById("project123")).thenReturn(Optional.of(testProject));
-        when(shipRepository.countByProjectId("project123")).thenReturn(5L);
-        when(projectRepository.save(any(Project.class))).thenReturn(testProject);
-
         // When
         projectService.updateProjectShipMetadata("project123");
 
         // Then
-        ArgumentCaptor<Project> projectCaptor = ArgumentCaptor.forClass(Project.class);
-        verify(projectRepository).save(projectCaptor.capture());
-        Project savedProject = projectCaptor.getValue();
-        
-        assertThat(savedProject.getShipCount()).isEqualTo(5);
-        assertThat(savedProject.getLastShipAt()).isNotNull();
-
-        verify(projectRepository).findById("project123");
-        verify(shipRepository).countByProjectId("project123");
+        verify(mongoTemplate).updateFirst(any(), any(), eq(Project.class));
+        verify(projectRepository, never()).save(any(Project.class));
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -16,6 +17,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Integration tests for UserInterestProfileRepository.
@@ -139,14 +141,9 @@ class UserInterestProfileRepositoryTest {
                 .createdAt(Instant.now())
                 .build();
 
-        // Then: The unique constraint should be enforced
-        // Note: MongoDB unique index enforcement happens at the database level
-        // This test verifies that only one profile per userId can be retrieved
-        repository.save(duplicate);
-        
-        // After saving, findByUserId should still return a single result
-        Optional<UserInterestProfile> result = repository.findByUserId("user123");
-        assertThat(result).isPresent();
+        // Then: MongoDB enforces one profile per userId at the unique index.
+        assertThatThrownBy(() -> repository.save(duplicate))
+                .isInstanceOf(DuplicateKeyException.class);
     }
 
     @Test

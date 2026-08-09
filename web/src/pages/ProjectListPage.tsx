@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 import { getMyProjects } from '../api/endpoints'
-import { Spinner } from '../components/Spinner'
 import { Badge } from '../components/Badge'
 import { ProjectModal } from '../components/ProjectModal'
+import { ProjectCardSkeleton } from '../components/common/Loading'
+import { Icon } from '../components/Icon'
 
 interface Project {
   id: string
@@ -16,9 +18,11 @@ interface Project {
 }
 
 export function ProjectListPage() {
+  const { user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const isBanned = Boolean(user?.banned)
 
   const fetchProjects = () => {
     setLoading(true)
@@ -43,7 +47,16 @@ export function ProjectListPage() {
   }
 
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}><Spinner size={28} /></div>
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }} aria-busy="true">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
+          <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>My Projects</h1>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {Array.from({ length: 4 }).map((_, i) => <ProjectCardSkeleton key={i} />)}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -54,21 +67,27 @@ export function ProjectListPage() {
         marginBottom: 'var(--space-6)',
       }}>
         <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: 0 }}>My Projects</h1>
-        <button onClick={() => setShowCreate(true)} style={{
+        <button disabled={isBanned} onClick={() => !isBanned && setShowCreate(true)} style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '8px 18px', borderRadius: 'var(--radius-md)',
-          border: 'none', background: 'var(--color-brand)', color: '#fff',
+          border: 'none', background: isBanned ? 'var(--color-surface-2)' : 'var(--color-brand)', color: isBanned ? 'var(--color-text-muted)' : '#fff',
           fontSize: 'var(--text-sm)', fontWeight: 600,
-          cursor: 'pointer', fontFamily: 'inherit',
+          cursor: isBanned ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
           transition: 'all var(--transition-fast)',
           boxShadow: '0 2px 8px rgba(99,102,241,0.25)',
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-brand-hover)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--color-brand)'}
+          onMouseEnter={e => { if (!isBanned) e.currentTarget.style.background = 'var(--color-brand-hover)' }}
+          onMouseLeave={e => { if (!isBanned) e.currentTarget.style.background = 'var(--color-brand)' }}
         >
-          + New Project
+          {isBanned ? 'Writes blocked' : 'New Project'}
         </button>
       </div>
+
+      {isBanned && (
+        <div className="blocked-write-banner" role="status">
+          Project creation is unavailable for this account. Public browsing and existing read pages remain available.
+        </div>
+      )}
 
       {/* Empty state */}
       {projects.length === 0 && (
@@ -78,20 +97,20 @@ export function ProjectListPage() {
           border: '1px solid var(--color-border)',
           borderRadius: 'var(--radius-lg)',
         }}>
-          <div style={{ fontSize: 48, marginBottom: 'var(--space-4)' }}>🚀</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-4)' }}><Icon name="box" size={48} /></div>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, marginBottom: 'var(--space-2)', color: 'var(--color-text-primary)' }}>
             No projects yet
           </div>
           <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-5)' }}>
             Start by creating your first project.
           </div>
-          <button onClick={() => setShowCreate(true)} style={{
+          <button disabled={isBanned} onClick={() => !isBanned && setShowCreate(true)} style={{
             padding: '10px 24px', borderRadius: 'var(--radius-md)',
-            border: 'none', background: 'var(--color-brand)', color: '#fff',
+            border: 'none', background: isBanned ? 'var(--color-surface-2)' : 'var(--color-brand)', color: isBanned ? 'var(--color-text-muted)' : '#fff',
             fontSize: 'var(--text-sm)', fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'inherit',
+            cursor: isBanned ? 'not-allowed' : 'pointer', fontFamily: 'inherit',
           }}>
-            Create Project →
+            {isBanned ? 'Writes blocked' : 'Create Project'}
           </button>
         </div>
       )}

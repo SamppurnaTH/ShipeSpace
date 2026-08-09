@@ -170,6 +170,8 @@ public class AuthService {
                 .shipScore(user.getShipScore())
                 .level(user.getLevel())
                 .rank(user.getRank())
+                .roles(user.getRoles())
+                .banned(user.isBanned())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
@@ -182,7 +184,10 @@ public class AuthService {
      * @return AuthResponse containing tokens and user info
      */
     private AuthResponse generateAuthResponse(User user) {
-        String accessToken = jwtUtil.generateToken(user.getId(), user.getUsername());
+        java.util.Set<String> roles = (user.getRoles() == null || user.getRoles().isEmpty())
+                ? java.util.Set.of("USER")
+                : user.getRoles();
+        String accessToken = jwtUtil.generateToken(user.getId(), user.getUsername(), roles);
         String refreshToken = jwtUtil.generateRefreshToken(user.getId());
 
         log.debug("Generated JWT tokens for user: {}", user.getUsername());

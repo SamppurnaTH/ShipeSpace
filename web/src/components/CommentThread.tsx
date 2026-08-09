@@ -1,7 +1,8 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteComment, upvoteComment } from '../api/endpoints'
 import { toastSuccess, toastError } from '../components/Toast'
+import { Icon } from './Icon'
 
 interface Comment {
   id: string
@@ -35,7 +36,8 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
     const wasUpvoted = upvotedIds.has(comment.id)
     setUpvotedIds(prev => {
       const n = new Set(prev)
-      wasUpvoted ? n.delete(comment.id) : n.add(comment.id)
+      if (wasUpvoted) n.delete(comment.id)
+      else n.add(comment.id)
       return n
     })
     try {
@@ -43,7 +45,8 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
     } catch {
       setUpvotedIds(prev => {
         const n = new Set(prev)
-        wasUpvoted ? n.add(comment.id) : n.delete(comment.id)
+        if (wasUpvoted) n.add(comment.id)
+        else n.delete(comment.id)
         return n
       })
     }
@@ -77,7 +80,6 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
             onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            {/* Avatar */}
             {comment.user?.avatarUrl ? (
               <Link to={`/profile/${comment.user.username}`}>
                 <img src={comment.user.avatarUrl} alt={comment.user.username}
@@ -93,18 +95,16 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
             )}
 
             <div style={{ flex: 1, minWidth: 0 }}>
-              {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 2 }}>
                 <Link to={`/profile/${comment.user?.username}`}
                   style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
                   @{comment.user?.username ?? 'unknown'}
                 </Link>
                 <time style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-                  · {timeAgo(comment.createdAt)}
+                  posted {timeAgo(comment.createdAt)}
                 </time>
               </div>
 
-              {/* Content */}
               <p style={{
                 fontSize: 'var(--text-sm)', lineHeight: 1.5,
                 color: 'var(--color-text-primary)',
@@ -113,7 +113,6 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
                 {comment.content}
               </p>
 
-              {/* Actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
                 <button
                   onClick={() => handleUpvote(comment)}
@@ -128,7 +127,7 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  ▲ {(comment.upvotes ?? 0) + (upvoted ? 1 : 0)}
+                  <Icon name="thumb" size={13} /> {(comment.upvotes ?? 0) + (upvoted ? 1 : 0)}
                 </button>
 
                 {isOwner && (

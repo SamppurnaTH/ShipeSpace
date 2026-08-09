@@ -104,7 +104,7 @@ export function LeftPanel() {
           { to: '/feed',           label: 'My Feed' },
           { to: '/projects',       label: 'My Projects' },
           { to: '/collaborations', label: 'My Network' },
-          { to: '/ships/new',      label: '✨ Ship Something', highlight: true },
+          { to: '/ships/new',      label: 'Ship Something', highlight: true },
         ].map(item => (
           <Link
             key={item.to}

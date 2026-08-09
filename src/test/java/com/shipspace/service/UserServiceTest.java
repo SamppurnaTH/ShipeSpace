@@ -12,8 +12,10 @@ import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
+import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import com.shipspace.util.DtoMapper;
+import com.shipspace.util.InputSanitizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,12 @@ class UserServiceTest {
     @Mock
     private DtoMapper dtoMapper;
 
+    @Mock
+    private UserCountRepository userCountRepository;
+
+    @Mock
+    private InputSanitizer inputSanitizer;
+
     @InjectMocks
     private UserService userService;
 
@@ -80,6 +88,9 @@ class UserServiceTest {
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+
+        lenient().when(inputSanitizer.sanitize(any(String.class), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -237,6 +248,7 @@ class UserServiceTest {
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
         when(shipRepository.findByUserId(eq(testUserId), any(Pageable.class))).thenReturn(shipPage);
+        when(shipRepository.countByUserId(testUserId)).thenReturn(2L);
         when(dtoMapper.toShipResponse(any(Ship.class))).thenAnswer(inv -> {
             Ship s = inv.getArgument(0);
             return ShipResponse.builder().id(s.getId()).userId(s.getUserId()).content(s.getContent())
@@ -252,7 +264,8 @@ class UserServiceTest {
         assertThat(result.getTotalShips()).isEqualTo(2);
         assertThat(result.getTotalEngagement()).isEqualTo(20); // 5+3+10+2
         verify(userRepository).findById(testUserId);
-        verify(shipRepository, times(2)).findByUserId(eq(testUserId), any(Pageable.class));
+        verify(shipRepository).findByUserId(eq(testUserId), any(Pageable.class));
+        verify(shipRepository).countByUserId(testUserId);
     }
 
     @Test
@@ -266,6 +279,7 @@ class UserServiceTest {
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
         when(shipRepository.findByUserId(eq(testUserId), any(Pageable.class))).thenReturn(shipPage);
+        when(shipRepository.countByUserId(testUserId)).thenReturn(1L);
 
         // Act
         UserActivityResponse result = userService.getUserActivity(testUserId, 5);
@@ -274,26 +288,22 @@ class UserServiceTest {
         assertThat(result).isNotNull();
         assertThat(result.getRecentShips()).hasSize(1);
         verify(userRepository).findById(testUserId);
-        verify(shipRepository, times(2)).findByUserId(eq(testUserId), any(Pageable.class));
+        verify(shipRepository).findByUserId(eq(testUserId), any(Pageable.class));
+        verify(shipRepository).countByUserId(testUserId);
     }
 
     @Test
     @DisplayName("Should update project count successfully")
     void updateProjectCount_Success() {
         // Arrange
-        when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
-        when(projectRepository.countByUserId(testUserId)).thenReturn(5L);
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.existsById(testUserId)).thenReturn(true);
 
         // Act
         userService.updateProjectCount(testUserId);
 
         // Assert
-        verify(userRepository).findById(testUserId);
-        verify(projectRepository).countByUserId(testUserId);
-        verify(userRepository).save(argThat(user -> 
-                user.getProjectCount() == 5
-        ));
+        verify(userRepository).existsById(testUserId);
+        verify(userCountRepository).incrementProjectCount(testUserId, 1);
     }
 
     @Test
@@ -321,6 +331,7 @@ class UserServiceTest {
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
         when(shipRepository.findByUserId(eq(testUserId), any(Pageable.class))).thenReturn(emptyPage);
+        when(shipRepository.countByUserId(testUserId)).thenReturn(0L);
 
         // Act
         UserActivityResponse result = userService.getUserActivity(testUserId);

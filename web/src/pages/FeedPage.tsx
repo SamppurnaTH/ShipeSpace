@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useFeed, type FeedType, type TrendingWindow } from '../hooks/useFeed'
 import { ShipCard } from '../components/ShipCard'
-import { ShipCardSkeleton } from '../components/ShipCardSkeleton'
 import { SystemBanner } from '../components/SystemBanner'
-import { Spinner } from '../components/Spinner'
+import { FeedSkeleton, LoadingSpinner } from '../components/common/Loading'
 import { deleteShip } from '../api/endpoints'
 import { useToast } from '../components/Toast'
+import { Icon } from '../components/Icon'
 
-interface FeedPageProps { feedType?: FeedType }
+interface FeedPageProps { feedType?: FeedType; compactHome?: boolean }
 
 const WINDOWS: { label: string; value: TrendingWindow }[] = [
   { label: 'All Time', value: 'all' },
@@ -17,7 +17,7 @@ const WINDOWS: { label: string; value: TrendingWindow }[] = [
   { label: '30d', value: '30d' },
 ]
 
-export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
+export function FeedPage({ feedType = 'personalized', compactHome = false }: FeedPageProps) {
   const { user } = useAuth()
   const { toast } = useToast()
   const [trendWindow, setTrendWindow] = useState<TrendingWindow>('all')
@@ -51,7 +51,10 @@ export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
   }[systemState] : null
 
   return (
-    <div style={{ maxWidth: 'var(--feed-max-width)', margin: '0 auto' }}>
+    <div
+      style={{ maxWidth: compactHome ? 'none' : 'var(--feed-max-width)', margin: '0 auto' }}
+      aria-busy={status === 'loading'}
+    >
 
       {/* Feed type tabs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
@@ -74,7 +77,7 @@ export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
             borderRadius: 'var(--radius-full)',
             fontFamily: 'var(--font-mono)',
           }}>
-            {feedMode.includes('fallback') ? '⚠ fallback' : `✦ ${feedMode}`}
+            {feedMode.includes('fallback') ? 'fallback mode' : feedMode}
           </span>
         )}
       </div>
@@ -82,13 +85,12 @@ export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
       {systemMsg && <SystemBanner variant={systemMsg.variant} message={systemMsg.message} detail={systemMsg.detail} />}
 
       {/* Skeletons */}
-      {status === 'loading' && items.length === 0 &&
-        Array.from({ length: 5 }).map((_, i) => <ShipCardSkeleton key={i} />)}
+      {status === 'loading' && items.length === 0 && <FeedSkeleton count={compactHome ? 3 : 5} />}
 
       {/* Empty */}
       {status === 'done' && items.length === 0 && (
         <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 'var(--space-4)' }}>⚓</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-4)' }}><Icon name="ship" size={40} /></div>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
             {feedType === 'following' ? 'Your feed is empty' : "Nothing here yet — be the first to ship"}
           </div>
@@ -124,7 +126,7 @@ export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
       {/* Error */}
       {status === 'error' && items.length === 0 && (
         <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
-          <div style={{ fontSize: 28, marginBottom: 'var(--space-3)' }}>⚡</div>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="alert" size={28} /></div>
           <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
             Couldn't load the feed
           </div>
@@ -149,14 +151,19 @@ export function FeedPage({ feedType = 'personalized' }: FeedPageProps) {
 
       {/* Infinite scroll sentinel */}
       <div ref={loaderRef} style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-6)' }}>
-        {status === 'loading' && items.length > 0 && <Spinner size={20} />}
+        {status === 'loading' && items.length > 0 && (
+          <span className="inline-loading">
+            <LoadingSpinner size={18} label="Loading more ships" />
+            <span>Loading more ships...</span>
+          </span>
+        )}
         {!hasMore && items.length > 0 && (
           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-            ── end of feed ──{' '}
+            End of feed{' '}
             <button onClick={() => globalThis.window.scrollTo({ top: 0, behavior: 'smooth' })} style={{
               background: 'none', border: 'none', color: 'var(--color-brand-dim)',
               cursor: 'pointer', fontSize: 'inherit', fontFamily: 'inherit', padding: 0,
-            }}>↑ top</button>
+            }}>Back to top</button>
           </span>
         )}
       </div>
