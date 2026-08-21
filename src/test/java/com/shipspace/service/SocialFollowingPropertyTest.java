@@ -44,12 +44,13 @@ class SocialFollowingPropertyTest {
     private SocialService socialService;
     private FollowingRepository followingRepository;
     private UserRepository userRepository;
+    private UserCountRepository userCountRepository;
 
     @BeforeTry
     void setUp() {
         followingRepository = mock(FollowingRepository.class);
         userRepository = mock(UserRepository.class);
-        UserCountRepository userCountRepository = mock(UserCountRepository.class);
+        userCountRepository = mock(UserCountRepository.class);
         NotificationDispatchService notificationDispatchService = mock(NotificationDispatchService.class);
         socialService = new SocialService(followingRepository, userRepository, userCountRepository, notificationDispatchService);
     }
@@ -76,10 +77,10 @@ class SocialFollowingPropertyTest {
         
         when(userRepository.findById(followerId)).thenReturn(Optional.of(follower));
         when(userRepository.findById(followeeId)).thenReturn(Optional.of(followee));
+        when(userRepository.existsById(followerId)).thenReturn(true);
+        when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
         when(followingRepository.save(any(Following.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(followingRepository.countByFollowerId(followerId)).thenReturn(1L);
-        when(followingRepository.countByFolloweeId(followeeId)).thenReturn(1L);
 
         // When: User follows another user
         socialService.followUser(followerId, followeeId);
@@ -91,10 +92,9 @@ class SocialFollowingPropertyTest {
             following.getCreatedAt() != null
         ));
         
-        // And: Follower counts should be updated
-        verify(userRepository, times(2)).save(any(User.class));
-        verify(followingRepository).countByFollowerId(followerId);
-        verify(followingRepository).countByFolloweeId(followeeId);
+        // And: Follower counts should be updated atomically
+        verify(userCountRepository).incrementFollowingCount(followerId, 1);
+        verify(userCountRepository).incrementFollowerCount(followeeId, 1);
     }
 
     /**
@@ -119,9 +119,10 @@ class SocialFollowingPropertyTest {
         
         when(userRepository.findById(followerId)).thenReturn(Optional.of(follower));
         when(userRepository.findById(followeeId)).thenReturn(Optional.of(followee));
+        when(userRepository.existsById(followerId)).thenReturn(true);
+        when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
-        when(followingRepository.countByFollowerId(followerId)).thenReturn(0L);
-        when(followingRepository.countByFolloweeId(followeeId)).thenReturn(0L);
+        when(followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(1L);
 
         // When: User unfollows another user
         socialService.unfollowUser(followerId, followeeId);
@@ -129,10 +130,9 @@ class SocialFollowingPropertyTest {
         // Then: Following relationship should be deleted
         verify(followingRepository).deleteByFollowerIdAndFolloweeId(followerId, followeeId);
         
-        // And: Follower counts should be updated
-        verify(userRepository, times(2)).save(any(User.class));
-        verify(followingRepository).countByFollowerId(followerId);
-        verify(followingRepository).countByFolloweeId(followeeId);
+        // And: Follower counts should be updated atomically
+        verify(userCountRepository).incrementFollowingCount(followerId, -1);
+        verify(userCountRepository).incrementFollowerCount(followeeId, -1);
     }
 
     /**
@@ -156,6 +156,8 @@ class SocialFollowingPropertyTest {
         
         when(userRepository.findById(followerId)).thenReturn(Optional.of(follower));
         when(userRepository.findById(followeeId)).thenReturn(Optional.of(followee));
+        when(userRepository.existsById(followerId)).thenReturn(true);
+        when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
 
         // When: User tries to follow again
@@ -165,7 +167,8 @@ class SocialFollowingPropertyTest {
         verify(followingRepository, never()).save(any(Following.class));
         
         // And: Counts should not be updated
-        verify(userRepository, never()).save(any(User.class));
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
     }
 
     /**
@@ -189,6 +192,8 @@ class SocialFollowingPropertyTest {
         
         when(userRepository.findById(followerId)).thenReturn(Optional.of(follower));
         when(userRepository.findById(followeeId)).thenReturn(Optional.of(followee));
+        when(userRepository.existsById(followerId)).thenReturn(true);
+        when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
 
         // When: User tries to unfollow
@@ -198,7 +203,8 @@ class SocialFollowingPropertyTest {
         verify(followingRepository, never()).deleteByFollowerIdAndFolloweeId(anyString(), anyString());
         
         // And: Counts should not be updated
-        verify(userRepository, never()).save(any(User.class));
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
     }
 
     /**
@@ -226,26 +232,17 @@ class SocialFollowingPropertyTest {
         
         when(userRepository.findById(followerId)).thenReturn(Optional.of(follower));
         when(userRepository.findById(followeeId)).thenReturn(Optional.of(followee));
+        when(userRepository.existsById(followerId)).thenReturn(true);
+        when(userRepository.existsById(followeeId)).thenReturn(true);
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
         when(followingRepository.save(any(Following.class))).thenAnswer(invocation -> invocation.getArgument(0));
         
-        long newFollowingCount = initialFollowingCount + 1L;
-        long newFollowerCount = initialFollowerCount + 1L;
-        when(followingRepository.countByFollowerId(followerId)).thenReturn(newFollowingCount);
-        when(followingRepository.countByFolloweeId(followeeId)).thenReturn(newFollowerCount);
-
         // When: User follows another user
         socialService.followUser(followerId, followeeId);
 
-        // Then: Counts should be updated based on actual database counts
-        verify(userRepository).save(argThat(user -> 
-            user.getId().equals(followerId) && 
-            user.getFollowingCount() == newFollowingCount
-        ));
-        verify(userRepository).save(argThat(user -> 
-            user.getId().equals(followeeId) && 
-            user.getFollowerCount() == newFollowerCount
-        ));
+        // Then: Counts should be updated atomically without recomputing/saving users
+        verify(userCountRepository).incrementFollowingCount(followerId, 1);
+        verify(userCountRepository).incrementFollowerCount(followeeId, 1);
     }
 
     /**
@@ -328,11 +325,10 @@ class SocialFollowingPropertyTest {
         Page<Following> followingPage = new PageImpl<>(pageContent, pageable, totalFollowers);
         when(followingRepository.findByFolloweeId(userId, pageable)).thenReturn(followingPage);
         
-        // Mock user repository to return users for each follower
-        for (Following following : pageContent) {
-            User follower = createMockUser(following.getFollowerId(), "user_" + following.getFollowerId());
-            when(userRepository.findById(following.getFollowerId())).thenReturn(Optional.of(follower));
-        }
+        List<User> followerUsers = pageContent.stream()
+                .map(following -> createMockUser(following.getFollowerId(), "user_" + following.getFollowerId()))
+                .collect(Collectors.toList());
+        when(userRepository.findAllById(any())).thenReturn(followerUsers);
 
         // When: Requesting followers with pagination
         Page<UserProfileResponse> result = socialService.getFollowers(userId, pageable);
@@ -387,11 +383,10 @@ class SocialFollowingPropertyTest {
         Page<Following> followingPage = new PageImpl<>(pageContent, pageable, totalFollowing);
         when(followingRepository.findByFollowerId(userId, pageable)).thenReturn(followingPage);
         
-        // Mock user repository to return users for each followee
-        for (Following following : pageContent) {
-            User followee = createMockUser(following.getFolloweeId(), "user_" + following.getFolloweeId());
-            when(userRepository.findById(following.getFolloweeId())).thenReturn(Optional.of(followee));
-        }
+        List<User> followeeUsers = pageContent.stream()
+                .map(following -> createMockUser(following.getFolloweeId(), "user_" + following.getFolloweeId()))
+                .collect(Collectors.toList());
+        when(userRepository.findAllById(any())).thenReturn(followeeUsers);
 
         // When: Requesting following list with pagination
         Page<UserProfileResponse> result = socialService.getFollowing(userId, pageable);

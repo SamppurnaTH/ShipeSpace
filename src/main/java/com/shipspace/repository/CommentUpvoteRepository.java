@@ -4,6 +4,8 @@ import com.shipspace.model.CommentUpvote;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -47,5 +49,23 @@ public interface CommentUpvoteRepository extends MongoRepository<CommentUpvote, 
      * @param userId the ID of the user
      * @param commentId the ID of the comment
      */
-    void deleteByUserIdAndCommentId(String userId, String commentId);
+    long deleteByUserIdAndCommentId(String userId, String commentId);
+
+    /**
+     * Find all comment upvotes by a user within a given set of comments.
+     * Used to enrich comment pages with current-user upvote state.
+     *
+     * @param userId the ID of the user
+     * @param commentIds the comment IDs to check
+     * @return matching upvote documents
+     */
+    List<CommentUpvote> findByUserIdAndCommentIdIn(String userId, Collection<String> commentIds);
+
+    /**
+     * Delete all upvotes attached to a comment.
+     * Used when the comment author deletes the comment.
+     *
+     * @param commentId the ID of the deleted comment
+     */
+    void deleteByCommentId(String commentId);
 }

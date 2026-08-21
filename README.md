@@ -1,11 +1,11 @@
-<div align="center">
-  <img src="assets/hero_banner.png" alt="ShipSpace — The Social Network for Builders" width="100%" />
+﻿<div align="center">
+  <img src="assets/logo.png" alt="ShipSpace — The Social Network for Builders" width="100%" />
 
   <br/><br/>
 
-  # 🚀 ShipSpace
+  # 🚀 KREVO
 
-  **The Social Network for Builders. Proof of Work > Engagement.**
+  **Create. Ship. Evolve.**
 
   <br/>
 
@@ -20,7 +20,7 @@
 
   <br/>
 
-  <a href="#-what-is-shipspace">Overview</a> •
+  <a href="#-what-is-krevo">Overview</a> •
   <a href="#-tech-stack">Stack</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-features">Features</a> •
@@ -32,18 +32,18 @@
 
 ---
 
-## 🌐 What is ShipSpace?
+## 🌐 What is KREVO?
 
-ShipSpace is a **social platform built exclusively for technical builders** — indie hackers, side-project developers, and early-stage founders. While Twitter rewards hot takes and LinkedIn celebrates job promotions, ShipSpace rewards one thing: **actually building**.
+KREVO is a **social platform built exclusively for technical builders** — indie hackers, side-project developers, and early-stage founders. While Twitter rewards hot takes and LinkedIn celebrates job promotions, KREVO rewards one thing: **actually building**.
 
-Every piece of content on ShipSpace is a **Ship** — a project update anchored to a persistent **Project**. This creates a transparent, chronological log of your building journey visible to the whole community.
+Every piece of content on KREVO is a **Ship** — a project update anchored to a persistent **Project**. This creates a transparent, chronological log of your building journey visible to the whole community.
 
 | Platform | Problem |
 |---|---|
 | **Twitter/X** | Noise and engagement bait drown out technical signal |
 | **LinkedIn** | Corporate signaling over real building progress |
 | **GitHub** | Great for code, missing the social discovery layer |
-| ✅ **ShipSpace** | Content = project updates. Proof of work, always. |
+| ✅ **KREVO** | Content = project updates. Proof of work, always. |
 
 ---
 
@@ -435,7 +435,7 @@ ShipSpace/
 
 ## ⚠️ Disclaimer
 
-ShipSpace is an independent open-source project. It is not affiliated with, endorsed by, or connected to any existing platform or company. All trademarks belong to their respective owners.
+KREVO is an independent open-source project. It is not affiliated with, endorsed by, or connected to any existing platform or company. All trademarks belong to their respective owners.
 
 ---
 
@@ -446,3 +446,5 @@ ShipSpace is an independent open-source project. It is not affiliated with, endo
 *If you're shipping, you belong here.*
 
 </div>
+
+

@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { deleteComment, upvoteComment } from '../api/endpoints'
+import { deleteComment, removeCommentUpvote, upvoteComment } from '../api/endpoints'
 import { toastSuccess, toastError } from '../components/Toast'
 import { Icon } from './Icon'
 
@@ -8,19 +8,23 @@ interface Comment {
   id: string
   content: string
   createdAt: string
-  upvotes: number
+  upvotes?: number
   userId: string
-  user?: { username: string; avatarUrl: string; rank?: string; level?: number }
+  upvotedByCurrentUser?: boolean
+  commenter?: { id?: string; username: string; avatarUrl: string; rank?: string; level?: number }
 }
 
 interface CommentThreadProps {
   comments: Comment[]
   currentUserId?: string
+  canInteract?: boolean
   onDelete: (commentId: string) => void
+  onUpvoteChange: (commentId: string, upvoted: boolean, upvoteCount: number) => void
 }
 
-export function CommentThread({ comments, currentUserId, onDelete }: CommentThreadProps) {
-  const [upvotedIds, setUpvotedIds] = useState<Set<string>>(new Set())
+export function CommentThread({ comments, currentUserId, canInteract = false, onDelete, onUpvoteChange }: CommentThreadProps) {
+  const [pendingUpvotes, setPendingUpvotes] = useState<Set<string>>(new Set())
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set())
 
   const timeAgo = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime()
@@ -33,32 +37,46 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
   }
 
   const handleUpvote = async (comment: Comment) => {
-    const wasUpvoted = upvotedIds.has(comment.id)
-    setUpvotedIds(prev => {
+    if (!canInteract || pendingUpvotes.has(comment.id)) return
+    const wasUpvoted = Boolean(comment.upvotedByCurrentUser)
+    setPendingUpvotes(prev => {
       const n = new Set(prev)
-      if (wasUpvoted) n.delete(comment.id)
-      else n.add(comment.id)
+      n.add(comment.id)
       return n
     })
     try {
-      await upvoteComment(comment.id)
+      const res = await (wasUpvoted ? removeCommentUpvote(comment.id) : upvoteComment(comment.id))
+      onUpvoteChange(comment.id, res.data.upvoted, res.data.upvoteCount)
     } catch {
-      setUpvotedIds(prev => {
+      toastError(wasUpvoted ? 'Failed to remove upvote' : 'Failed to upvote comment')
+    } finally {
+      setPendingUpvotes(prev => {
         const n = new Set(prev)
-        if (wasUpvoted) n.add(comment.id)
-        else n.delete(comment.id)
+        n.delete(comment.id)
         return n
       })
     }
   }
 
   const handleDelete = async (commentId: string) => {
+    if (pendingDeletes.has(commentId)) return
+    setPendingDeletes(prev => {
+      const n = new Set(prev)
+      n.add(commentId)
+      return n
+    })
     try {
       await deleteComment(commentId)
       onDelete(commentId)
       toastSuccess('Comment deleted')
     } catch {
       toastError('Failed to delete comment')
+    } finally {
+      setPendingDeletes(prev => {
+        const n = new Set(prev)
+        n.delete(commentId)
+        return n
+      })
     }
   }
 
@@ -66,7 +84,10 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
       {comments.map(comment => {
         const isOwner = currentUserId && comment.userId === currentUserId
-        const upvoted = upvotedIds.has(comment.id)
+        const upvoted = Boolean(comment.upvotedByCurrentUser)
+        const pendingUpvote = pendingUpvotes.has(comment.id)
+        const pendingDelete = pendingDeletes.has(comment.id)
+        const commenter = comment.commenter
 
         return (
           <div
@@ -80,9 +101,9 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
             onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface-2)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            {comment.user?.avatarUrl ? (
-              <Link to={`/profile/${comment.user.username}`}>
-                <img src={comment.user.avatarUrl} alt={comment.user.username}
+            {commenter?.avatarUrl ? (
+              <Link to={`/profile/${commenter.id ?? commenter.username}`}>
+                <img src={commenter.avatarUrl} alt={commenter.username}
                   style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
               </Link>
             ) : (
@@ -96,9 +117,9 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 2 }}>
-                <Link to={`/profile/${comment.user?.username}`}
+                <Link to={`/profile/${commenter?.id ?? commenter?.username}`}
                   style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
-                  @{comment.user?.username ?? 'unknown'}
+                  @{commenter?.username ?? 'unknown'}
                 </Link>
                 <time style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
                   posted {timeAgo(comment.createdAt)}
@@ -116,28 +137,35 @@ export function CommentThread({ comments, currentUserId, onDelete }: CommentThre
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
                 <button
                   onClick={() => handleUpvote(comment)}
+                  disabled={!canInteract || pendingUpvote}
+                  aria-pressed={upvoted}
+                  aria-label={upvoted ? 'Remove comment upvote' : 'Upvote comment'}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 4,
                     background: upvoted ? 'var(--color-brand-light)' : 'none',
                     border: 'none', borderRadius: 'var(--radius-sm)',
-                    padding: '2px 8px', cursor: 'pointer',
+                    padding: '2px 8px', cursor: canInteract && !pendingUpvote ? 'pointer' : 'default',
                     color: upvoted ? 'var(--color-brand)' : 'var(--color-text-muted)',
                     fontSize: 'var(--text-xs)', fontFamily: 'inherit',
                     fontWeight: upvoted ? 600 : 400,
+                    opacity: !canInteract || pendingUpvote ? 0.65 : 1,
                     transition: 'all var(--transition-fast)',
                   }}
                 >
-                  <Icon name="thumb" size={13} /> {(comment.upvotes ?? 0) + (upvoted ? 1 : 0)}
+                  <Icon name="thumb" size={13} /> {comment.upvotes ?? 0}
                 </button>
 
                 {isOwner && (
                   <button
                     onClick={() => handleDelete(comment.id)}
+                    disabled={pendingDelete}
+                    aria-label="Delete comment"
                     style={{
-                      background: 'none', border: 'none', cursor: 'pointer',
+                      background: 'none', border: 'none', cursor: pendingDelete ? 'default' : 'pointer',
                       color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)',
                       fontFamily: 'inherit', padding: '2px 6px',
                       borderRadius: 'var(--radius-sm)',
+                      opacity: pendingDelete ? 0.65 : 1,
                       transition: 'all var(--transition-fast)',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-error)' }}

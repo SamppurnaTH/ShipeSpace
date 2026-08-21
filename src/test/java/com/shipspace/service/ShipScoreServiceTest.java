@@ -1,6 +1,7 @@
 package com.shipspace.service;
 
 import com.shipspace.model.RankTier;
+import com.shipspace.model.ScoreEventLog;
 import com.shipspace.model.ScoreEventType;
 import com.shipspace.model.User;
 import com.shipspace.repository.ScoreEventLogRepository;
@@ -10,14 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
@@ -410,6 +414,35 @@ class ShipScoreServiceTest {
         // Assert
         // Note: Returns true for now since persistence is not yet implemented (task 4.4)
         assertThat(result).isTrue();
+        ArgumentCaptor<ScoreEventLog> eventCaptor = ArgumentCaptor.forClass(ScoreEventLog.class);
+        org.mockito.Mockito.verify(scoreEventLogRepository).save(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getPoints()).isEqualTo(ScoreEventType.PROJECT_CREATED.getPoints());
+        assertThat(eventCaptor.getValue().getEntityId()).isEqualTo(entityId);
+    }
+
+    @Test
+    @DisplayName("applyScoreEvent: should reject duplicate-key race before mutating score")
+    void applyScoreEvent_DuplicateKeyRace_DoesNotMutateUser() {
+        String userId = "user123";
+        ScoreEventType eventType = ScoreEventType.PROJECT_CREATED;
+        String entityId = "project456";
+        User mockUser = User.builder()
+            .id(userId)
+            .shipScore(100)
+            .level(3)
+            .rank(RankTier.DOCKED)
+            .build();
+
+        when(scoreEventLogRepository.existsByUserIdAndEventTypeAndEntityId(userId, eventType, entityId))
+            .thenReturn(false);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
+        when(scoreEventLogRepository.save(any(ScoreEventLog.class))).thenThrow(new DuplicateKeyException("duplicate"));
+
+        boolean result = shipScoreService.applyScoreEvent(userId, eventType, entityId);
+
+        assertThat(result).isFalse();
+        assertThat(mockUser.getShipScore()).isEqualTo(100);
+        org.mockito.Mockito.verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
     }
 
     @Test

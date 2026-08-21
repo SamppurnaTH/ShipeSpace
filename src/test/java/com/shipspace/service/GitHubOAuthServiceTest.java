@@ -102,9 +102,170 @@ class GitHubOAuthServiceTest {
         assertThat(result.getFollowerCount()).isEqualTo(0);
         assertThat(result.getFollowingCount()).isEqualTo(0);
         assertThat(result.getProjectCount()).isEqualTo(0);
+        assertThat(result.getRoles()).containsExactly("USER");
 
         verify(userRepository).findByGithubId("12345");
         verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void authenticateWithGitHub_ConfiguredAdminGithubId_AddsAdminRole() {
+        // Arrange
+        String oauthCode = "test-oauth-code";
+        String accessToken = "gho_test_access_token";
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", "12345,99999");
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"access_token\":\"" + accessToken + "\",\"token_type\":\"bearer\",\"scope\":\"read:user\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"id\":12345,\"login\":\"adminuser\",\"email\":\"admin@example.com\"," +
+                        "\"avatar_url\":\"https://github.com/admin.png\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        when(userRepository.findByGithubId("12345")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId("generated-admin-id");
+            return user;
+        });
+
+        // Act
+        User result = githubOAuthService.authenticateWithGitHub(oauthCode);
+
+        // Assert
+        assertThat(result.getGithubId()).isEqualTo("12345");
+        assertThat(result.getRoles()).containsExactlyInAnyOrder("USER", "ADMIN");
+
+        verify(userRepository).findByGithubId("12345");
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    void authenticateWithGitHub_AdminLikeUsernameWithoutConfiguredNumericId_DoesNotAddAdminRole() {
+        // Arrange
+        String oauthCode = "test-oauth-code";
+        String accessToken = "gho_test_access_token";
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", "12345");
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"access_token\":\"" + accessToken + "\",\"token_type\":\"bearer\",\"scope\":\"read:user\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"id\":67890,\"login\":\"12345\",\"email\":\"normal@example.com\"," +
+                        "\"avatar_url\":\"https://github.com/normal.png\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        when(userRepository.findByGithubId("67890")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId("normal-user-id");
+            return user;
+        });
+
+        // Act
+        User result = githubOAuthService.authenticateWithGitHub(oauthCode);
+
+        // Assert
+        assertThat(result.getGithubId()).isEqualTo("67890");
+        assertThat(result.getUsername()).isEqualTo("12345");
+        assertThat(result.getRoles()).containsExactly("USER");
+    }
+
+    @Test
+    void authenticateWithGitHub_ConfiguredAdminGithubId_TrimsWhitespaceAndKeepsUserRole() {
+        // Arrange
+        String oauthCode = "test-oauth-code";
+        String accessToken = "gho_test_access_token";
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", " 11111 , 12345 , 99999 ");
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"access_token\":\"" + accessToken + "\",\"token_type\":\"bearer\",\"scope\":\"read:user\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"id\":12345,\"login\":\"adminuser\",\"email\":\"admin@example.com\"," +
+                        "\"avatar_url\":\"https://github.com/admin.png\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        when(userRepository.findByGithubId("12345")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            user.setId("generated-admin-id");
+            return user;
+        });
+
+        // Act
+        User result = githubOAuthService.authenticateWithGitHub(oauthCode);
+
+        // Assert
+        assertThat(result.getRoles()).containsExactlyInAnyOrder("USER", "ADMIN");
+    }
+
+    @Test
+    void authenticateWithGitHub_ExistingUserAddedToAdminConfig_GainsAdminOnNextLogin() {
+        // Arrange
+        String oauthCode = "test-oauth-code";
+        String accessToken = "gho_test_access_token";
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", "12345");
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"access_token\":\"" + accessToken + "\",\"token_type\":\"bearer\",\"scope\":\"read:user\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"id\":12345,\"login\":\"builder\",\"email\":\"builder@example.com\"," +
+                        "\"avatar_url\":\"https://github.com/builder.png\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        User existingUser = User.builder()
+                .id("existing-id")
+                .githubId("12345")
+                .username("builder")
+                .roles(java.util.Set.of("USER"))
+                .build();
+        when(userRepository.findByGithubId("12345")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        User result = githubOAuthService.authenticateWithGitHub(oauthCode);
+
+        // Assert
+        assertThat(result.getRoles()).containsExactlyInAnyOrder("USER", "ADMIN");
+    }
+
+    @Test
+    void authenticateWithGitHub_ExistingAdminRemovedFromConfig_RetainsPersistedAdminRole() {
+        // Arrange
+        String oauthCode = "test-oauth-code";
+        String accessToken = "gho_test_access_token";
+        ReflectionTestUtils.setField(githubOAuthService, "adminGithubIds", "");
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"access_token\":\"" + accessToken + "\",\"token_type\":\"bearer\",\"scope\":\"read:user\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        mockWebServer.enqueue(new MockResponse()
+                .setBody("{\"id\":12345,\"login\":\"adminuser\",\"email\":\"admin@example.com\"," +
+                        "\"avatar_url\":\"https://github.com/admin.png\"}")
+                .addHeader("Content-Type", "application/json"));
+
+        User existingUser = User.builder()
+                .id("existing-admin-id")
+                .githubId("12345")
+                .username("adminuser")
+                .roles(java.util.Set.of("USER", "ADMIN"))
+                .build();
+        when(userRepository.findByGithubId("12345")).thenReturn(Optional.of(existingUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        User result = githubOAuthService.authenticateWithGitHub(oauthCode);
+
+        // Assert
+        assertThat(result.getRoles()).containsExactlyInAnyOrder("USER", "ADMIN");
     }
 
     @Test

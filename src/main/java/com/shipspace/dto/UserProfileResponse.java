@@ -26,5 +26,9 @@ public class UserProfileResponse {
     private Integer followerCount;
     private Integer followingCount;
     private Integer projectCount;
+    private Integer shipScore;
+    private Integer level;
+    private String rank;
+    private Boolean isFollowing;
     private Instant createdAt;
 }

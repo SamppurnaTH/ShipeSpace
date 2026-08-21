@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link, NavLink, useNavigate, useParams } from 'react-router-dom'
 import {
   banAdminUser,
+  getAdminAuditLogs,
   getAdminReports,
   getAdminStats,
   getAdminUser,
@@ -10,6 +11,7 @@ import {
   unbanAdminUser,
   type AdminReport,
   type AdminStats,
+  type AdminAuditLog,
   type AdminUser,
   type PageResponse,
 } from '../../api/endpoints'
@@ -21,8 +23,9 @@ import { ButtonLoader, Skeleton } from '../../components/common/Loading'
 import { getGitHubLoginErrorMessage, startGitHubLogin } from '../../auth/githubLogin'
 
 type Filter = 'all' | 'active' | 'banned' | 'admin'
-type AdminSection = 'dashboard' | 'users' | 'reports'
+type AdminSection = 'dashboard' | 'users' | 'reports' | 'audit'
 type Action = 'ban' | 'unban'
+type ReportResolution = NonNullable<Exclude<AdminReport['status'], 'PENDING'>>
 
 interface AdminState {
   users: AdminUser[]
@@ -76,6 +79,14 @@ export function AdminReportsPage() {
   return (
     <AdminLayout active="reports">
       <AdminReports />
+    </AdminLayout>
+  )
+}
+
+export function AdminAuditLogsPage() {
+  return (
+    <AdminLayout active="audit">
+      <AdminAuditLogs />
     </AdminLayout>
   )
 }
@@ -153,10 +164,11 @@ function AdminLayout({ active, children }: { active: AdminSection; children: Rea
             <AdminNavLink to="/admin" label="Dashboard" icon="home" active={active === 'dashboard'} end />
             <AdminNavLink to="/admin/users" label="Users" icon="user" active={active === 'users'} />
             <AdminNavLink to="/admin/reports" label="Reports" icon="alert" active={active === 'reports'} />
+            <AdminNavLink to="/admin/audit-logs" label="Audit Logs" icon="info" active={active === 'audit'} />
           </nav>
           <div className="admin-sidebar-note">
             <strong>REAL data only</strong>
-            <span>Audit logs and advanced analytics are post-MVP until backend APIs exist.</span>
+            <span>Audit logs show beta-critical moderation actions only. Advanced analytics remain post-MVP.</span>
           </div>
         </aside>
         <main className="admin-main">
@@ -521,6 +533,7 @@ function AdminReports() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [resolvingId, setResolvingId] = useState('')
+  const [pendingResolution, setPendingResolution] = useState<{ report: AdminReport; resolution: ReportResolution } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -539,15 +552,16 @@ function AdminReports() {
     void load()
   }, [load])
 
-  const resolve = async (report: AdminReport, resolution: NonNullable<AdminReport['status']>) => {
+  const resolve = async (report: AdminReport, resolution: ReportResolution) => {
     if (!report.id) return
     setResolvingId(report.id)
     try {
       const response = await resolveAdminReport(report.id, resolution, `Resolved from admin console as ${resolution}.`)
       setReports(prev => prev.map(item => item.id === report.id ? response.data : item).filter(item => item.status === status))
-      toastSuccess('Report updated successfully.')
+      toastSuccess(`Report ${report.id} marked ${formatEnum(resolution)}.`)
+      setPendingResolution(null)
     } catch (error: any) {
-      toastError(adminErrorMessage(error, 'Could not update report.'))
+      toastError(adminErrorMessage(error, `Could not mark report ${report.id} as ${formatEnum(resolution)}.`))
     } finally {
       setResolvingId('')
     }
@@ -558,7 +572,7 @@ function AdminReports() {
       <AdminPageHeader
         eyebrow="Moderation"
         title="Reports"
-        description="Review real moderation reports from the backend. Unsupported audit-log workflows are intentionally not shown as working tools."
+        description="Review real moderation reports from the backend and resolve pending items with a documented status contract."
       />
 
       {error && <AdminAlert message={error} onRetry={load} />}
@@ -598,10 +612,20 @@ function AdminReports() {
                     </dl>
                     {report.status === 'PENDING' && (
                       <div className="admin-report-actions">
-                        <button type="button" className="admin-secondary-button" disabled={resolvingId === report.id} onClick={() => resolve(report, 'DISMISSED')}>
+                        <button
+                          type="button"
+                          className="admin-secondary-button"
+                          disabled={resolvingId === report.id}
+                          onClick={() => setPendingResolution({ report, resolution: 'DISMISSED' })}
+                        >
                           {resolvingId === report.id ? <ButtonLoader label="Updating..." /> : 'Dismiss'}
                         </button>
-                        <button type="button" className="admin-primary-button" disabled={resolvingId === report.id} onClick={() => resolve(report, 'ACTION_TAKEN')}>
+                        <button
+                          type="button"
+                          className="admin-primary-button"
+                          disabled={resolvingId === report.id}
+                          onClick={() => setPendingResolution({ report, resolution: 'ACTION_TAKEN' })}
+                        >
                           {resolvingId === report.id ? <ButtonLoader label="Updating..." /> : 'Mark action taken'}
                         </button>
                       </div>
@@ -613,7 +637,168 @@ function AdminReports() {
           </>
         )}
       </div>
+
+      <ReportResolveConfirmModal
+        pending={pendingResolution}
+        submitting={Boolean(pendingResolution?.report.id && resolvingId === pendingResolution.report.id)}
+        onClose={() => setPendingResolution(null)}
+        onConfirm={(report, resolution) => void resolve(report, resolution)}
+      />
     </section>
+  )
+}
+
+const auditEventOptions = [
+  { value: '', label: 'All events' },
+  { value: 'ADMIN_USER_BANNED', label: 'User banned' },
+  { value: 'ADMIN_USER_UNBANNED', label: 'User unbanned' },
+  { value: 'ADMIN_USER_ROLES_UPDATED', label: 'Roles updated' },
+  { value: 'ADMIN_REPORT_RESOLVED', label: 'Report resolved' },
+]
+
+function AdminAuditLogs() {
+  const [logs, setLogs] = useState<AdminAuditLog[]>([])
+  const [page, setPage] = useState<PageResponse<AdminAuditLog> | null>(null)
+  const [pageNumber, setPageNumber] = useState(0)
+  const [eventType, setEventType] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const response = await getAdminAuditLogs(eventType, pageNumber, 20)
+      setLogs(response.data.content ?? [])
+      setPage(response.data)
+    } catch (error: any) {
+      setError(adminErrorMessage(error, 'Could not load audit logs.'))
+    } finally {
+      setLoading(false)
+    }
+  }, [eventType, pageNumber])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <section className="admin-page" aria-labelledby="admin-audit-title">
+      <AdminPageHeader
+        eyebrow="Accountability"
+        title="Audit Logs"
+        description="Review beta-critical moderation events with actor, action, target, timestamp, and state changes."
+        action={<button type="button" className="admin-secondary-button" onClick={() => void load()}>Refresh</button>}
+      />
+
+      {error && <AdminAlert message={error} onRetry={load} />}
+
+      <div className="admin-toolbar">
+        <label className="admin-select-field">
+          <span>Audit event</span>
+          <select
+            value={eventType}
+            onChange={event => {
+              setEventType(event.target.value)
+              setPageNumber(0)
+            }}
+          >
+            {auditEventOptions.map(option => (
+              <option key={option.value || 'all'} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="admin-table-card" aria-busy={loading}>
+        {loading ? <AdminSkeletonRows count={6} /> : (
+          <>
+            {logs.length === 0 ? (
+              <AdminEmpty title="No audit logs in this view" body="No mandatory moderation audit events match the selected filter." />
+            ) : (
+              <div className="admin-report-list">
+                {logs.map(log => <AuditLogCard key={log.id} log={log} />)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <AdminPagination page={page} onPrev={() => setPageNumber(value => Math.max(0, value - 1))} onNext={() => setPageNumber(value => value + 1)} />
+    </section>
+  )
+}
+
+function AuditLogCard({ log }: { log: AdminAuditLog }) {
+  return (
+    <article className="admin-report-card">
+      <div>
+        <span className="admin-classification">AUDIT</span>
+        <h2>{formatEnum(log.eventType)}</h2>
+        <p>{formatDateTime(log.timestamp)}</p>
+      </div>
+      <dl className="admin-report-meta">
+        <div><dt>Actor</dt><dd>{log.userId || 'Unknown'}</dd></div>
+        <div><dt>Target</dt><dd>{log.entityId || 'Unknown'}</dd></div>
+        <div><dt>Previous</dt><dd>{log.previousState || 'Not recorded'}</dd></div>
+        <div><dt>New</dt><dd>{log.newState || 'Not recorded'}</dd></div>
+      </dl>
+      {log.metadata && (
+        <details className="admin-audit-detail">
+          <summary>Structured detail</summary>
+          <pre aria-label={`Metadata for ${formatEnum(log.eventType)}`}>{log.metadata}</pre>
+        </details>
+      )}
+    </article>
+  )
+}
+
+function ReportResolveConfirmModal({
+  pending,
+  submitting,
+  onClose,
+  onConfirm,
+}: {
+  pending: { report: AdminReport; resolution: ReportResolution } | null
+  submitting: boolean
+  onClose: () => void
+  onConfirm: (report: AdminReport, resolution: ReportResolution) => void
+}) {
+  const report = pending?.report
+  const resolution = pending?.resolution
+  const actionLabel = resolution ? formatEnum(resolution) : 'Update'
+  const targetLabel = report?.id || 'Unknown report'
+
+  return (
+    <Modal open={Boolean(pending)} onClose={submitting ? () => undefined : onClose} title={`${actionLabel} report?`} size="md">
+      {report && resolution && (
+        <div className="admin-confirm">
+          <p>
+            This will mark report <strong>{targetLabel}</strong> as <strong>{actionLabel}</strong>. The action is recorded in the admin audit log.
+          </p>
+          <div className="admin-confirm-target">
+            <Icon name="alert" size={22} />
+            <div>
+              <strong>{report.targetType || 'Unknown target'} report</strong>
+              <span>Report ID: {targetLabel}</span>
+              <span>Target ID: {report.targetId || 'Unknown'}</span>
+              <span>Current status: {formatEnum(report.status)}</span>
+            </div>
+          </div>
+          <div className="admin-confirm-actions">
+            <button type="button" className="admin-secondary-button" disabled={submitting} onClick={onClose}>Cancel</button>
+            <button
+              type="button"
+              className={resolution === 'ACTION_TAKEN' ? 'admin-primary-button' : 'admin-secondary-button'}
+              disabled={submitting}
+              onClick={() => onConfirm(report, resolution)}
+            >
+              {submitting ? <ButtonLoader label="Updating..." /> : `Mark ${actionLabel}`}
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
   )
 }
 
@@ -693,19 +878,19 @@ function UserTableRow({
   const isSelf = user.id === currentUserId
   return (
     <div className="admin-user-row" role="row">
-      <span role="cell" className="admin-user-cell">
+      <span role="cell" data-label="User" className="admin-user-cell">
         {user.avatarUrl ? <img src={user.avatarUrl} alt={`${user.username} avatar`} /> : <span><Icon name="user" size={18} /></span>}
         <span>
           <strong>{user.username}</strong>
           <small>{user.email || user.githubId || user.id}</small>
         </span>
       </span>
-      <span role="cell"><RoleBadge admin={hasAdminRole(user)} /></span>
-      <span role="cell"><StatusBadge banned={Boolean(user.banned)} /></span>
-      <span role="cell">{user.projectCount ?? 0}</span>
-      <span role="cell">{user.shipScore ?? 0}</span>
-      <span role="cell">{formatDate(user.createdAt)}</span>
-      <span role="cell" className="admin-row-actions">
+      <span role="cell" data-label="Role"><RoleBadge admin={hasAdminRole(user)} /></span>
+      <span role="cell" data-label="Status"><StatusBadge banned={Boolean(user.banned)} /></span>
+      <span role="cell" data-label="Projects">{user.projectCount ?? 0}</span>
+      <span role="cell" data-label="ShipScore">{user.shipScore ?? 0}</span>
+      <span role="cell" data-label="Joined">{formatDate(user.createdAt)}</span>
+      <span role="cell" data-label="Actions" className="admin-row-actions">
         <Link to={`/admin/users/${user.id}`}>View</Link>
         {!user.banned && <button type="button" disabled={isSelf} onClick={() => onAction('ban')}>Ban</button>}
         {user.banned && <button type="button" disabled={isSelf} onClick={() => onAction('unban')}>Unban</button>}
@@ -835,14 +1020,14 @@ function AdminSkeletonRows({ count }: { count: number }) {
   )
 }
 
-function AdminPagination({ page, onPrev, onNext }: { page: PageResponse<AdminUser> | null; onPrev: () => void; onNext: () => void }) {
+function AdminPagination<T>({ page, onPrev, onNext }: { page: PageResponse<T> | null; onPrev: () => void; onNext: () => void }) {
   if (!page) return null
   return (
-    <div className="admin-pagination" aria-label="User pagination">
+    <nav className="admin-pagination" aria-label="Admin pagination">
       <button type="button" disabled={page.number <= 0} onClick={onPrev}>Previous</button>
       <span>Page {page.number + 1} of {Math.max(page.totalPages || 1, 1)}</span>
       <button type="button" disabled={Boolean(page.last) || page.number + 1 >= page.totalPages} onClick={onNext}>Next</button>
-    </div>
+    </nav>
   )
 }
 
@@ -863,6 +1048,7 @@ function adminErrorMessage(error: any, fallback = 'The admin request failed. Ple
   if (status === 401) return 'Admin access requires sign in.'
   if (status === 403) return error?.response?.data?.message || 'You do not have permission to perform this action.'
   if (status === 404) return 'The requested admin record was not found.'
+  if (status === 409) return error?.response?.data?.message || 'This report was already resolved with a different final status. Refresh the reports list before taking another action.'
   return error?.response?.data?.message || fallback
 }
 
@@ -871,6 +1057,19 @@ function formatDate(value?: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return 'Not available'
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return 'Not available'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Not available'
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function formatEnum(value?: string) {

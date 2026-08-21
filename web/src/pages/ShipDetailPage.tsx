@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { getShip, getComments, likeShip, unlikeShip, addComment, deleteShip } from '../api/endpoints'
+import { getShip, getComments, getLikeStatus, likeShip, unlikeShip, addComment, deleteShip } from '../api/endpoints'
 import { Badge } from '../components/Badge'
 import { CommentThread } from '../components/CommentThread'
 import { Modal } from '../components/Modal'
 import { toastSuccess, toastError } from '../components/Toast'
 import { ButtonLoader, ShipCardSkeleton } from '../components/common/Loading'
 import { Icon } from '../components/Icon'
+import { getShipImageAlt, getShipImageSrc, type ShipImage } from '../utils/shipImages'
 
 interface ShipDetail {
   id: string
@@ -17,7 +18,7 @@ interface ShipDetail {
   createdAt: string
   editWindowOpen?: boolean
   editWindowExpires?: string
-  images?: string[]
+  images?: ShipImage[]
   externalLinks?: { url: string; type: string }[]
   user?: { id: string; username: string; avatarUrl: string; rank?: string; level?: number }
   project?: { id: string; name: string }
@@ -45,6 +46,16 @@ export function ShipDetailPage() {
       .then(res => { setShip(res.data); setLoading(false) })
       .catch(() => setLoading(false))
   }, [id])
+
+  useEffect(() => {
+    if (!id || !me || me.banned) {
+      setLiked(false)
+      return
+    }
+    getLikeStatus(id)
+      .then(res => setLiked(Boolean(res.data)))
+      .catch(() => setLiked(false))
+  }, [id, me])
 
   useEffect(() => {
     if (!id) return
@@ -84,6 +95,7 @@ export function ShipDetailPage() {
   }
 
   const handleComment = async () => {
+    if (submitting) return
     if (!id || !commentText.trim()) return
     if (me?.banned) {
       toastError('Writes are blocked for this account.')
@@ -187,7 +199,7 @@ export function ShipDetailPage() {
         {/* Author header */}
         <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-4)', alignItems: 'center' }}>
           {ship.user?.avatarUrl ? (
-            <Link to={`/profile/${ship.user.username}`}>
+            <Link to={`/profile/${ship.user.id ?? ship.user.username}`}>
               <img src={ship.user.avatarUrl} alt={ship.user.username}
                 style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
             </Link>
@@ -201,7 +213,7 @@ export function ShipDetailPage() {
           )}
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <Link to={`/profile/${ship.user?.username}`}
+              <Link to={`/profile/${ship.user?.id ?? ship.user?.username}`}
                 style={{ fontWeight: 600, fontSize: 'var(--text-base)', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
                 @{ship.user?.username ?? 'unknown'}
               </Link>
@@ -242,10 +254,14 @@ export function ShipDetailPage() {
             borderRadius: 'var(--radius-md)',
             overflow: 'hidden',
           }}>
-            {ship.images.slice(0, 4).map((img, i) => (
-              <img key={i} src={img} alt={`Ship image ${i + 1}`}
-                style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
-            ))}
+            {ship.images.slice(0, 4).map((img, i) => {
+              const src = getShipImageSrc(img)
+              if (!src) return null
+              return (
+                <img key={i} src={src} alt={getShipImageAlt(img, i)}
+                  style={{ width: '100%', height: 200, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+              )
+            })}
           </div>
         )}
 
@@ -411,10 +427,20 @@ export function ShipDetailPage() {
             No comments yet. Be the first to comment!
           </div>
         ) : (
-          <CommentThread comments={comments} currentUserId={me?.id} onDelete={(commentId) => {
+          <CommentThread
+            comments={comments}
+            currentUserId={me?.id}
+            canInteract={Boolean(me && !isWriteBlocked)}
+            onDelete={(commentId) => {
             setComments(prev => prev.filter(c => c.id !== commentId))
-            setShip(prev => prev ? { ...prev, commentCount: prev.commentCount - 1 } : prev)
-          }} />
+            setShip(prev => prev ? { ...prev, commentCount: Math.max(0, prev.commentCount - 1) } : prev)
+          }}
+            onUpvoteChange={(commentId, upvoted, upvoteCount) => {
+              setComments(prev => prev.map(c => c.id === commentId
+                ? { ...c, upvotedByCurrentUser: upvoted, upvotes: upvoteCount }
+                : c))
+            }}
+          />
         )}
       </div>
 

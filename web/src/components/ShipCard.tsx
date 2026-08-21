@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RankBadge } from './RankBadge'
 import { Icon } from './Icon'
+import { getShipImageAlt, getShipImageSrc, type ShipImage } from '../utils/shipImages'
 
 interface Ship {
   id: string; content: string; likeCount: number; commentCount: number
   createdAt: string; editWindowOpen?: boolean; editWindowExpires?: string
-  images?: string[]; externalLinks?: { url: string; type: string }[]
+  images?: ShipImage[]; externalLinks?: { url: string; type: string }[]
 }
 interface ShipCardProps {
   ship: Ship
@@ -24,6 +25,10 @@ function timeAgo(iso: string) {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h}h ago`
   return `${Math.floor(h / 24)}d ago`
+}
+
+function profilePath(user?: { id: string; username: string }) {
+  return user ? `/profile/${user.id || user.username}` : '#'
 }
 
 // LinkedIn-style action icons
@@ -58,7 +63,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
       <div className="ship-feed-card-body">
         {/* Header */}
         <div style={{ display: 'flex', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', alignItems: 'flex-start' }}>
-          <Link to={user ? `/profile/${user.username}` : '#'} style={{ flexShrink: 0 }}>
+          <Link to={profilePath(user)} style={{ flexShrink: 0 }}>
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.username}
                 style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover' }} />
@@ -76,7 +81,7 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
 
           <div className="ship-feed-meta">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-              <Link to={user ? `/profile/${user.username}` : '#'}
+              <Link to={profilePath(user)}
                 style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text-primary)', textDecoration: 'none' }}>
                 {user?.username ?? 'unknown'}
               </Link>
@@ -196,10 +201,14 @@ export function ShipCard({ ship, user, project, liked, canLike, onLike, isOwner,
             gap: 2, marginBottom: 'var(--space-3)',
             borderRadius: 'var(--radius-md)', overflow: 'hidden',
           }}>
-            {ship.images.slice(0, 4).map((img, i) => (
-              <img key={i} src={img} alt=""
-                style={{ width: '100%', height: ship.images!.length === 1 ? 280 : 160, objectFit: 'cover' }} />
-            ))}
+            {ship.images.slice(0, 4).map((img, i) => {
+              const src = getShipImageSrc(img)
+              if (!src) return null
+              return (
+                <img key={i} src={src} alt={getShipImageAlt(img, i)}
+                  style={{ width: '100%', height: ship.images!.length === 1 ? 280 : 160, objectFit: 'cover' }} />
+              )
+            })}
           </div>
         )}
 

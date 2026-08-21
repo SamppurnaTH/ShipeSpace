@@ -219,5 +219,5 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid var(--color-border)',
   background: 'var(--color-surface)',
   fontSize: 'var(--text-sm)', fontFamily: 'inherit',
-  color: 'var(--color-text-primary)', outline: 'none',
+  color: 'var(--color-text-primary)',
 }

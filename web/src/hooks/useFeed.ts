@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   getPersonalizedFeed, getTrendingFeed, getTrendingByWindow,
-  getFollowingFeed, likeShip, unlikeShip
+  getFollowingFeed, getLatestFeed, likeShip, unlikeShip
 } from '../api/endpoints'
+import type { ShipImage } from '../utils/shipImages'
 
 export interface Ship {
   id: string
@@ -13,7 +14,7 @@ export interface Ship {
   createdAt: string
   editWindowOpen?: boolean
   editWindowExpires?: string
-  images?: string[]
+  images?: ShipImage[]
   externalLinks?: { url: string; type: string }[]
 }
 
@@ -24,7 +25,7 @@ export interface FeedItem {
   liked?: boolean | null
 }
 
-export type FeedType = 'following' | 'trending' | 'personalized'
+export type FeedType = 'latest' | 'following' | 'trending' | 'personalized'
 export type TrendingWindow = 'all' | '24h' | '7d' | '30d'
 type FeedStatus = 'idle' | 'loading' | 'error' | 'done'
 type SystemState = 'normal' | 'degraded' | 'rate-limited' | 'unavailable'
@@ -43,6 +44,8 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
 
   const getFeedFn = useCallback((pageNum: number, size: number) => {
     switch (feedType) {
+      case 'latest':
+        return getLatestFeed(pageNum, size)
       case 'following':
         return getFollowingFeed(pageNum, size)
       case 'trending':
@@ -73,7 +76,10 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
 
       const data = res.data
       const newItems: FeedItem[] = data.content ?? []
-      setItems(prev => reset ? newItems : [...prev, ...newItems])
+      setItems(prev => {
+        if (reset) return dedupeFeedItems(newItems)
+        return dedupeFeedItems([...prev, ...newItems])
+      })
 
       // Seed liked state from server response (field is null for unauthenticated users)
       if (reset) {
@@ -125,6 +131,13 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
     }
   }, [fetchPage])
 
+  const refresh = useCallback(() => {
+    pageRef.current = 0
+    hasMoreRef.current = true
+    setHasMore(true)
+    fetchPage(0, true)
+  }, [fetchPage])
+
   const toggleLike = async (item: FeedItem) => {
     const id = item.ship.id
     const liked = likedIds.has(id)
@@ -168,8 +181,18 @@ export function useFeed(isLoggedIn: boolean, feedType: FeedType = 'personalized'
 
   return {
     items, setItems, status, hasMore, feedMode, systemState,
-    likedIds, loadMore, toggleLike,
+    likedIds, loadMore, refresh, toggleLike,
     isLoading: status === 'loading',
     isError: status === 'error',
   }
+}
+
+function dedupeFeedItems(items: FeedItem[]) {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    const id = item.ship?.id
+    if (!id || seen.has(id)) return false
+    seen.add(id)
+    return true
+  })
 }

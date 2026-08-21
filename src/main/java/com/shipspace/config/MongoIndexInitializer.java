@@ -31,6 +31,10 @@ import java.time.Duration;
 @Profile("!test")
 public class MongoIndexInitializer {
 
+    public static final String REPORT_STATUS_CREATED_AT_INDEX = "status_createdAt_idx";
+    public static final String AUDIT_EVENT_TYPE_TIMESTAMP_INDEX = "eventType_timestamp_idx";
+    public static final String AUDIT_TIMESTAMP_INDEX = "audit_timestamp_desc";
+
     public static final java.util.Set<String> INDEXED_COLLECTIONS = java.util.Set.of(
             "users",
             "ships",
@@ -44,6 +48,7 @@ public class MongoIndexInitializer {
             "score_event_log",
             "content_scores",
             "collaboration_requests",
+            "reports",
             "audit_logs"
     );
 
@@ -65,6 +70,7 @@ public class MongoIndexInitializer {
             createScoreEventLogIndexes();
             createContentScoreIndexes();
             createCollaborationRequestIndexes();
+            createReportIndexes();
             createAuditLogIndexes();
             log.info("MongoDB index creation completed successfully");
         } catch (Exception e) {
@@ -208,11 +214,24 @@ public class MongoIndexInitializer {
                 .unique().named("requester_project_unique"));
     }
 
+    private void createReportIndexes() {
+        IndexOperations ops = mongoTemplate.indexOps("reports");
+        ops.ensureIndex(new Index().on("reporterId", Sort.Direction.ASC).named("reporterId_asc"));
+        ops.ensureIndex(new Index().on("targetId", Sort.Direction.ASC).named("targetId_asc"));
+        ops.ensureIndex(new CompoundIndexDefinition(
+                new org.bson.Document("status", 1).append("createdAt", -1))
+                .named(REPORT_STATUS_CREATED_AT_INDEX));
+    }
+
     private void createAuditLogIndexes() {
         IndexOperations ops = mongoTemplate.indexOps("audit_logs");
         ops.ensureIndex(new CompoundIndexDefinition(
                 new org.bson.Document("userId", 1).append("eventType", 1))
                 .named("userId_eventType_idx"));
+        ops.ensureIndex(new CompoundIndexDefinition(
+                new org.bson.Document("eventType", 1).append("timestamp", -1))
+                .named(AUDIT_EVENT_TYPE_TIMESTAMP_INDEX));
+        ops.ensureIndex(new Index().on("timestamp", Sort.Direction.DESC).named(AUDIT_TIMESTAMP_INDEX));
         // TTL index — auto-expire after 365 days
         ops.ensureIndex(new Index().on("timestamp", Sort.Direction.ASC)
                 .expire(Duration.ofDays(365)).named("timestamp_ttl"));

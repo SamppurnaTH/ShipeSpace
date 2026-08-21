@@ -78,7 +78,7 @@
   --shadow-modal: 0 24px 70px #0f172a2e;
   --transition-fast: .1s ease;
   --transition-base: .18s ease;
-  --header-height: 72px;
+  --header-height: 80px;
   --col-left-width: 225px;
   --col-center-width: 552px;
   --col-right-width: 300px;
@@ -94,7 +94,7 @@
   backdrop-filter: blur(18px);
   background: #ffffffe0;
   border-bottom: 1px solid #e2e8f0d1;
-  height: 72px;
+  height: 80px;
   position: sticky;
   top: 0;
   box-shadow: 0 10px 30px #0f172a0a
@@ -104,9 +104,9 @@
   align-items: center;
   gap: var(--space-5);
   max-width: var(--layout-max);
-  height: 72px;
+  height: 80px;
   padding: 0 var(--space-6);
-  grid-template-columns: auto auto minmax(220px,1fr) auto;
+  grid-template-columns: auto 1fr auto;
   margin: 0 auto;
   display: grid
 }
@@ -226,11 +226,45 @@
 .top-nav-actions {
   flex-shrink: 0;
   justify-content: flex-end;
-  grid-column: -1;
   justify-self: end;
+  align-self: center;
   align-items: center;
   gap: 12px;
   display: flex
+}
+
+.top-nav-notifications-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.top-nav-notifications-icon:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-2);
+}
+
+.top-nav-notifications-badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
 }
 
 .top-nav-search {
@@ -278,10 +312,14 @@
   cursor: pointer;
   height: 44px;
   font: inherit;
+  line-height: 1;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 700;
-  display: inline-flex
+  display: inline-flex;
+  margin: 0;
+  box-sizing: border-box;
+  vertical-align: middle
 }
 
 .top-nav-primary {
@@ -292,7 +330,7 @@
   background: #2563eb;
   border: 1px solid #0000;
   padding: 0 20px;
-  box-shadow: 0 14px 30px #2563eb3d
+  box-shadow: 0 4px 12px #2563eb3d
 }
 
 .top-nav-primary:hover,
@@ -305,7 +343,8 @@
   color: #475569;
   background: 0 0;
   border: 1px solid #0000;
-  padding: 0 12px
+  padding: 0 12px;
+  text-decoration: none
 }
 
 .top-nav-secondary:hover,
@@ -509,8 +548,7 @@
   }
 
 .top-nav-links,
-  .top-nav-actions,
-  .top-nav-search {
+  .top-nav-actions {
     display: none
   }
 
@@ -545,7 +583,7 @@
   backdrop-filter: blur(18px);
   background: #ffffffe0;
   border-bottom: 1px solid #e2e8f0e0;
-  height: 72px;
+  height: 80px;
   position: sticky;
   top: 0;
   box-shadow: 0 10px 30px #0f172a0a
@@ -555,7 +593,7 @@
   align-items: center;
   gap: clamp(16px, 2.2vw, 32px);
   max-width: var(--layout-max);
-  height: 72px;
+  height: 80px;
   padding: 0 clamp(20px, 3vw, 32px);
   grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
   margin: 0 auto;
@@ -2169,12 +2207,7 @@
   line-height: 1.45
 }
 
-.home-footer-brand .home-brand-mark {
-  width: 34px;
-  height: 34px;
-  box-shadow: none;
-  border-radius: 9px
-}
+
 
 .home-footer-group {
   align-content: start;
@@ -4226,7 +4259,7 @@ to {
 }
 
 .admin-topbar {
-  height: 72px;
+  height: 80px;
   padding: 0 max(24px, calc((100vw - 1440px) / 2 + 24px));
   background: #fff;
   border-bottom: 1px solid #e2e8f0;
@@ -4317,6 +4350,13 @@ to {
   height: 30px;
   border-radius: 999px;
   object-fit: cover;
+}
+
+.admin-avatar-button span {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-ghost-link,
@@ -4850,7 +4890,7 @@ to {
 .admin-detail-identity img,
 .admin-detail-identity > span {
   width: 72px;
-  height: 72px;
+  height: 80px;
 }
 
 .admin-detail-identity > span {
@@ -4916,6 +4956,33 @@ to {
 .admin-report-card p {
   color: #475569;
   line-height: 1.5;
+}
+
+.admin-audit-detail {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.admin-audit-detail summary {
+  cursor: pointer;
+  color: #2563eb;
+  font-weight: 900;
+}
+
+.admin-audit-detail summary:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.admin-audit-detail pre {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .admin-report-meta {
@@ -5155,9 +5222,27 @@ to {
     gap: 12px;
   }
 
+  .admin-user-row > span:nth-child(4),
+  .admin-user-row > span:nth-child(6) {
+    display: flex;
+  }
+
   .admin-user-row > span::before {
-    content: attr(role);
-    display: none;
+    content: attr(data-label);
+    color: #64748b;
+    flex: 0 0 96px;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .admin-user-row .admin-user-cell {
+    align-items: flex-start;
+  }
+
+  .admin-user-row .admin-user-cell::before {
+    padding-top: 12px;
   }
 
   .admin-row-actions {
@@ -5183,5 +5268,50 @@ to {
   .admin-access-card .admin-secondary-link {
     margin: 10px 0 0;
   }
+}
+
+
+
+
+
+/* Override background colors and borders for logo wrappers now that we use an opaque PNG logo */
+.top-nav-mark,
+.home-brand-mark {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 90px !important;
+  height: 60px !important;
+}
+
+.auth-mark,
+.page-loader-mark {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  width: 96px !important;
+  height: 64px !important;
+}
+
+.top-nav-mark img,
+.home-brand-mark img,
+.auth-mark img,
+.page-loader-mark img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block;
+}
+
+.home-footer-brand .home-brand-mark {
+  width: 180px !important;
+  height: 54px !important;
+  display: block;
+}
+
+.home-footer-brand .home-brand-mark img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
 }
 

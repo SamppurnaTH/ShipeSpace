@@ -47,6 +47,26 @@ public class FeedService {
     private final ScheduledJobMetrics scheduledJobMetrics;
 
     /**
+     * Generate a latest feed of ships in reverse chronological order.
+     * Uses database-level createdAt sorting and normal pageable limits.
+     */
+    public Page<Ship> getLatestFeed(Pageable pageable) {
+        log.debug("Generating latest feed - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt", "id")
+        );
+
+        Page<Ship> latestFeed = shipRepository.findAll(sortedPageable);
+
+        log.debug("Latest feed returned {} ships", latestFeed.getTotalElements());
+        return latestFeed;
+    }
+
+    /**
      * Generate a chronological feed of ships from users that the authenticated user follows.
      * Returns ships in reverse chronological order (most recent first).
      * 
@@ -67,6 +87,7 @@ public class FeedService {
                 .getContent()
                 .stream()
                 .map(Following::getFolloweeId)
+                .distinct()
                 .collect(Collectors.toList());
         
         // If user doesn't follow anyone, return empty page

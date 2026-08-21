@@ -3,6 +3,7 @@ import { getUnreadCount } from '../api/endpoints'
 import { useAuth } from '../auth/AuthContext'
 
 const POLL_INTERVAL_MS = 30_000
+export const UNREAD_COUNT_REFRESH_EVENT = 'shipspace:notifications-refresh'
 
 /**
  * Returns the live unread notification count for the authenticated user.
@@ -23,7 +24,11 @@ export function useUnreadCount() {
     }
     fetch()
     intervalRef.current = setInterval(fetch, POLL_INTERVAL_MS)
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+    window.addEventListener(UNREAD_COUNT_REFRESH_EVENT, fetch)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      window.removeEventListener(UNREAD_COUNT_REFRESH_EVENT, fetch)
+    }
   }, [user])
 
   return count

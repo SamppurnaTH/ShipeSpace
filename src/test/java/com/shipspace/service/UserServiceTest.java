@@ -8,12 +8,14 @@ import com.shipspace.dto.UserProfileResponse;
 import com.shipspace.dto.UserUpdateRequest;
 import com.shipspace.exception.ResourceNotFoundException;
 import com.shipspace.model.Project;
+import com.shipspace.model.RankTier;
 import com.shipspace.model.Ship;
 import com.shipspace.model.User;
 import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.repository.FollowingRepository;
 import com.shipspace.util.DtoMapper;
 import com.shipspace.util.InputSanitizer;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +58,9 @@ class UserServiceTest {
     private ShipRepository shipRepository;
 
     @Mock
+    private FollowingRepository followingRepository;
+
+    @Mock
     private DtoMapper dtoMapper;
 
     @Mock
@@ -85,6 +90,9 @@ class UserServiceTest {
                 .followerCount(10)
                 .followingCount(5)
                 .projectCount(3)
+                .shipScore(120)
+                .level(4)
+                .rank(RankTier.DOCKED)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
@@ -141,12 +149,15 @@ class UserServiceTest {
         assertThat(result.getFollowerCount()).isEqualTo(10);
         assertThat(result.getFollowingCount()).isEqualTo(5);
         assertThat(result.getProjectCount()).isEqualTo(3);
+        assertThat(result.getShipScore()).isEqualTo(120);
+        assertThat(result.getLevel()).isEqualTo(4);
+        assertThat(result.getRank()).isEqualTo("DOCKED");
         verify(userRepository).findById(testUserId);
     }
 
     @Test
-    @DisplayName("Should update user profile with all fields")
-    void updateUserProfile_AllFields() {
+    @DisplayName("Should update editable profile fields and preserve GitHub-owned identity fields")
+    void updateUserProfile_EditableFieldsOnly() {
         // Arrange
         UserUpdateRequest updateRequest = UserUpdateRequest.builder()
                 .email("newemail@example.com")
@@ -164,11 +175,11 @@ class UserServiceTest {
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result.getEmail()).isEqualTo("newemail@example.com");
+        assertThat(result.getEmail()).isEqualTo("test@example.com");
         assertThat(result.getBio()).isEqualTo("New bio");
         assertThat(result.getLocation()).isEqualTo("New City");
         assertThat(result.getWebsiteUrl()).isEqualTo("https://newsite.com");
-        assertThat(result.getAvatarUrl()).isEqualTo("https://example.com/newavatar.jpg");
+        assertThat(result.getAvatarUrl()).isEqualTo("https://example.com/avatar.jpg");
         verify(userRepository).findById(testUserId);
         verify(userRepository).save(any(User.class));
     }

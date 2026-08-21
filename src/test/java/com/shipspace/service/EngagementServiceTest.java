@@ -106,6 +106,7 @@ class EngagementServiceTest {
         lenient().when(mongoTemplate.findAndModify(any(), any(), any(), eq(Comment.class)))
                 .thenAnswer(invocation -> Comment.builder().id("comment-456").upvotes(1).build());
         lenient().when(likeRepository.deleteByUserIdAndShipId("user-123", "ship-456")).thenReturn(1L);
+        lenient().when(commentUpvoteRepository.deleteByUserIdAndCommentId("user-123", "comment-456")).thenReturn(1L);
     }
 
     @Test
@@ -359,7 +360,10 @@ class EngagementServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo("comment-id");
         assertThat(response.getShipId()).isEqualTo(shipId);
+        assertThat(response.getUserId()).isEqualTo(userId);
         assertThat(response.getContent()).isEqualTo(content);
+        assertThat(response.getUpvotes()).isEqualTo(0);
+        assertThat(response.getUpvotedByCurrentUser()).isFalse();
         assertThat(response.getCommenter()).isNotNull();
         assertThat(response.getCommenter().getId()).isEqualTo(userId);
         assertThat(response.getCommenter().getUsername()).isEqualTo("testuser");
@@ -474,11 +478,47 @@ class EngagementServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.getContent()).hasSize(2);
         assertThat(response.getContent().get(0).getId()).isEqualTo("comment-1");
+        assertThat(response.getContent().get(0).getUserId()).isEqualTo("user-1");
+        assertThat(response.getContent().get(0).getUpvotes()).isEqualTo(0);
+        assertThat(response.getContent().get(0).getUpvotedByCurrentUser()).isFalse();
         assertThat(response.getContent().get(0).getCommenter().getUsername()).isEqualTo("user1");
         assertThat(response.getContent().get(1).getId()).isEqualTo("comment-2");
         assertThat(response.getContent().get(1).getCommenter().getUsername()).isEqualTo("user2");
 
         verify(commentRepository).findByShipId(shipId, pageable);
+    }
+
+    @Test
+    void getShipComments_WithCurrentUser_EnrichesUpvotedState() {
+        String shipId = "ship-456";
+        Pageable pageable = PageRequest.of(0, 20);
+        Comment comment = Comment.builder()
+                .id("comment-1")
+                .userId("user-1")
+                .shipId(shipId)
+                .content("First comment")
+                .upvotes(2)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        User user = User.builder().id("user-1").username("user1").build();
+        CommentUpvote upvote = CommentUpvote.builder()
+                .id("upvote-1")
+                .userId("viewer-1")
+                .commentId("comment-1")
+                .build();
+
+        when(commentRepository.findByShipId(shipId, pageable))
+                .thenReturn(new PageImpl<>(java.util.List.of(comment), pageable, 1));
+        when(userRepository.findAllById(any())).thenReturn(java.util.List.of(user));
+        when(commentUpvoteRepository.findByUserIdAndCommentIdIn(eq("viewer-1"), any()))
+                .thenReturn(java.util.List.of(upvote));
+
+        Page<CommentResponse> response = engagementService.getShipComments(shipId, pageable, "viewer-1");
+
+        assertThat(response.getContent()).hasSize(1);
+        assertThat(response.getContent().get(0).getUpvotes()).isEqualTo(2);
+        assertThat(response.getContent().get(0).getUpvotedByCurrentUser()).isTrue();
     }
 
     @Test
@@ -762,6 +802,34 @@ class EngagementServiceTest {
         verify(commentUpvoteRepository).deleteByUserIdAndCommentId(userId, commentId);
         verify(mongoTemplate).findAndModify(any(), any(), any(), eq(Comment.class));
         verify(shipScoreService, never()).applyScoreEvent(any(), any(), any());
+    }
+
+    @Test
+    void removeCommentUpvote_WhenConcurrentDeleteAlreadyRemoved_DoesNotDecrement() {
+        String userId = "user-123";
+        String commentId = "comment-456";
+        Comment comment = Comment.builder()
+                .id(commentId)
+                .userId("commenter-id")
+                .shipId("ship-id")
+                .content("Test comment")
+                .upvotes(3)
+                .build();
+        CommentUpvote existingUpvote = CommentUpvote.builder()
+                .id("upvote-id")
+                .userId(userId)
+                .commentId(commentId)
+                .build();
+
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+        when(commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId)).thenReturn(Optional.of(existingUpvote));
+        when(commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId)).thenReturn(0L);
+
+        CommentUpvoteToggleResponse response = engagementService.removeCommentUpvote(userId, commentId);
+
+        assertThat(response.isUpvoted()).isFalse();
+        assertThat(response.getUpvoteCount()).isEqualTo(3);
+        verify(mongoTemplate, never()).findAndModify(any(), any(), any(), eq(Comment.class));
     }
 
     @Test

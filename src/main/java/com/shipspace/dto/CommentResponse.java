@@ -27,9 +27,25 @@ public class CommentResponse {
     private String shipId;
 
     /**
+     * ID of the user who created the comment.
+     */
+    private String userId;
+
+    /**
      * Text content of the comment.
      */
     private String content;
+
+    /**
+     * Number of upvotes this comment has received.
+     */
+    private Integer upvotes;
+
+    /**
+     * Whether the current authenticated viewer has upvoted this comment.
+     * Public/anonymous comment reads return false.
+     */
+    private Boolean upvotedByCurrentUser;
 
     /**
      * Profile information of the user who created the comment.

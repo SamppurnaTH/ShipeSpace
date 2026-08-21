@@ -186,7 +186,8 @@ public class ProjectService {
                 .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
         
         // Get ships sorted by creation date (most recent first)
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<Ship> ships = shipRepository.findByProjectId(projectId, pageable);
         
         log.debug("Found {} ships for project ID: {}", ships.getTotalElements(), projectId);

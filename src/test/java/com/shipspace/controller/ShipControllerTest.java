@@ -796,4 +796,40 @@ class ShipControllerTest {
 
         verify(shipService).uploadShipImages(eq(testShipId), eq(testUserId), anyList());
     }
+
+    @Test
+    @WithMockUser(username = "user123")
+    @DisplayName("DELETE /api/ships/{shipId} - Should delete owned ship")
+    void deleteShip_Success() throws Exception {
+        mockMvc.perform(delete("/api/ships/{shipId}", testShipId)
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(shipService).deleteShip(testShipId, testUserId);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/ships/{shipId} - Should return 401 when not authenticated")
+    void deleteShip_Unauthorized() throws Exception {
+        mockMvc.perform(delete("/api/ships/{shipId}", testShipId)
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verify(shipService, never()).deleteShip(anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "user456")
+    @DisplayName("DELETE /api/ships/{shipId} - Should return 403 when not ship owner")
+    void deleteShip_Forbidden() throws Exception {
+        doThrow(new ForbiddenException("delete", "ship"))
+                .when(shipService).deleteShip(testShipId, "user456");
+
+        mockMvc.perform(delete("/api/ships/{shipId}", testShipId)
+                        .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        verify(shipService).deleteShip(testShipId, "user456");
+    }
 }

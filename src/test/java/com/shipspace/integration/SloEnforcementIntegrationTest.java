@@ -191,10 +191,26 @@ class SloEnforcementIntegrationTest extends AbstractIntegrationTest {
         }
 
         @Test
+        @DisplayName("Latest feed returns 200 without auth")
+        void latestFeed_returns200WithoutAuth() throws Exception {
+            mockMvc.perform(get("/feeds/latest?page=0&size=5")
+                    .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
         @DisplayName("Personalized feed endpoint exists and requires auth")
         void personalizedFeed_requiresAuth() throws Exception {
             // Without auth, should return 401 — not 404 or 500
             mockMvc.perform(get("/feeds/personalized?page=0&size=5")
+                    .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("Following feed endpoint exists and requires auth")
+        void followingFeed_requiresAuth() throws Exception {
+            mockMvc.perform(get("/feeds/following?page=0&size=5")
                     .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isUnauthorized());
         }

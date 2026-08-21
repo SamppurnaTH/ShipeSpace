@@ -1,8 +1,8 @@
-# <img src="assets/shipspace_logo.png" width="100" height="100" align="center" /> ShipSpace: Master Project Documentation
+﻿# <img src="../assets/logo.png" width="100" height="100" align="center" /> KREVO: Master Project Documentation
 
 ## 1. Executive Summary & Product Vision
 
-**ShipSpace** is a platform designed specifically for technical builders—Indie Hackers, Side-Project Developers, and Early-Stage Founders—to share their progress through a social layer built on "Proof of Work."
+**KREVO** is a platform designed specifically for technical builders—Indie Hackers, Side-Project Developers, and Early-Stage Founders—to share their progress through a social layer built on "Proof of Work."
 
 ### 1.1 The Problem
 Existing platforms like Twitter, LinkedIn, and GitHub fail to provide a dedicated space where the atomic unit of content is a **Project Update**.
@@ -11,7 +11,7 @@ Existing platforms like Twitter, LinkedIn, and GitHub fail to provide a dedicate
 - **GitHub:** Great for code, but lacks a social discovery layer for products.
 
 ### 1.2 The Solution
-ShipSpace organizes content around **Projects**. Users publish **Ships** (Project Updates) that are pinned to persistent project entities, creating a historical log of building in public.
+KREVO organizes content around **Projects**. Users publish **Ships** (Project Updates) that are pinned to persistent project entities, creating a historical log of building in public.
 
 ### 1.3 Strategic Boundaries
 - **Proof of Work > Engagement:** Every "Ship" must be attached to a Project.
@@ -37,7 +37,7 @@ The number of unique users per week who publish at least one meaningful Project 
 ## 3. Product Features & User Experience
 
 ### 3.1 Authentication & Profile
-- **Identity:** Mandatory GitHub OAuth 2.0 with ShipSpace-issued JWT access/refresh tokens. No email/password for MVP to ensure user quality.
+- **Identity:** Mandatory GitHub OAuth 2.0 with KREVO-issued JWT access/refresh tokens. No email/password for MVP to ensure user quality.
 - **Profiles:** Displays avatar, bio, tech stack tags, and a **"Shipper Badge"** for active builders.
 - **Progression (ShipScore):** A gamified system where users earn points for shipping and engaging.
     - **Ranks:** DOCKED (Lvl 1-5) up to FLEET_ADMIRAL (Lvl 26-30).
@@ -126,3 +126,5 @@ Project will be re-evaluated or stopped if:
 ---
 
 *Last Updated: February 12, 2026*
+
+

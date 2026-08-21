@@ -119,12 +119,17 @@ public class EngagementController {
     @GetMapping("/{shipId}/comments")
     @Operation(summary = "Get comments for a ship")
     public ResponseEntity<Page<CommentResponse>> getShipComments(
+            Authentication authentication,
             @PathVariable String shipId,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @Parameter(description = "Page size (max 100)")
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(engagementService.getShipComments(shipId, pageable));
+        String currentUserId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
+            currentUserId = userDetails.getUsername();
+        }
+        return ResponseEntity.ok(engagementService.getShipComments(shipId, pageable, currentUserId));
     }
 
     @GetMapping("/{shipId}/likes")

@@ -287,6 +287,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(error);
     }
 
+    @ExceptionHandler(AuditLogException.class)
+    public ResponseEntity<ErrorResponse> handleAuditLogException(
+            AuditLogException ex, WebRequest request) {
+        log.error("Mandatory audit logging failed: {}", ex.getMessage(), ex);
+
+        ErrorResponse error = ErrorResponse.builder()
+                .code("AUDIT_LOG_FAILURE")
+                .message("The action completed, but mandatory audit logging failed. Please retry or contact support.")
+                .timestamp(Instant.now())
+                .path(extractPath(request))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
     /**
      * Handles general runtime exceptions.
      * Internal message is logged but NOT exposed to the client.

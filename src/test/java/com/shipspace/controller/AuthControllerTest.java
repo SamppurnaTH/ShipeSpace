@@ -21,6 +21,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -57,6 +59,24 @@ class AuthControllerTest {
 
     @InjectMocks
     private AuthController authController;
+
+    @Test
+    void getOAuthState_GeneratesServerStateToken() {
+        // Arrange
+        when(oAuthStateService.generateState()).thenReturn("server-generated-state");
+
+        // Act
+        ResponseEntity<Map<String, String>> response =
+                authController.getOAuthState(httpRequest, httpResponse);
+
+        // Assert
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody()).containsEntry("state", "server-generated-state");
+
+        verify(oAuthStateService).generateState();
+        verifyNoInteractions(authService);
+    }
 
     @Test
     void authenticateWithGitHub_ValidCode_ReturnsAuthResponse() {
@@ -99,6 +119,44 @@ class AuthControllerTest {
         assertThat(response.getBody().getUser().getAvatarUrl()).isEqualTo("https://github.com/avatar.png");
 
         verify(authService).authenticateWithGitHub(oauthCode);
+    }
+
+    @Test
+    void authenticateWithGitHub_InvalidState_RejectsBeforeGitHubExchange() {
+        // Arrange
+        AuthRequest request = AuthRequest.builder()
+                .code("valid-oauth-code")
+                .state("invalid-state")
+                .build();
+
+        when(oAuthStateService.validateAndConsume("invalid-state")).thenReturn(false);
+
+        // Act & Assert
+        assertThatThrownBy(() -> authController.authenticateWithGitHub(request, httpRequest, httpResponse))
+                .isInstanceOf(GitHubOAuthException.class)
+                .hasMessage("Invalid or expired OAuth state token. Please restart the login flow.");
+
+        verify(oAuthStateService).validateAndConsume("invalid-state");
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void authenticateWithGitHub_BlankState_RejectsBeforeGitHubExchange() {
+        // Arrange
+        AuthRequest request = AuthRequest.builder()
+                .code("valid-oauth-code")
+                .state(" ")
+                .build();
+
+        when(oAuthStateService.validateAndConsume(" ")).thenReturn(false);
+
+        // Act & Assert
+        assertThatThrownBy(() -> authController.authenticateWithGitHub(request, httpRequest, httpResponse))
+                .isInstanceOf(GitHubOAuthException.class)
+                .hasMessage("Invalid or expired OAuth state token. Please restart the login flow.");
+
+        verify(oAuthStateService).validateAndConsume(" ");
+        verifyNoInteractions(authService);
     }
 
     @Test

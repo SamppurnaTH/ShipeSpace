@@ -28,7 +28,7 @@ export function HomeShipPreview({ item }: { item: FeedItem }) {
         <div>
           <Link to={user ? `/profile/${user.username}` : '/trending'}>{user?.username ?? 'Builder'}</Link>
           <p>
-            {project?.name ? <Link to={`/projects/${project.id}`}>{project.name}</Link> : 'ShipSpace project'}
+            {project?.name ? <Link to={`/projects/${project.id}`}>{project.name}</Link> : 'KREVO project'}
             <span> · </span>
             <time dateTime={ship.createdAt}>{timeAgo(ship.createdAt)}</time>
           </p>

@@ -51,6 +51,53 @@ export interface AdminStats {
   pendingReports: number
 }
 
+export interface AdminAuditLog {
+  id: string
+  eventType: string
+  userId?: string
+  entityId?: string
+  previousState?: string
+  newState?: string
+  metadata?: string
+  timestamp?: string
+}
+
+export interface SearchUserResult {
+  id: string
+  username: string
+  avatarUrl?: string
+  bio?: string
+  rank?: string
+}
+
+export interface SearchShipResult {
+  id: string
+  content?: string
+  createdAt?: string
+  likeCount?: number
+  commentCount?: number
+  imageUrls?: unknown[]
+  images?: unknown[]
+  externalLinks?: { url: string; type?: string }[]
+  user?: {
+    id?: string
+    username?: string
+    avatarUrl?: string
+    rank?: string
+    level?: number
+  }
+  project?: {
+    id?: string
+    name?: string
+    techTags?: string[]
+  }
+}
+
+export interface SearchResponse {
+  users: SearchUserResult[]
+  ships: SearchShipResult[]
+}
+
 export const authGitHub = (code: string, state: string) =>
   api.post('/auth/github', { code, state })
 
@@ -99,6 +146,9 @@ export const getRankSummary = (userId: string) =>
 export const getTrendingFeed = (page = 0, size = 20) =>
   api.get('/feeds/trending', { params: { page, size } })
 
+export const getLatestFeed = (page = 0, size = 20) =>
+  api.get('/feeds/latest', { params: { page, size } })
+
 export const getTrendingByWindow = (window: string, page = 0, size = 20) =>
   api.get(`/feeds/trending/${window}`, { params: { page, size } })
 
@@ -131,6 +181,9 @@ export const likeShip = (shipId: string) =>
 export const unlikeShip = (shipId: string) =>
   api.delete(`/ships/${shipId}/like`)
 
+export const getLikeStatus = (shipId: string) =>
+  api.get<boolean>(`/ships/${shipId}/like/status`)
+
 export const getComments = (shipId: string, page = 0, size = 20) =>
   api.get(`/ships/${shipId}/comments`, { params: { page, size } })
 
@@ -142,6 +195,9 @@ export const deleteComment = (commentId: string) =>
 
 export const upvoteComment = (commentId: string) =>
   api.put(`/ships/comments/${commentId}/upvote`)
+
+export const removeCommentUpvote = (commentId: string) =>
+  api.delete(`/ships/comments/${commentId}/upvote`)
 
 export const createProject = (data: {
   name: string; description: string;
@@ -170,6 +226,9 @@ export const getMyProjects = () =>
 export const getUserShips = (userId: string, page = 0, size = 20) =>
   api.get(`/users/${userId}/ships`, { params: { page, size } })
 
+export const getUserProjects = (userId: string, page = 0, size = 20) =>
+  api.get(`/users/${userId}/projects`, { params: { page, size } })
+
 export const getNotifications = (page = 0, size = 20) =>
   api.get('/notifications', { params: { page, size } })
 
@@ -194,8 +253,32 @@ export const acceptCollaboration = (collabId: string) =>
 export const declineCollaboration = (collabId: string) =>
   api.post(`/collaborations/${collabId}/decline`)
 
-export const searchShipsAndUsers = (query: string, size = 10) =>
-  api.get<{ users: any[]; ships: any[] }>('/search', { params: { q: query, size } })
+export const searchShipsAndUsers = (query: string, size = 10, signal?: AbortSignal) =>
+  api.get<SearchResponse>('/search', { params: { q: query, size }, signal })
+
+// People Discovery
+export interface BuilderDiscoveryResult {
+  id: string
+  username: string
+  avatarUrl?: string
+  bio?: string
+  location?: string
+  followerCount?: number
+  projectCount?: number
+  shipScore?: number
+  level?: number
+  rank?: string
+  isFollowing?: boolean | null
+  createdAt?: string
+}
+
+export type DiscoverySort = 'discover' | 'top' | 'new'
+
+export const discoverBuilders = (page = 0, size = 20, sort: DiscoverySort = 'discover') =>
+  api.get<PageResponse<BuilderDiscoveryResult>>('/users/discover', { params: { page, size, sort } })
+
+export const searchBuilders = (q: string, page = 0, size = 20, signal?: AbortSignal) =>
+  api.get<PageResponse<BuilderDiscoveryResult>>('/users/discover/search', { params: { q, page, size }, signal })
 
 export const getAdminStats = () =>
   api.get<AdminStats>('/admin/stats')
@@ -217,3 +300,8 @@ export const getAdminReports = (status = 'PENDING', page = 0, size = 20) =>
 
 export const resolveAdminReport = (reportId: string, status: AdminReport['status'], note = '') =>
   api.patch<AdminReport>(`/admin/reports/${reportId}/resolve`, { status, note })
+
+export const getAdminAuditLogs = (eventType = '', page = 0, size = 20) =>
+  api.get<PageResponse<AdminAuditLog>>('/admin/audit-logs', {
+    params: { ...(eventType ? { eventType } : {}), page, size },
+  })

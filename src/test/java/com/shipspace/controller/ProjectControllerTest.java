@@ -513,4 +513,40 @@ class ProjectControllerTest {
 
         verify(projectService).updateProject(eq(testProjectId), eq(testUserId), any(ProjectUpdateRequest.class));
     }
+
+    @Test
+    @WithMockUser(username = "user123")
+    @DisplayName("DELETE /api/projects/{projectId} - Should delete owned project")
+    void deleteProject_Success() throws Exception {
+        mockMvc.perform(delete("/api/projects/{projectId}", testProjectId)
+                        .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(projectService).deleteProject(testProjectId, testUserId);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{projectId} - Should return 401 when not authenticated")
+    void deleteProject_Unauthorized() throws Exception {
+        mockMvc.perform(delete("/api/projects/{projectId}", testProjectId)
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        verify(projectService, never()).deleteProject(anyString(), anyString());
+    }
+
+    @Test
+    @WithMockUser(username = "user456")
+    @DisplayName("DELETE /api/projects/{projectId} - Should return 403 when not project owner")
+    void deleteProject_Forbidden() throws Exception {
+        doThrow(new ForbiddenException("delete", "project"))
+                .when(projectService).deleteProject(testProjectId, "user456");
+
+        mockMvc.perform(delete("/api/projects/{projectId}", testProjectId)
+                        .with(csrf()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        verify(projectService).deleteProject(testProjectId, "user456");
+    }
 }

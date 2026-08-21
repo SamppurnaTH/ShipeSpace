@@ -14,6 +14,7 @@ import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.repository.FollowingRepository;
 import com.shipspace.util.DtoMapper;
 import com.shipspace.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ShipRepository shipRepository;
+    private final FollowingRepository followingRepository;
     private final DtoMapper dtoMapper;
     private final UserCountRepository userCountRepository;
     private final InputSanitizer inputSanitizer;
@@ -72,9 +74,25 @@ public class UserService {
      * @throws ResourceNotFoundException if user is not found
      */
     public UserProfileResponse getPublicProfile(String userId) {
+        return getPublicProfile(userId, null);
+    }
+
+    /**
+     * Retrieves a public user profile by user ID with optional viewer-aware
+     * follow state. Anonymous reads remain public and return isFollowing=false.
+     *
+     * @param userId the ID of the user
+     * @param viewerUserId the authenticated viewer ID, if present
+     * @return public profile information
+     */
+    public UserProfileResponse getPublicProfile(String userId, String viewerUserId) {
         log.debug("Retrieving public profile for user ID: {}", userId);
         
         User user = getUserById(userId);
+        boolean isFollowing = viewerUserId != null
+                && !viewerUserId.isBlank()
+                && !viewerUserId.equals(userId)
+                && followingRepository.existsByFollowerIdAndFolloweeId(viewerUserId, userId);
         
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -86,6 +104,10 @@ public class UserService {
                 .followerCount(user.getFollowerCount())
                 .followingCount(user.getFollowingCount())
                 .projectCount(user.getProjectCount())
+                .shipScore(user.getShipScore())
+                .level(user.getLevel())
+                .rank(user.getRank() != null ? user.getRank().name() : null)
+                .isFollowing(isFollowing)
                 .createdAt(user.getCreatedAt())
                 .build();
     }
@@ -105,10 +127,7 @@ public class UserService {
         
         User user = getUserById(userId);
         
-        // Update only provided fields — sanitize all free-text inputs
-        if (updateRequest.getEmail() != null) {
-            user.setEmail(updateRequest.getEmail());
-        }
+        // Update only user-editable fields. GitHub-owned identity fields remain server-controlled.
         if (updateRequest.getBio() != null) {
             user.setBio(inputSanitizer.sanitize(updateRequest.getBio(), 500));
         }
@@ -118,10 +137,7 @@ public class UserService {
         if (updateRequest.getWebsiteUrl() != null) {
             user.setWebsiteUrl(updateRequest.getWebsiteUrl());
         }
-        if (updateRequest.getAvatarUrl() != null) {
-            user.setAvatarUrl(updateRequest.getAvatarUrl());
-        }
-        
+
         user.setUpdatedAt(Instant.now());
         
         User updatedUser = userRepository.save(user);

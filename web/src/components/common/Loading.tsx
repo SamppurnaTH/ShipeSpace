@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+﻿import type { CSSProperties } from 'react'
 
 type SkeletonProps = {
   className?: string
@@ -19,7 +19,7 @@ export function ButtonLoader({ label }: { label: string }) {
   )
 }
 
-export function PageLoader({ message = 'Loading ShipSpace...' }: { message?: string }) {
+export function PageLoader({ message = 'Loading KREVO...' }: { message?: string }) {
   return (
     <main className="page-loader" role="status" aria-live="polite" aria-busy="true">
       <span className="page-loader-mark" aria-hidden="true"><ShipSpaceMark /></span>
@@ -131,12 +131,7 @@ export function UploadProgress({ label, tone = 'loading' }: { label: string; ton
 }
 
 function ShipSpaceMark() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 15.5 12 4l7 11.5" />
-      <path d="M8 15.5h8" />
-      <path d="M6.5 19h11" />
-      <path d="M12 4v15" />
-    </svg>
-  )
+  return <img src="/logo.png" alt="KREVO Logo" />
 }
+
+

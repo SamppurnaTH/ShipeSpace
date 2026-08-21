@@ -70,7 +70,9 @@ public class BannedUserWriteFilter extends OncePerRequestFilter {
     }
 
     private boolean isAuthEndpoint(HttpServletRequest request) {
-        String path = request.getServletPath();
-        return path != null && path.startsWith("/auth/");
+        String servletPath = request.getServletPath();
+        String requestUri = request.getRequestURI();
+        return (servletPath != null && servletPath.startsWith("/auth/"))
+                || (requestUri != null && requestUri.startsWith("/api/auth/"));
     }
 }

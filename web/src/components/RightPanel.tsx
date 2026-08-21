@@ -50,7 +50,7 @@ export function RightPanel() {
             color: 'var(--color-text-primary)',
             marginBottom: 'var(--space-3)',
           }}>
-            Trending on ShipSpace
+            Trending on KREVO
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -110,7 +110,7 @@ export function RightPanel() {
         {['About', 'Help', 'Privacy', 'Terms'].map(l => (
           <span key={l} style={{ fontSize: 10, color: 'var(--color-text-muted)', cursor: 'default' }}>{l}</span>
         ))}
-        <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>- ShipSpace (c) 2025</span>
+        <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>- KREVO © 2026</span>
       </div>
     </aside>
   )

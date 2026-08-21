@@ -63,6 +63,7 @@ class ProjectManagementPropertyTest {
         cascadeDeleteService = mock(CascadeDeleteService.class);
         inputSanitizer = mock(InputSanitizer.class);
         when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inputSanitizer.sanitize(any(), anyInt())).thenAnswer(inv -> inv.getArgument(0));
         projectService = new ProjectService(projectRepository, shipRepository, userService,
                 mongoTemplate, shipScoreService, cascadeDeleteService, inputSanitizer);
     }

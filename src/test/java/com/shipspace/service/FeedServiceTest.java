@@ -111,6 +111,33 @@ class FeedServiceTest {
     }
 
     @Test
+    @DisplayName("Should generate latest feed ordered by createdAt descending")
+    void getLatestFeed_Success() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Ship> shipsPage = new PageImpl<>(Arrays.asList(ship1, ship2, ship3), pageable, 3);
+
+        when(shipRepository.findAll(any(Pageable.class))).thenReturn(shipsPage);
+
+        // Act
+        Page<Ship> result = feedService.getLatestFeed(pageable);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).containsExactly(ship1, ship2, ship3);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(shipRepository).findAll(pageableCaptor.capture());
+
+        Pageable capturedPageable = pageableCaptor.getValue();
+        assertThat(capturedPageable.getPageNumber()).isEqualTo(0);
+        assertThat(capturedPageable.getPageSize()).isEqualTo(20);
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(capturedPageable.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
     @DisplayName("Should generate following feed with ships from followed users")
     void getFollowingFeed_Success() {
         // Arrange
@@ -151,6 +178,30 @@ class FeedServiceTest {
         Pageable capturedPageable = pageableCaptor.getValue();
         assertThat(capturedPageable.getSort().getOrderFor("createdAt")).isNotNull();
         assertThat(capturedPageable.getSort().getOrderFor("createdAt").getDirection()).isEqualTo(Sort.Direction.DESC);
+    }
+
+    @Test
+    @DisplayName("Should deduplicate followees before querying following feed ships")
+    void getFollowingFeed_DuplicateFollowees_QueryUsesDistinctIds() {
+        // Arrange
+        Following following1 = Following.builder().followerId(userId).followeeId("user456").build();
+        Following following2 = Following.builder().followerId(userId).followeeId("user456").build();
+        Following following3 = Following.builder().followerId(userId).followeeId("user789").build();
+
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Ship> shipsPage = new PageImpl<>(Arrays.asList(ship1, ship2), pageable, 2);
+
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Arrays.asList(following1, following2, following3)));
+        when(shipRepository.findByUserIdIn(eq(Arrays.asList("user456", "user789")), any(Pageable.class)))
+                .thenReturn(shipsPage);
+
+        // Act
+        Page<Ship> result = feedService.getFollowingFeed(userId, pageable);
+
+        // Assert
+        assertThat(result.getContent()).containsExactly(ship1, ship2);
+        verify(shipRepository).findByUserIdIn(eq(Arrays.asList("user456", "user789")), any(Pageable.class));
     }
 
     @Test

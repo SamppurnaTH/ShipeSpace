@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for JwtUtil.
@@ -92,6 +93,36 @@ class JwtUtilTest {
     }
 
     @Test
+    void validateToken_ExpiredToken_ReturnsFalse() {
+        // Given
+        JwtUtil expiringJwtUtil = newJwtUtil(-1000L, 604800000L,
+                "expired-token-test-secret-key-minimum-256-bits-required");
+        String token = expiringJwtUtil.generateToken("user123", "testuser");
+
+        // When
+        Boolean isValid = expiringJwtUtil.validateToken(token);
+        Boolean isExpired = expiringJwtUtil.isTokenExpired(token);
+
+        // Then
+        assertThat(isValid).isFalse();
+        assertThat(isExpired).isTrue();
+    }
+
+    @Test
+    void init_ShortSecret_ThrowsStartupFailure() {
+        // Given
+        JwtUtil weakJwtUtil = new JwtUtil();
+        ReflectionTestUtils.setField(weakJwtUtil, "secret", "short");
+        ReflectionTestUtils.setField(weakJwtUtil, "expiration", 86400000L);
+        ReflectionTestUtils.setField(weakJwtUtil, "refreshExpiration", 604800000L);
+
+        // When / Then
+        assertThatThrownBy(weakJwtUtil::init)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("JWT secret must be at least 32 bytes");
+    }
+
+    @Test
     void generateRefreshToken_ValidUserId_ReturnsToken() {
         // Given
         String userId = "user123";
@@ -170,5 +201,14 @@ class JwtUtilTest {
 
         // Then
         assertThat(isExpired).isFalse();
+    }
+
+    private JwtUtil newJwtUtil(long expiration, long refreshExpiration, String secret) {
+        JwtUtil customJwtUtil = new JwtUtil();
+        ReflectionTestUtils.setField(customJwtUtil, "secret", secret);
+        ReflectionTestUtils.setField(customJwtUtil, "expiration", expiration);
+        ReflectionTestUtils.setField(customJwtUtil, "refreshExpiration", refreshExpiration);
+        customJwtUtil.init();
+        return customJwtUtil;
     }
 }

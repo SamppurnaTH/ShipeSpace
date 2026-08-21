@@ -1,84 +1,96 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { likeShip, searchShipsAndUsers, unlikeShip, type SearchResponse, type SearchShipResult } from '../api/endpoints'
 import { useAuth } from '../auth/AuthContext'
-import { likeShip, searchShipsAndUsers, unlikeShip } from '../api/endpoints'
-import { Spinner } from '../components/Spinner'
 import { Badge } from '../components/Badge'
-import { ShipCard } from '../components/ShipCard'
 import { Icon } from '../components/Icon'
-
-interface SearchResult {
-  users: any[]
-  ships: any[]
-}
+import { ShipCard } from '../components/ShipCard'
+import { Spinner } from '../components/Spinner'
+import type { ShipImage } from '../utils/shipImages'
 
 const DEBOUNCE_MS = 350
+type SearchTab = 'all' | 'users' | 'ships'
+const SEARCH_TABS: { key: SearchTab; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'users', label: 'Builders' },
+  { key: 'ships', label: 'Ships' },
+]
+
+function normalizeShip(ship: SearchShipResult) {
+  return {
+    id: ship.id,
+    content: ship.content ?? '',
+    likeCount: ship.likeCount ?? 0,
+    commentCount: ship.commentCount ?? 0,
+    createdAt: ship.createdAt ?? new Date().toISOString(),
+    images: (ship.images ?? []) as ShipImage[],
+    externalLinks: (ship.externalLinks ?? []).map(link => ({ url: link.url, type: link.type ?? 'link' })),
+  }
+}
 
 export function SearchPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const q = searchParams.get('q') || ''
   const [searchInput, setSearchInput] = useState(q)
-  const [results, setResults] = useState<SearchResult | null>(null)
+  const [results, setResults] = useState<SearchResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'all' | 'users' | 'ships'>('all')
+  const [activeTab, setActiveTab] = useState<SearchTab>('all')
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
-  // Holds the AbortController for the in-flight request so we can cancel it
   const abortRef = useRef<AbortController | null>(null)
 
-  // Sync input when URL param changes (e.g. TopNav search navigates here)
-  useEffect(() => { setSearchInput(q) }, [q])
-
-  // Debounced search: fires 350ms after the user stops typing.
-  // Cancels any in-flight request before issuing a new one.
   useEffect(() => {
-    if (!searchInput.trim()) {
+    setSearchInput(q)
+  }, [q])
+
+  const runSearch = useCallback((query: string) => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setLoading(true)
+    setError(null)
+
+    searchShipsAndUsers(query, 10, controller.signal)
+      .then(res => {
+        if (!controller.signal.aborted) setResults(res.data)
+      })
+      .catch(err => {
+        if (controller.signal.aborted) return
+        const status = err?.response?.status
+        setError(status === 429
+          ? 'Too many searches. Wait a moment and try again.'
+          : 'Search is temporarily unavailable. Try again shortly.')
+        setResults(null)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
+  }, [])
+
+  useEffect(() => {
+    const query = searchInput.trim()
+    if (!query) {
+      if (abortRef.current) abortRef.current.abort()
       setResults(null)
       setError(null)
       setLoading(false)
       return
     }
 
-    const timer = setTimeout(() => {
-      // Cancel previous in-flight request
-      if (abortRef.current) abortRef.current.abort()
-      const controller = new AbortController()
-      abortRef.current = controller
-
-      setLoading(true)
-      setError(null)
-
-      searchShipsAndUsers(searchInput.trim())
-        .then(res => {
-          if (!controller.signal.aborted) setResults(res.data)
-        })
-        .catch(err => {
-          if (controller.signal.aborted) return // stale request — ignore
-          const status = err?.response?.status
-          if (status === 429) {
-            setError('Too many searches. Wait a moment and try again.')
-          } else {
-            setError('Search is temporarily unavailable. Try again shortly.')
-          }
-          setResults(null)
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setLoading(false)
-        })
-    }, DEBOUNCE_MS)
+    const timer = setTimeout(() => runSearch(query), DEBOUNCE_MS)
 
     return () => {
       clearTimeout(timer)
-      // Don't abort here — let the in-flight request finish if the component
-      // unmounts mid-flight; the aborted check above handles stale results.
+      if (abortRef.current) abortRef.current.abort()
     }
-  }, [searchInput])
+  }, [searchInput, runSearch])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    // Update URL so the query is shareable/bookmarkable
-    if (searchInput.trim()) setSearchParams({ q: searchInput.trim() })
+    const query = searchInput.trim()
+    if (query) setSearchParams({ q: query })
   }
 
   const toggleLike = async (shipId: string) => {
@@ -116,49 +128,34 @@ export function SearchPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }}>
-      {/* Search Header */}
       <div style={{ marginBottom: 'var(--space-6)' }}>
         <h1 style={{ fontSize: 'var(--text-xl)', fontWeight: 700, margin: '0 0 var(--space-4) 0' }}>Search</h1>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <form onSubmit={handleSearch} role="search" style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <label htmlFor="shipspace-search" style={visuallyHiddenStyle}>
+            Search builders, tech stacks, or ships
+          </label>
           <input
+            id="shipspace-search"
             autoFocus
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             placeholder="Search for builders, tech stacks, or ships..."
-            style={{
-              flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--color-border)', background: 'var(--color-surface)',
-              fontSize: 'var(--text-base)', fontFamily: 'inherit',
-              color: 'var(--color-text-primary)', outline: 'none',
-              transition: 'border-color var(--transition-fast)',
-            }}
-            onFocus={e => e.currentTarget.style.borderColor = 'var(--color-brand)'}
-            onBlur={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+            style={searchInputStyle}
           />
-          <button type="submit" disabled={!searchInput.trim()} style={{
-            padding: '0 24px', borderRadius: 'var(--radius-lg)',
-            border: 'none', background: searchInput.trim() ? 'var(--color-brand)' : 'var(--color-surface-2)',
-            color: searchInput.trim() ? '#fff' : 'var(--color-text-muted)',
-            cursor: searchInput.trim() ? 'pointer' : 'default',
-            fontSize: 'var(--text-base)', fontWeight: 600, fontFamily: 'inherit',
-            transition: 'all var(--transition-fast)',
-          }}>
+          <button type="submit" disabled={!searchInput.trim()} style={searchButtonStyle(Boolean(searchInput.trim()))}>
             Search
           </button>
         </form>
       </div>
 
       {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}>
+        <div aria-busy="true" style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}>
           <Spinner size={28} />
         </div>
       )}
 
       {!loading && !searchInput.trim() && (
-        <div style={{
-          textAlign: 'center', padding: 'var(--space-10)',
-          color: 'var(--color-text-muted)',
-        }}>
+        <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
           <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="search" size={48} /></div>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500 }}>
             Type something to explore ShipSpace
@@ -167,78 +164,58 @@ export function SearchPage() {
       )}
 
       {!loading && error && (
-        <div style={{
-          textAlign: 'center', padding: 'var(--space-10)',
-          background: 'var(--color-error-bg)',
-          border: '1px solid var(--color-error-border)',
-          borderRadius: 'var(--radius-lg)',
-          color: 'var(--color-error)',
-        }}>
+        <div role="alert" style={errorStyle}>
           <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="alert" size={32} /></div>
           <div style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>{error}</div>
+          {searchInput.trim() && (
+            <button type="button" onClick={() => runSearch(searchInput.trim())} style={retryStyle}>
+              Retry search
+            </button>
+          )}
         </div>
       )}
 
       {!loading && searchInput.trim() && results && !error && (
         <>
-          {/* Tabs */}
-          <div style={{
-            display: 'flex', gap: 'var(--space-4)',
-            borderBottom: '1px solid var(--color-border)',
-            marginBottom: 'var(--space-5)',
-          }}>
-            {[
-              { key: 'all', label: `All (${results.users.length + results.ships.length})` },
-              { key: 'users', label: `Builders (${results.users.length})` },
-              { key: 'ships', label: `Ships (${results.ships.length})` },
-            ].map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                style={{
-                  padding: '12px 0', border: 'none', background: 'none',
-                  borderBottom: activeTab === tab.key ? '2px solid var(--color-brand)' : '2px solid transparent',
-                  color: activeTab === tab.key ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-                  fontSize: 'var(--text-sm)', fontWeight: activeTab === tab.key ? 600 : 500,
-                  cursor: 'pointer', transition: 'all var(--transition-fast)',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div role="tablist" aria-label="Search result types" style={tabListStyle}>
+            {SEARCH_TABS.map(tab => {
+              const count = tab.key === 'all'
+                ? results.users.length + results.ships.length
+                : tab.key === 'users' ? results.users.length : results.ships.length
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  style={tabStyle(activeTab === tab.key)}
+                >
+                  {tab.label} ({count})
+                </button>
+              )
+            })}
           </div>
 
-          {/* Users */}
           {(activeTab === 'all' || activeTab === 'users') && results.users.length > 0 && (
             <div style={{ marginBottom: 'var(--space-6)' }}>
-              {activeTab === 'all' && (
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Builders
-                </div>
-              )}
+              {activeTab === 'all' && <SectionLabel>Builders</SectionLabel>}
               <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                {results.users.map(u => (
-                  <Link key={u.id} to={`/profile/${u.username}`} style={{
-                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)',
-                    padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)',
-                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-                    textDecoration: 'none', transition: 'all var(--transition-fast)',
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-brand)'}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                  >
-                    {u.avatarUrl ? (
-                      <img src={u.avatarUrl} alt={u.username} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
+                {results.users.map(resultUser => (
+                  <Link key={resultUser.id} to={`/profile/${resultUser.id}`} style={userResultStyle}>
+                    {resultUser.avatarUrl ? (
+                      <img src={resultUser.avatarUrl} alt={`${resultUser.username} avatar`} style={avatarStyle} />
                     ) : (
-                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-brand-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-brand)', fontWeight: 700 }}>?</div>
+                      <div style={avatarFallbackStyle}>?</div>
                     )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                        <span style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-primary)' }}>@{u.username}</span>
-                        {u.rank && <Badge variant="brand">{u.rank}</Badge>}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-primary)', overflowWrap: 'anywhere' }}>@{resultUser.username}</span>
+                        {resultUser.rank && <Badge variant="brand">{resultUser.rank}</Badge>}
                       </div>
-                      {u.bio && <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginTop: 2, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{u.bio}</div>}
+                      {resultUser.bio && (
+                        <div style={bioStyle}>{resultUser.bio}</div>
+                      )}
                     </div>
                   </Link>
                 ))}
@@ -246,24 +223,29 @@ export function SearchPage() {
             </div>
           )}
 
-          {/* Ships */}
           {(activeTab === 'all' || activeTab === 'ships') && results.ships.length > 0 && (
             <div>
-              {activeTab === 'all' && (
-                <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Ships
-                </div>
-              )}
+              {activeTab === 'all' && <SectionLabel>Ships</SectionLabel>}
               <div>
-                {results.ships.map(s => (
+                {results.ships.map(ship => (
                   <ShipCard
-                    key={s.id}
-                    ship={s}
-                    user={s.user}
-                    project={s.project}
-                    liked={likedIds.has(s.id)}
+                    key={ship.id}
+                    ship={normalizeShip(ship)}
+                    user={{
+                      id: ship.user?.id ?? '',
+                      username: ship.user?.username ?? 'unknown-builder',
+                      avatarUrl: ship.user?.avatarUrl ?? '',
+                      rank: ship.user?.rank,
+                      level: ship.user?.level,
+                    }}
+                    project={{
+                      id: ship.project?.id ?? '',
+                      name: ship.project?.name ?? 'Untitled project',
+                      techTags: ship.project?.techTags ?? [],
+                    }}
+                    liked={likedIds.has(ship.id)}
                     canLike={!!user && !user.banned}
-                    onLike={() => toggleLike(s.id)}
+                    onLike={() => toggleLike(ship.id)}
                   />
                 ))}
               </div>
@@ -271,8 +253,8 @@ export function SearchPage() {
           )}
 
           {results.users.length === 0 && results.ships.length === 0 && (
-            <div style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
-              <div style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>No results found for "{searchInput}"</div>
+            <div role="status" style={{ textAlign: 'center', padding: 'var(--space-10)', color: 'var(--color-text-muted)' }}>
+              <div style={{ fontSize: 'var(--text-base)', fontWeight: 500 }}>No results found for "{searchInput.trim()}"</div>
               <div style={{ fontSize: 'var(--text-sm)', marginTop: 'var(--space-2)' }}>Try a different search term.</div>
             </div>
           )}
@@ -280,4 +262,128 @@ export function SearchPage() {
       )}
     </div>
   )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {children}
+    </div>
+  )
+}
+
+const visuallyHiddenStyle: React.CSSProperties = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0, 0, 0, 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+}
+
+const searchInputStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  padding: '12px 16px',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface)',
+  fontSize: 'var(--text-base)',
+  fontFamily: 'inherit',
+  color: 'var(--color-text-primary)',
+}
+
+const searchButtonStyle = (enabled: boolean): React.CSSProperties => ({
+  padding: '0 24px',
+  borderRadius: 'var(--radius-lg)',
+  border: 'none',
+  background: enabled ? 'var(--color-brand)' : 'var(--color-surface-2)',
+  color: enabled ? '#fff' : 'var(--color-text-muted)',
+  cursor: enabled ? 'pointer' : 'default',
+  fontSize: 'var(--text-base)',
+  fontWeight: 600,
+  fontFamily: 'inherit',
+})
+
+const errorStyle: React.CSSProperties = {
+  textAlign: 'center',
+  padding: 'var(--space-10)',
+  background: 'var(--color-error-bg)',
+  border: '1px solid var(--color-error-border)',
+  borderRadius: 'var(--radius-lg)',
+  color: 'var(--color-error)',
+}
+
+const retryStyle: React.CSSProperties = {
+  marginTop: 'var(--space-4)',
+  padding: '10px 18px',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--color-error-border)',
+  background: 'var(--color-surface)',
+  color: 'var(--color-error)',
+  fontWeight: 700,
+  cursor: 'pointer',
+}
+
+const tabListStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 'var(--space-4)',
+  borderBottom: '1px solid var(--color-border)',
+  marginBottom: 'var(--space-5)',
+  overflowX: 'auto',
+}
+
+const tabStyle = (active: boolean): React.CSSProperties => ({
+  padding: '12px 0',
+  border: 'none',
+  background: 'none',
+  borderBottom: active ? '2px solid var(--color-brand)' : '2px solid transparent',
+  color: active ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: active ? 600 : 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  whiteSpace: 'nowrap',
+})
+
+const userResultStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-3)',
+  padding: 'var(--space-4)',
+  borderRadius: 'var(--radius-lg)',
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  textDecoration: 'none',
+}
+
+const avatarStyle: React.CSSProperties = {
+  width: 48,
+  height: 48,
+  borderRadius: '50%',
+  objectFit: 'cover',
+  flex: '0 0 auto',
+}
+
+const avatarFallbackStyle: React.CSSProperties = {
+  ...avatarStyle,
+  background: 'var(--color-brand-light)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'var(--color-brand)',
+  fontWeight: 700,
+}
+
+const bioStyle: React.CSSProperties = {
+  fontSize: 'var(--text-sm)',
+  color: 'var(--color-text-secondary)',
+  marginTop: 2,
+  display: '-webkit-box',
+  WebkitLineClamp: 1,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
 }

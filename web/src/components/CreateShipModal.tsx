@@ -30,19 +30,25 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
   const [images, setImages] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [loadingProjects, setLoadingProjects] = useState(true)
+  const [projectsError, setProjectsError] = useState('')
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle')
   const [uploadMessage, setUploadMessage] = useState('')
 
   useEffect(() => {
     if (!open) return
     setLoadingProjects(true)
+    setProjectsError('')
+    setSelectedProjectId('')
     getMyProjects()
       .then(res => {
         const list = Array.isArray(res.data) ? res.data : res.data.content ?? []
         setProjects(list)
         if (list.length === 1) setSelectedProjectId(list[0].id)
       })
-      .catch(() => {})
+      .catch(() => {
+        setProjects([])
+        setProjectsError('Could not load your projects. Try again before publishing a ship.')
+      })
       .finally(() => setLoadingProjects(false))
   }, [open])
 
@@ -53,6 +59,7 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
   }
 
   const handleSubmit = async () => {
+    if (submitting) return
     if (!selectedProjectId || !content.trim()) return
     setSubmitting(true)
     setUploadStatus('idle')
@@ -67,9 +74,10 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
       const shipId = res.data.id
 
       // Upload images if any
+      let uploadFailed = false
       if (images.length > 0 && shipId) {
         const formData = new FormData()
-        images.forEach(f => formData.append('images', f))
+        images.forEach(f => formData.append('files', f))
         setUploadStatus('loading')
         setUploadMessage(`Uploading ${images.length} image${images.length === 1 ? '' : 's'}...`)
         try {
@@ -77,13 +85,14 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
           setUploadStatus('success')
           setUploadMessage('Image upload complete.')
         } catch {
+          uploadFailed = true
           setUploadStatus('error')
           setUploadMessage('Ship created, but images could not be uploaded.')
           toastError('Ship created, but image upload failed')
         }
       }
 
-      toastSuccess('Ship published')
+      toastSuccess(uploadFailed ? 'Ship published without images' : 'Ship published')
       onClose()
       setContent('')
       setLinks([])
@@ -137,9 +146,34 @@ export function CreateShipModal({ open, onClose }: CreateShipModalProps) {
             <LoadingSpinner size={16} label="Loading projects" />
             <span>Loading projects...</span>
           </div>
+        ) : projectsError ? (
+          <div role="alert" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-error)' }}>
+            {projectsError}
+          </div>
         ) : projects.length === 0 ? (
-          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-warning)' }}>
-            No projects yet. Create a project first.
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-warning)', display: 'grid', gap: 'var(--space-2)' }}>
+            <span>Create your first project before publishing a ship.</span>
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                navigate('/projects')
+              }}
+              style={{
+                justifySelf: 'start',
+                padding: '7px 14px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-brand)',
+                cursor: 'pointer',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 600,
+                fontFamily: 'inherit',
+              }}
+            >
+              Create project
+            </button>
           </div>
         ) : (
           <select
@@ -294,6 +328,5 @@ const inputStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   fontFamily: 'inherit',
   color: 'var(--color-text-primary)',
-  outline: 'none',
   transition: 'border-color var(--transition-fast)',
 }

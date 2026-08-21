@@ -552,4 +552,35 @@ class ShipServiceTest {
 
         verify(shipRepository).findById("ship123");
     }
+
+    @Test
+    @DisplayName("Should delete owned ship, cascade references, and decrement project count")
+    void shouldDeleteOwnedShipAndCascadeReferences() {
+        // Given
+        when(shipRepository.findById("ship123")).thenReturn(Optional.of(testShip));
+
+        // When
+        shipService.deleteShip("ship123", "user123");
+
+        // Then
+        verify(shipRepository).deleteById("ship123");
+        verify(cascadeDeleteService).deleteShipCascade("ship123");
+        verify(projectService).decrementProjectShipCount("project123");
+    }
+
+    @Test
+    @DisplayName("Should deny ship deletion by non-owner")
+    void shouldDenyShipDeletionByNonOwner() {
+        // Given
+        when(shipRepository.findById("ship123")).thenReturn(Optional.of(testShip));
+
+        // When & Then
+        assertThatThrownBy(() -> shipService.deleteShip("ship123", "otherUser"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("ship");
+
+        verify(shipRepository, never()).deleteById(anyString());
+        verify(cascadeDeleteService, never()).deleteShipCascade(anyString());
+        verify(projectService, never()).decrementProjectShipCount(anyString());
+    }
 }

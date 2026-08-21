@@ -37,5 +37,30 @@ public class CollaborationRequestDto {
         private CollaborationRequest.Status status;
         private Instant createdAt;
         private Instant resolvedAt;
+        private UserSummary requester;
+        private UserSummary owner;
+        private ProjectSummary project;
+    }
+
+    /** Lightweight public user data for collaboration cards. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserSummary {
+        private String id;
+        private String username;
+        private String avatarUrl;
+    }
+
+    /** Lightweight project data for collaboration cards. */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProjectSummary {
+        private String id;
+        private String name;
+        private String userId;
     }
 }

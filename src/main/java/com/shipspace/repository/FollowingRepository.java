@@ -87,5 +87,5 @@ public interface FollowingRepository extends MongoRepository<Following, String> 
      * @param followerId the ID of the follower
      * @param followeeId the ID of the user being followed
      */
-    void deleteByFollowerIdAndFolloweeId(String followerId, String followeeId);
+    long deleteByFollowerIdAndFolloweeId(String followerId, String followeeId);
 }

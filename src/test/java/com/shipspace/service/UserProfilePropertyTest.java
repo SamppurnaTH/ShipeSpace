@@ -9,6 +9,7 @@ import com.shipspace.repository.ProjectRepository;
 import com.shipspace.repository.ShipRepository;
 import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
+import com.shipspace.repository.FollowingRepository;
 import com.shipspace.util.DtoMapper;
 import com.shipspace.util.InputSanitizer;
 import net.jqwik.api.*;
@@ -38,6 +39,7 @@ class UserProfilePropertyTest {
     private UserRepository userRepository;
     private ProjectRepository projectRepository;
     private ShipRepository shipRepository;
+    private FollowingRepository followingRepository;
     private UserCountRepository userCountRepository;
     private InputSanitizer inputSanitizer;
 
@@ -46,10 +48,11 @@ class UserProfilePropertyTest {
         userRepository = mock(UserRepository.class);
         projectRepository = mock(ProjectRepository.class);
         shipRepository = mock(ShipRepository.class);
+        followingRepository = mock(FollowingRepository.class);
         userCountRepository = mock(UserCountRepository.class);
         inputSanitizer = mock(InputSanitizer.class);
         when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
-        userService = new UserService(userRepository, projectRepository, shipRepository,
+        userService = new UserService(userRepository, projectRepository, shipRepository, followingRepository,
                 new DtoMapper(), userCountRepository, inputSanitizer);
     }
 

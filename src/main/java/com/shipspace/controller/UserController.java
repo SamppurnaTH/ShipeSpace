@@ -61,6 +61,21 @@ public class UserController {
     }
 
     /**
+     * Gets a user's public projects by user ID (paginated, reverse chronological).
+     * Public endpoint, no auth required.
+     */
+    @GetMapping("/{userId}/projects")
+    @Operation(summary = "Get user's projects", description = "Retrieve public projects owned by any user")
+    public ResponseEntity<Page<ProjectResponse>> getUserProjects(
+            @PathVariable String userId,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") @Min(0) int page,
+            @Parameter(description = "Page size (max 50)") @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+        Page<ProjectResponse> projects = userService.getUserProjects(
+                userId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return ResponseEntity.ok(projects);
+    }
+
+    /**
      * Gets a user's public profile by user ID.
      * Returns publicly visible information for any user.
      *
@@ -72,10 +87,16 @@ public class UserController {
         summary = "Get user profile",
         description = "Retrieve public profile information for any user by their ID"
     )
-    public ResponseEntity<UserProfileResponse> getUserProfile(@PathVariable String userId) {
+    public ResponseEntity<UserProfileResponse> getUserProfile(
+            Authentication authentication,
+            @PathVariable String userId) {
         log.debug("Received request for user profile: {}", userId);
-        
-        UserProfileResponse profile = userService.getPublicProfile(userId);
+
+        String currentUserId = null;
+        if (authentication != null && authentication.getPrincipal() instanceof UserDetails userDetails) {
+            currentUserId = userDetails.getUsername();
+        }
+        UserProfileResponse profile = userService.getPublicProfile(userId, currentUserId);
         
         log.debug("Returning profile for user: {}", profile.getUsername());
         return ResponseEntity.ok(profile);

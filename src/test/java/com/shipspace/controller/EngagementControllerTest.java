@@ -185,10 +185,10 @@ class EngagementControllerTest {
 
         Page<CommentResponse> expectedPage = new PageImpl<>(Arrays.asList(comment1, comment2));
 
-        when(engagementService.getShipComments(eq(shipId), any(Pageable.class))).thenReturn(expectedPage);
+        when(engagementService.getShipComments(eq(shipId), any(Pageable.class), isNull())).thenReturn(expectedPage);
 
         // Act
-        ResponseEntity<Page<CommentResponse>> response = engagementController.getShipComments(shipId, page, size);
+        ResponseEntity<Page<CommentResponse>> response = engagementController.getShipComments(null, shipId, page, size);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -197,7 +197,7 @@ class EngagementControllerTest {
         assertThat(response.getBody().getContent().get(0).getId()).isEqualTo("comment-1");
         assertThat(response.getBody().getContent().get(1).getId()).isEqualTo("comment-2");
 
-        verify(engagementService).getShipComments(eq(shipId), any(Pageable.class));
+        verify(engagementService).getShipComments(eq(shipId), any(Pageable.class), isNull());
     }
 
     @Test
@@ -209,14 +209,30 @@ class EngagementControllerTest {
 
         Page<CommentResponse> expectedPage = new PageImpl<>(Collections.emptyList());
 
-        when(engagementService.getShipComments(eq(shipId), any(Pageable.class))).thenReturn(expectedPage);
+        when(engagementService.getShipComments(eq(shipId), any(Pageable.class), isNull())).thenReturn(expectedPage);
 
         // Act
-        ResponseEntity<Page<CommentResponse>> response = engagementController.getShipComments(shipId, page, size);
+        ResponseEntity<Page<CommentResponse>> response = engagementController.getShipComments(null, shipId, page, size);
 
         // Assert
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        verify(engagementService).getShipComments(eq(shipId), any(Pageable.class));
+        verify(engagementService).getShipComments(eq(shipId), any(Pageable.class), isNull());
+    }
+
+    @Test
+    void getShipComments_WithAuthenticatedViewer_PassesViewerIdForUpvoteState() {
+        String shipId = "ship-123";
+        String userId = "user-456";
+        Page<CommentResponse> expectedPage = new PageImpl<>(Collections.emptyList());
+
+        when(authentication.getPrincipal()).thenReturn(userDetails);
+        when(userDetails.getUsername()).thenReturn(userId);
+        when(engagementService.getShipComments(eq(shipId), any(Pageable.class), eq(userId))).thenReturn(expectedPage);
+
+        ResponseEntity<Page<CommentResponse>> response = engagementController.getShipComments(authentication, shipId, 0, 20);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(engagementService).getShipComments(eq(shipId), any(Pageable.class), eq(userId));
     }
 
     @Test

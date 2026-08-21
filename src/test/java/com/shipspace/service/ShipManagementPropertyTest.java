@@ -56,6 +56,7 @@ class ShipManagementPropertyTest {
         cascadeDeleteService = mock(CascadeDeleteService.class);
         inputSanitizer = mock(InputSanitizer.class);
         when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inputSanitizer.sanitize(any(), anyInt())).thenAnswer(inv -> inv.getArgument(0));
         shipCreatedCounter = mock(Counter.class);
         shipService = new ShipService(shipRepository, projectService, multibaseService,
                 cascadeDeleteService, inputSanitizer, shipCreatedCounter);

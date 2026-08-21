@@ -49,7 +49,7 @@ const LEARNING_TOPICS = [
 
 const PRIMARY_NAV_ITEMS: PrimaryNavItem[] = [
   { label: 'Top Content', kind: 'section', href: '#top-content' },
-  { label: 'People', kind: 'route', to: '/search' },
+  { label: 'People', kind: 'route', to: '/people' },
   { label: 'Learning', kind: 'section', href: '#learning' },
   { label: 'Projects', kind: 'section', href: '#projects' },
   { label: 'ShipScore', kind: 'section', href: '#shipscore' },
@@ -77,7 +77,7 @@ const FOOTER_GROUPS = [
       { label: 'Create project', to: '/auth' },
       { label: 'Publish ship', to: '/auth' },
       { label: 'Explore ships', to: '/trending' },
-      { label: 'Find builders', to: '/search' },
+      { label: 'Find builders', to: '/people' },
     ],
   },
   {
@@ -85,26 +85,26 @@ const FOOTER_GROUPS = [
     links: [
       { label: 'Project timelines', to: '/trending' },
       { label: 'ShipScore', to: '#shipscore' },
-      { label: 'Builder profiles', to: '/search' },
+      { label: 'Builder profiles', to: '/people' },
       { label: 'Stack discovery', to: '/trending' },
     ],
   },
   {
     title: 'Community',
     links: [
-      { label: 'Collaborators', to: '/search' },
-      { label: 'Student builders', to: '/search' },
-      { label: 'Indie hackers', to: '/search' },
+      { label: 'Collaborators', to: '/people' },
+      { label: 'Student builders', to: '/people' },
+      { label: 'Indie hackers', to: '/people' },
       { label: 'Open source', to: '/trending' },
     ],
   },
   {
-    title: 'ShipSpace',
+    title: 'KREVO',
     links: [
       { label: 'About MVP', to: '#how-it-works' },
       { label: 'Public discovery', to: '/trending' },
       { label: 'GitHub login', to: '/auth' },
-      { label: 'Builder search', to: '/search' },
+      { label: 'Builder search', to: '/people' },
     ],
   },
 ]
@@ -148,15 +148,11 @@ export function PublicHomePage() {
 
       <header className="home-public-nav">
         <div className="home-public-nav-inner">
-          <Link to="/" className="home-brand" aria-label="ShipSpace home">
+          <Link to="/" className="home-brand" aria-label="KREVO home">
             <span className="home-brand-mark"><ShipSpaceMark /></span>
-            <span className="home-brand-copy">
-              <strong>ShipSpace</strong>
-              <small>Ship in public</small>
-            </span>
-          </Link>
+            </Link>
 
-          <nav className="home-marketing-links" aria-label="ShipSpace navigation">
+          <nav className="home-marketing-links" aria-label="KREVO navigation">
             {PRIMARY_NAV_ITEMS.map(item => (
               item.kind === 'route'
                 ? <Link key={item.label} to={item.to}>{item.label}</Link>
@@ -217,7 +213,7 @@ export function PublicHomePage() {
 
         <section className="home-hero" aria-labelledby="home-hero-title">
           <div className="home-hero-copy">
-            <p className="home-eyebrow">ShipSpace for builders</p>
+            <p className="home-eyebrow">KREVO for builders</p>
             <h1 id="home-hero-title">Welcome to your builder community.</h1>
             <p>
               Create projects, publish ships, and discover technical builders
@@ -239,16 +235,16 @@ export function PublicHomePage() {
               </Link>
             </div>
             <p className="home-hero-support">
-              New to ShipSpace? Join with GitHub and start from your developer identity.
+              New to KREVO? Join with GitHub and start from your developer identity.
             </p>
             {loginError && <p className="home-form-error" role="alert">{loginError}</p>}
           </div>
 
-          <div className="home-hero-preview" aria-label="ShipSpace product preview">
+          <div className="home-hero-preview" aria-label="KREVO product preview">
             <div className="home-hero-image-frame">
               <img
                 src={builderCommunityImage}
-                alt="Illustration of builders collaborating around ShipSpace profile, project, and feed interfaces"
+                alt="Illustration of builders collaborating around KREVO profile, project, and feed interfaces"
               />
             </div>
           </div>
@@ -256,10 +252,10 @@ export function PublicHomePage() {
 
         <section id="top-content" className="home-section home-topic-section" aria-labelledby="home-value-title">
           <div className="home-split-heading">
-            <h2 id="home-value-title">Explore top ShipSpace content</h2>
+            <h2 id="home-value-title">Explore top KREVO content</h2>
             <p>Discover relevant ships, project timelines, and builder updates by topic.</p>
           </div>
-          <div className="home-chip-cloud" aria-label="ShipSpace content topics">
+          <div className="home-chip-cloud" aria-label="KREVO content topics">
             {CONTENT_TOPICS.map(topic => <Link key={topic} to="/trending">{topic}</Link>)}
           </div>
         </section>
@@ -274,7 +270,7 @@ export function PublicHomePage() {
                 before joining. No account required.
               </p>
               <div className="home-trending-actions">
-                <Link to="/search" className="home-btn home-btn-secondary">
+                <Link to="/people" className="home-btn home-btn-secondary">
                   Browse all builders
                 </Link>
               </div>
@@ -305,7 +301,7 @@ export function PublicHomePage() {
                 {state === 'error' && (
                   <HomeEmptyState
                     title="Public feed unavailable"
-                    body="ShipSpace is reachable, but the trending preview could not load right now."
+                    body="KREVO is reachable, but the trending preview could not load right now."
                     tone="error"
                     action={<Link className="home-link" to="/trending">Open trending page</Link>}
                   />
@@ -321,7 +317,7 @@ export function PublicHomePage() {
             <p>Explore builders by stack, project type, and the kind of work they are shipping.</p>
           </div>
           <div className="home-chip-cloud" aria-label="Project and collaborator categories">
-            {PROJECT_AREAS.map(area => <Link key={area} to="/search">{area}</Link>)}
+            {PROJECT_AREAS.map(area => <Link key={area} to="/people">{area}</Link>)}
           </div>
         </section>
 
@@ -345,7 +341,7 @@ export function PublicHomePage() {
           </div>
         </section>
 
-        <section className="home-section home-editorial-grid" aria-label="ShipSpace value highlights">
+        <section className="home-section home-editorial-grid" aria-label="KREVO value highlights">
           <article>
             <h2>Let the right builders know what you are shipping</h2>
             <p>Turn project work into visible progress other builders can follow, discuss, and remember.</p>
@@ -364,14 +360,14 @@ export function PublicHomePage() {
           <div className="home-image-story-media">
             <img
               src={builderProfileTimelineImage}
-              alt="Illustration of a ShipSpace builder profile connected to project timeline updates and reputation"
+              alt="Illustration of a KREVO builder profile connected to project timeline updates and reputation"
             />
           </div>
           <div className="home-image-story-copy">
             <p className="home-eyebrow">Builder profiles</p>
             <h2 id="home-image-story-title">Your profile grows from what you ship.</h2>
             <p>
-              ShipSpace turns project updates into a living builder profile:
+              KREVO turns project updates into a living builder profile:
               ships, milestones, stack context, collaborators, and reputation in one place.
             </p>
             <Link className="home-btn home-btn-secondary" to="/trending">See public ships</Link>
@@ -398,7 +394,7 @@ export function PublicHomePage() {
               src={workflowVisualImage}
               alt="Illustration showing a developer identity connecting to a project card and published ship timeline"
             />
-            <div className="home-visual-legend" aria-label="ShipSpace workflow">
+            <div className="home-visual-legend" aria-label="KREVO workflow">
               <span>Connect GitHub</span>
               <span>Create a project</span>
               <span>Publish ships</span>
@@ -427,7 +423,7 @@ export function PublicHomePage() {
 
         <section className="home-section home-audience-section" aria-labelledby="home-audience-title">
           <div className="home-split-heading">
-            <h2 id="home-audience-title">Who is ShipSpace for?</h2>
+            <h2 id="home-audience-title">Who is KREVO for?</h2>
             <p>Developers, students, indie hackers, and makers building in public.</p>
           </div>
           <div className="home-audience-visual-wrap">
@@ -435,9 +431,9 @@ export function PublicHomePage() {
               src={audienceVisualImage}
               alt="Illustration of developers, students, indie hackers, and collaborators connected through project cards"
             />
-            <div className="home-audience-list" aria-label="ShipSpace audiences">
+            <div className="home-audience-list" aria-label="KREVO audiences">
               {AUDIENCES.map(item => (
-                <Link key={item.title} to="/search">
+                <Link key={item.title} to="/people">
                   <span>
                     <strong>{item.title}</strong>
                     <small>{item.body}</small>
@@ -470,11 +466,11 @@ export function PublicHomePage() {
                 </Link>
               </div>
             </div>
-            <div className="home-launch-card" aria-label="ShipSpace launch preview">
+            <div className="home-launch-card" aria-label="KREVO launch preview">
               <div className="home-launch-image">
                 <img
                   src={launchPadVisualImage}
-                  alt="Illustration of a builder turning project work into launch momentum on ShipSpace"
+                  alt="Illustration of a builder turning project work into launch momentum on KREVO"
                 />
               </div>
               <div className="home-launch-summary">
@@ -500,14 +496,11 @@ export function PublicHomePage() {
           </div>
         </section>
 
-        <footer className="home-footer" aria-label="ShipSpace footer">
+        <nav aria-label="Footer Navigation" className="home-footer-nav-wrapper">
+        <footer className="home-footer" aria-label="KREVO footer">
           <div className="home-footer-inner">
-            <Link to="/" className="home-footer-brand" aria-label="ShipSpace home">
-              <span className="home-brand-mark"><ShipSpaceMark /></span>
-              <span>
-                <strong>ShipSpace</strong>
-                <small>Your project timeline, not another resume.</small>
-              </span>
+            <Link to="/" className="home-footer-brand" aria-label="KREVO home">
+              <span className="home-brand-mark"><img src="/footer.png" alt="KREVO Footer Logo" className="krevo-logo-img" /></span>
             </Link>
             {FOOTER_GROUPS.map(group => (
               <div key={group.title} className="home-footer-group">
@@ -517,10 +510,11 @@ export function PublicHomePage() {
             ))}
           </div>
           <div className="home-footer-bottom">
-            <span>ShipSpace (c) 2026</span>
+            <span>&copy; 2026 KREVO</span>
             <span>Built for people who ship real projects.</span>
           </div>
         </footer>
+        </nav>
 
       </main>
     </div>
@@ -537,14 +531,13 @@ function GitHubIcon() {
 }
 
 function ShipSpaceMark() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 15.5 12 4l7 11.5" />
-      <path d="M8 15.5h8" />
-      <path d="M6.5 19h11" />
-      <path d="M12 4v15" />
-    </svg>
-  )
+  return <img src="/logo.png" alt="KREVO Logo" className="krevo-logo-img" />
 }
+
+
+
+
+
+
 
 

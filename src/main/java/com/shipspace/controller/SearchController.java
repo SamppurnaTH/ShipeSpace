@@ -80,7 +80,7 @@ public class SearchController {
             return ResponseEntity.ok(Map.of("users", List.of(), "ships", List.of()));
         }
 
-        size = Math.min(size, MAX_RESULTS);
+        size = Math.max(1, Math.min(size, MAX_RESULTS));
 
         SearchService.SearchResult<UserProfileResponse> users = searchService.searchUsers(sanitized, size);
         SearchService.SearchResult<ShipResponse> ships = searchService.searchShips(sanitized, size);

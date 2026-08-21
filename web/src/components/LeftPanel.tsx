@@ -58,7 +58,7 @@ export function LeftPanel() {
           </div>
 
           <Link
-            to={`/profile/${user.username}`}
+            to={`/profile/${user.id}`}
             style={{ textDecoration: 'none' }}
           >
             <div style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: 'var(--color-text-primary)', lineHeight: 1.3 }}>

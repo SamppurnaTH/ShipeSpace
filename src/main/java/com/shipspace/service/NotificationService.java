@@ -29,8 +29,13 @@ public class NotificationService {
     private final MongoTemplate mongoTemplate;
 
     public Page<NotificationResponse> getNotifications(String userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 50));
+        Sort sort = Sort.by(
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id"));
+        Pageable pageable = PageRequest.of(safePage, safeSize, sort);
+        return notificationRepository.findByUserId(userId, pageable)
                 .map(this::toResponse);
     }
 
@@ -45,8 +50,10 @@ public class NotificationService {
         if (!notification.getUserId().equals(userId)) {
             throw new ResourceNotFoundException("Notification", notificationId);
         }
-        notification.setRead(true);
-        notification = notificationRepository.save(notification);
+        if (!notification.isRead()) {
+            notification.setRead(true);
+            notification = notificationRepository.save(notification);
+        }
         return toResponse(notification);
     }
 

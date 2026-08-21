@@ -56,6 +56,7 @@ class EngagementPropertyTest {
     private CommentUpvoteRepository commentUpvoteRepository;
     private CommentQualificationService commentQualificationService;
     private ShipScoreService shipScoreService;
+    private ShipCountRepository shipCountRepository;
 
     @BeforeTry
     void setUp() {
@@ -66,11 +67,14 @@ class EngagementPropertyTest {
         userRepository = mock(UserRepository.class);
         commentQualificationService = mock(CommentQualificationService.class);
         shipScoreService = mock(ShipScoreService.class);
-        ShipCountRepository shipCountRepository = mock(ShipCountRepository.class);
+        shipCountRepository = mock(ShipCountRepository.class);
         org.springframework.data.mongodb.core.MongoTemplate mongoTemplate = mock(org.springframework.data.mongodb.core.MongoTemplate.class);
         NotificationDispatchService notificationDispatchService = mock(NotificationDispatchService.class);
         InputSanitizer inputSanitizer = mock(InputSanitizer.class);
         when(inputSanitizer.sanitize(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(inputSanitizer.sanitize(any(), anyInt())).thenAnswer(inv -> inv.getArgument(0));
+        when(shipRepository.existsById(anyString())).thenReturn(true);
+        when(userRepository.existsById(anyString())).thenReturn(true);
         engagementService = new EngagementService(likeRepository, commentRepository, commentUpvoteRepository,
                 shipRepository, shipCountRepository, userRepository, commentQualificationService, shipScoreService,
                 mongoTemplate, notificationDispatchService, inputSanitizer);
@@ -100,7 +104,8 @@ class EngagementPropertyTest {
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByUserIdAndShipId(userId, shipId)).thenReturn(Optional.empty());
         when(likeRepository.save(any(Like.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipCountRepository.incrementLikeCount(shipId, 1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(initialLikeCount + 1).build());
 
         // When: User likes the ship
         LikeToggleResponse response = engagementService.toggleLike(userId, shipId);
@@ -112,11 +117,8 @@ class EngagementPropertyTest {
             like.getCreatedAt() != null
         ));
         
-        // And: Ship like count should be incremented
-        verify(shipRepository).save(argThat(s -> 
-            s.getId().equals(shipId) && 
-            s.getLikeCount() == initialLikeCount + 1
-        ));
+        // And: Ship like count should be incremented atomically
+        verify(shipCountRepository).incrementLikeCount(shipId, 1);
         
         // And: Response should indicate liked state
         assertThat(response.isLiked()).isTrue();
@@ -153,7 +155,9 @@ class EngagementPropertyTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByUserIdAndShipId(userId, shipId)).thenReturn(Optional.of(existingLike));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(likeRepository.deleteByUserIdAndShipId(userId, shipId)).thenReturn(1L);
+        when(shipCountRepository.incrementLikeCount(shipId, -1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(initialLikeCount - 1).build());
 
         // When: User unlikes the ship
         LikeToggleResponse response = engagementService.toggleLike(userId, shipId);
@@ -161,11 +165,8 @@ class EngagementPropertyTest {
         // Then: Like should be deleted
         verify(likeRepository).deleteByUserIdAndShipId(userId, shipId);
         
-        // And: Ship like count should be decremented
-        verify(shipRepository).save(argThat(s -> 
-            s.getId().equals(shipId) && 
-            s.getLikeCount() == initialLikeCount - 1
-        ));
+        // And: Ship like count should be decremented atomically
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
         
         // And: Response should indicate unliked state
         assertThat(response.isLiked()).isFalse();
@@ -202,13 +203,15 @@ class EngagementPropertyTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByUserIdAndShipId(userId, shipId)).thenReturn(Optional.of(existingLike));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(likeRepository.deleteByUserIdAndShipId(userId, shipId)).thenReturn(1L);
+        when(shipCountRepository.incrementLikeCount(shipId, -1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(Math.max(0, initialLikeCount - 1)).build());
 
         // When: User unlikes the ship
         LikeToggleResponse response = engagementService.toggleLike(userId, shipId);
 
         // Then: Like count should never be negative
-        verify(shipRepository).save(argThat(s -> s.getLikeCount() >= 0));
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
         assertThat(response.getLikeCount()).isGreaterThanOrEqualTo(0);
     }
 
@@ -226,6 +229,7 @@ class EngagementPropertyTest {
             @ForAll @StringLength(min = 1, max = 50) @AlphaChars String shipId) {
         
         // Given: Ship does not exist
+        when(shipRepository.existsById(shipId)).thenReturn(false);
         when(shipRepository.findById(shipId)).thenReturn(Optional.empty());
 
         // When/Then: Attempting to like should throw ResourceNotFoundException
@@ -265,7 +269,8 @@ class EngagementPropertyTest {
             comment.setId("comment_" + System.currentTimeMillis());
             return comment;
         });
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipCountRepository.incrementCommentCount(shipId, 1))
+                .thenReturn(Ship.builder().id(shipId).commentCount(initialCommentCount + 1).build());
 
         CommentCreateRequest request = CommentCreateRequest.builder()
                 .content(commentContent)
@@ -283,11 +288,8 @@ class EngagementPropertyTest {
             comment.getUpdatedAt() != null
         ));
         
-        // And: Ship comment count should be incremented
-        verify(shipRepository).save(argThat(s -> 
-            s.getId().equals(shipId) && 
-            s.getCommentCount() == initialCommentCount + 1
-        ));
+        // And: Ship comment count should be incremented atomically
+        verify(shipCountRepository).incrementCommentCount(shipId, 1);
         
         // And: Response should contain comment data and commenter profile
         assertThat(response).isNotNull();
@@ -316,6 +318,7 @@ class EngagementPropertyTest {
             @ForAll @StringLength(min = 1, max = 500) String commentContent) {
         
         // Given: Ship does not exist
+        when(shipRepository.existsById(shipId)).thenReturn(false);
         when(shipRepository.findById(shipId)).thenReturn(Optional.empty());
 
         CommentCreateRequest request = CommentCreateRequest.builder()
@@ -348,6 +351,7 @@ class EngagementPropertyTest {
         // Given: Ship exists but user does not
         Ship ship = createMockShip(shipId, "project_" + shipId, "user_" + shipId);
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
+        when(userRepository.existsById(userId)).thenReturn(false);
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
         CommentCreateRequest request = CommentCreateRequest.builder()
@@ -395,11 +399,10 @@ class EngagementPropertyTest {
         Page<Comment> commentPage = new PageImpl<>(pageContent, pageable, totalComments);
         when(commentRepository.findByShipId(shipId, pageable)).thenReturn(commentPage);
         
-        // Mock user repository to return users for each comment
-        for (Comment comment : pageContent) {
-            User user = createMockUser(comment.getUserId(), "user_" + comment.getUserId());
-            when(userRepository.findById(comment.getUserId())).thenReturn(Optional.of(user));
-        }
+        List<User> commentUsers = pageContent.stream()
+                .map(comment -> createMockUser(comment.getUserId(), "user_" + comment.getUserId()))
+                .collect(java.util.stream.Collectors.toList());
+        when(userRepository.findAllById(any())).thenReturn(commentUsers);
 
         // When: Requesting comments with pagination
         Page<CommentResponse> result = engagementService.getShipComments(shipId, pageable);
@@ -457,11 +460,10 @@ class EngagementPropertyTest {
         Page<Like> likePage = new PageImpl<>(pageContent, pageable, totalLikes);
         when(likeRepository.findByShipId(shipId, pageable)).thenReturn(likePage);
         
-        // Mock user repository to return users for each like
-        for (Like like : pageContent) {
-            User user = createMockUser(like.getUserId(), "user_" + like.getUserId());
-            when(userRepository.findById(like.getUserId())).thenReturn(Optional.of(user));
-        }
+        List<User> likeUsers = pageContent.stream()
+                .map(like -> createMockUser(like.getUserId(), "user_" + like.getUserId()))
+                .collect(java.util.stream.Collectors.toList());
+        when(userRepository.findAllById(any())).thenReturn(likeUsers);
 
         // When: Requesting likes with pagination
         Page<LikeResponse> result = engagementService.getShipLikes(shipId, pageable);
@@ -540,6 +542,7 @@ class EngagementPropertyTest {
             @ForAll @IntRange(min = 1, max = 20) int pageSize) {
         
         // Given: Ship does not exist
+        when(shipRepository.existsById(shipId)).thenReturn(false);
         when(shipRepository.findById(shipId)).thenReturn(Optional.empty());
         
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
@@ -586,7 +589,11 @@ class EngagementPropertyTest {
             like.setId("like_" + userId + "_" + shipId);
             return like;
         });
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipCountRepository.incrementLikeCount(shipId, 1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(initialLikeCount + 1).build());
+        when(shipCountRepository.incrementLikeCount(shipId, -1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(initialLikeCount).build());
+        when(likeRepository.deleteByUserIdAndShipId(userId, shipId)).thenReturn(1L);
 
         // When: User likes the ship (first time)
         LikeToggleResponse firstResponse = engagementService.toggleLike(userId, shipId);
@@ -648,7 +655,9 @@ class EngagementPropertyTest {
         // Simulate race condition: DuplicateKeyException on save
         when(likeRepository.save(any(Like.class)))
             .thenThrow(new org.springframework.dao.DuplicateKeyException("Duplicate key"));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(likeRepository.deleteByUserIdAndShipId(userId, shipId)).thenReturn(1L);
+        when(shipCountRepository.incrementLikeCount(shipId, -1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(Math.max(0, initialLikeCount - 1)).build());
 
         // When: User attempts to like (race condition occurs)
         LikeToggleResponse response = engagementService.toggleLike(userId, shipId);
@@ -659,8 +668,8 @@ class EngagementPropertyTest {
         // And: Should attempt to delete the duplicate like
         verify(likeRepository).deleteByUserIdAndShipId(userId, shipId);
         
-        // And: Like count should be decremented (or stay at 0)
-        verify(shipRepository).save(argThat(s -> s.getLikeCount() >= 0));
+        // And: Like count should be decremented atomically (or stay at 0)
+        verify(shipCountRepository).incrementLikeCount(shipId, -1);
     }
 
     /**
@@ -684,7 +693,8 @@ class EngagementPropertyTest {
         when(shipRepository.findById(shipId)).thenReturn(Optional.of(ship));
         when(likeRepository.findByUserIdAndShipId(userId, shipId)).thenReturn(Optional.empty());
         when(likeRepository.save(any(Like.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipCountRepository.incrementLikeCount(shipId, 1))
+                .thenReturn(Ship.builder().id(shipId).likeCount(1).build());
 
         // When: Creating a like
         engagementService.toggleLike(userId, shipId);

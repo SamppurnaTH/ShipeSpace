@@ -9,11 +9,11 @@ export function BottomNav() {
   const unread = useUnreadCount()
 
   const items = [
-    { icon: 'home' as const, label: 'Feed', path: '/feed' },
-    { icon: 'trending' as const, label: 'Trending', path: '/trending' },
-    { icon: 'box' as const, label: 'Projects', path: '/projects' },
-    { icon: 'network' as const, label: 'Network', path: '/collaborations' },
-    { icon: 'user' as const, label: 'Me', path: user ? `/profile/${user.username}` : '/auth' },
+    { icon: 'home' as const, label: 'Home', path: '/feed' },
+    { icon: 'search' as const, label: 'Search', path: '/search' },
+    { icon: 'ship' as const, label: 'Ship', path: '/ships/new' },
+    { icon: 'bell' as const, label: 'Alerts', path: '/notifications' },
+    { icon: 'user' as const, label: 'Profile', path: user ? `/profile/${user.id}` : '/auth?mode=signin' },
   ]
 
   return (
@@ -28,7 +28,9 @@ export function BottomNav() {
       boxShadow: '0 -1px 0 var(--color-border)',
     }}>
       {items.map(item => {
-        const active = location.pathname === item.path
+        const active = item.path.startsWith('/profile/')
+          ? location.pathname.startsWith('/profile/')
+          : location.pathname === item.path
         return (
           <Link key={item.path} to={item.path} style={{
             position: 'relative',

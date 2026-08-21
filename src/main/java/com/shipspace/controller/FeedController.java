@@ -58,6 +58,19 @@ public class FeedController {
     private final SloEnforcementService sloEnforcementService;
     private final EngagementService engagementService;
 
+    @GetMapping("/latest")
+    @Operation(summary = "Get latest feed", description = "Ships ordered by newest publication time")
+    public ResponseEntity<Page<FeedItemResponse>> getLatestFeed(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        size = Math.min(size, 50);
+        String userId = authentication != null ? authentication.getName() : null;
+        Page<Ship> ships = feedService.getLatestFeed(PageRequest.of(page, size));
+        return ResponseEntity.ok(enrichPage(ships, userId));
+    }
+
     @GetMapping("/following")
     @Operation(
             summary = "Get following feed",

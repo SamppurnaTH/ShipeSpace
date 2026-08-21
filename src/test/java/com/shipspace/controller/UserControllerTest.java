@@ -86,6 +86,9 @@ class UserControllerTest {
                 .followerCount(10)
                 .followingCount(5)
                 .projectCount(3)
+                .shipScore(120)
+                .level(4)
+                .rank("DOCKED")
                 .createdAt(Instant.now())
                 .build();
     }
@@ -95,7 +98,7 @@ class UserControllerTest {
     @DisplayName("GET /api/users/{userId} - Should return user profile")
     void getUserProfile_Success() throws Exception {
         // Arrange
-        when(userService.getPublicProfile(testUserId)).thenReturn(testProfile);
+        when(userService.getPublicProfile(testUserId, testUserId)).thenReturn(testProfile);
 
         // Act & Assert
         mockMvc.perform(get("/api/users/{userId}", testUserId))
@@ -107,9 +110,33 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.location").value("Test City"))
                 .andExpect(jsonPath("$.followerCount").value(10))
                 .andExpect(jsonPath("$.followingCount").value(5))
-                .andExpect(jsonPath("$.projectCount").value(3));
+                .andExpect(jsonPath("$.projectCount").value(3))
+                .andExpect(jsonPath("$.shipScore").value(120))
+                .andExpect(jsonPath("$.level").value(4))
+                .andExpect(jsonPath("$.rank").value("DOCKED"));
 
-        verify(userService).getPublicProfile(testUserId);
+        verify(userService).getPublicProfile(testUserId, testUserId);
+    }
+
+    @Test
+    @WithMockUser(username = "user123")
+    @DisplayName("GET /api/users/{userId}/projects - Should return public user projects")
+    void getUserProjects_Success() throws Exception {
+        List<ProjectResponse> projects = Arrays.asList(
+                ProjectResponse.builder().id("proj1").userId(testUserId).name("Project 1").build(),
+                ProjectResponse.builder().id("proj2").userId(testUserId).name("Project 2").build()
+        );
+        Page<ProjectResponse> projectPage = new PageImpl<>(projects, PageRequest.of(0, 20), projects.size());
+        when(userService.getUserProjects(eq(testUserId), any(Pageable.class))).thenReturn(projectPage);
+
+        mockMvc.perform(get("/api/users/{userId}/projects", testUserId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.content", hasSize(2)))
+                .andExpect(jsonPath("$.content[0].id").value("proj1"))
+                .andExpect(jsonPath("$.content[1].id").value("proj2"));
+
+        verify(userService).getUserProjects(eq(testUserId), any(Pageable.class));
     }
 
     @Test
@@ -117,7 +144,7 @@ class UserControllerTest {
     @DisplayName("GET /api/users/{userId} - Should return 404 when user not found")
     void getUserProfile_NotFound() throws Exception {
         // Arrange
-        when(userService.getPublicProfile(anyString()))
+        when(userService.getPublicProfile(anyString(), eq(testUserId)))
                 .thenThrow(new ResourceNotFoundException("User", "nonexistent"));
 
         // Act & Assert
@@ -126,7 +153,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
                 .andExpect(jsonPath("$.message").value("User not found with id: nonexistent"));
 
-        verify(userService).getPublicProfile("nonexistent");
+        verify(userService).getPublicProfile("nonexistent", testUserId);
     }
 
     @Test

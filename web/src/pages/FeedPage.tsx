@@ -21,7 +21,7 @@ export function FeedPage({ feedType = 'personalized', compactHome = false }: Fee
   const { user } = useAuth()
   const { toast } = useToast()
   const [trendWindow, setTrendWindow] = useState<TrendingWindow>('all')
-  const { items, setItems, status, hasMore, feedMode, systemState, likedIds, loadMore, toggleLike } =
+  const { items, setItems, status, hasMore, feedMode, systemState, likedIds, loadMore, refresh, toggleLike } =
     useFeed(!!user, feedType, trendWindow)
   const loaderRef = useRef<HTMLDivElement>(null)
 
@@ -58,6 +58,17 @@ export function FeedPage({ feedType = 'personalized', compactHome = false }: Fee
 
       {/* Feed type tabs */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+        {feedType === 'latest' && (
+          <div style={{ marginRight: 'auto' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: 0 }}>
+              Latest ships
+            </p>
+            <h1 style={{ margin: 0, fontSize: compactHome ? 'var(--text-base)' : 'var(--text-xl)', lineHeight: 1.2 }}>
+              Newest project updates
+            </h1>
+          </div>
+        )}
+
         {feedType === 'trending' && WINDOWS.map(w => (
           <button key={w.value} onClick={() => setTrendWindow(w.value)} style={{
             padding: '5px 14px', borderRadius: 'var(--radius-full)',
@@ -92,11 +103,17 @@ export function FeedPage({ feedType = 'personalized', compactHome = false }: Fee
         <div style={{ textAlign: 'center', padding: 'var(--space-12)', color: 'var(--color-text-muted)' }}>
           <div style={{ display: 'inline-flex', marginBottom: 'var(--space-4)' }}><Icon name="ship" size={40} /></div>
           <div style={{ fontSize: 'var(--text-lg)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
-            {feedType === 'following' ? 'Your feed is empty' : "Nothing here yet — be the first to ship"}
+            {feedType === 'following'
+              ? 'Your feed is empty'
+              : feedType === 'latest'
+              ? 'No ships have been published yet'
+              : "Nothing here yet — be the first to ship"}
           </div>
           <div style={{ fontSize: 'var(--text-sm)', marginBottom: feedType === 'personalized' ? 'var(--space-5)' : 0 }}>
             {feedType === 'following'
               ? 'Follow some builders to see their ships here.'
+              : feedType === 'latest'
+              ? 'The newest public project updates will appear here.'
               : feedType === 'personalized'
               ? "Start by creating a project and shipping your first update."
               : 'Be the first to ship something.'}
@@ -130,7 +147,15 @@ export function FeedPage({ feedType = 'personalized', compactHome = false }: Fee
           <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-2)' }}>
             Couldn't load the feed
           </div>
-          <div style={{ fontSize: 'var(--text-sm)' }}>Check your connection or try again.</div>
+          <div style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>Check your connection or try again.</div>
+          <button onClick={refresh} style={{
+            padding: '9px 22px', borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)', background: 'var(--color-surface)',
+            color: 'var(--color-text-primary)',
+            fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
+          }}>
+            Retry
+          </button>
         </div>
       )}
 

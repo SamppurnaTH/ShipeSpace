@@ -21,17 +21,22 @@ export function ProjectListPage() {
   const { user } = useAuth()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const isBanned = Boolean(user?.banned)
 
   const fetchProjects = () => {
     setLoading(true)
+    setError('')
     getMyProjects()
       .then(res => {
         const list = Array.isArray(res.data) ? res.data : res.data.content ?? []
         setProjects(list)
       })
-      .catch(() => {})
+      .catch(() => {
+        setProjects([])
+        setError('Could not load your projects. Try again in a moment.')
+      })
       .finally(() => setLoading(false))
   }
 
@@ -89,8 +94,37 @@ export function ProjectListPage() {
         </div>
       )}
 
+      {error && (
+        <div role="alert" style={{
+          textAlign: 'center', padding: 'var(--space-8)',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: 'var(--space-4)',
+          color: 'var(--color-text-secondary)',
+        }}>
+          <div style={{ display: 'inline-flex', marginBottom: 'var(--space-3)' }}><Icon name="alert" size={28} /></div>
+          <div style={{ fontWeight: 700, marginBottom: 'var(--space-2)', color: 'var(--color-text-primary)' }}>
+            Projects did not load
+          </div>
+          <div style={{ fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>{error}</div>
+          <button onClick={fetchProjects} style={{
+            padding: '9px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-surface)',
+            color: 'var(--color-text-primary)',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontFamily: 'inherit',
+          }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Empty state */}
-      {projects.length === 0 && (
+      {!error && projects.length === 0 && (
         <div style={{
           textAlign: 'center', padding: 'var(--space-10)',
           background: 'var(--color-surface)',

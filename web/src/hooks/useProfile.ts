@@ -21,8 +21,7 @@ interface RankSummary {
   shipScore: number
   level: number
   rank: string
-  pointsToNext: number
-  nextLevelScore: number
+  nextLevelScore?: number | null
 }
 
 export function useProfile(userId: string | undefined) {
@@ -30,6 +29,7 @@ export function useProfile(userId: string | undefined) {
   const [rankSummary, setRankSummary] = useState<RankSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [followPending, setFollowPending] = useState(false)
 
   const fetchProfile = useCallback(async () => {
     if (!userId) return
@@ -58,14 +58,16 @@ export function useProfile(userId: string | undefined) {
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
   const toggleFollow = async () => {
+    if (followPending) return
     if (!profile) return
     const wasFollowing = profile.isFollowing
+    setFollowPending(true)
 
     // Optimistic
     setProfile(prev => prev ? {
       ...prev,
       isFollowing: !wasFollowing,
-      followerCount: prev.followerCount + (wasFollowing ? -1 : 1),
+      followerCount: Math.max(0, prev.followerCount + (wasFollowing ? -1 : 1)),
     } : prev)
 
     try {
@@ -75,10 +77,13 @@ export function useProfile(userId: string | undefined) {
       setProfile(prev => prev ? {
         ...prev,
         isFollowing: wasFollowing,
-        followerCount: prev.followerCount + (wasFollowing ? 1 : -1),
+        followerCount: Math.max(0, prev.followerCount + (wasFollowing ? 1 : -1)),
       } : prev)
+      setError(wasFollowing ? 'Could not unfollow this builder' : 'Could not follow this builder')
+    } finally {
+      setFollowPending(false)
     }
   }
 
-  return { profile, rankSummary, loading, error, toggleFollow, refetch: fetchProfile }
+  return { profile, rankSummary, loading, error, followPending, toggleFollow, refetch: fetchProfile }
 }

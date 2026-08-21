@@ -10,6 +10,7 @@ import com.shipspace.repository.UserCountRepository;
 import com.shipspace.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -75,11 +76,16 @@ public class SocialService {
             return;
         }
 
-        followingRepository.save(Following.builder()
-                .followerId(followerId)
-                .followeeId(followeeId)
-                .createdAt(Instant.now())
-                .build());
+        try {
+            followingRepository.save(Following.builder()
+                    .followerId(followerId)
+                    .followeeId(followeeId)
+                    .createdAt(Instant.now())
+                    .build());
+        } catch (DuplicateKeyException e) {
+            log.debug("Concurrent duplicate follow ignored for {} -> {}", followerId, followeeId);
+            return;
+        }
         log.info("Created following relationship: {} -> {}", followerId, followeeId);
 
         // Atomic increments — no read-modify-write race
@@ -92,7 +98,7 @@ public class SocialService {
                 (follower != null ? follower.getUsername() : "Someone") + " started following you",
                 followerId,
                 follower != null ? follower.getAvatarUrl() : null,
-                followerId, "/users/" + followerId);
+                followerId, "/profile/" + followerId);
     }
 
     @Transactional
@@ -111,7 +117,11 @@ public class SocialService {
             return;
         }
 
-        followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId);
+        long deleted = followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId);
+        if (deleted == 0) {
+            log.debug("Concurrent unfollow already removed relationship {} -> {}", followerId, followeeId);
+            return;
+        }
         log.info("Deleted following relationship: {} -> {}", followerId, followeeId);
 
         // Atomic decrements — floor at 0 is enforced by the DB constraint (counts never go negative)

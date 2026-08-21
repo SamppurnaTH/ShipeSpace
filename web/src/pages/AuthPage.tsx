@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { getGitHubLoginErrorMessage, startGitHubLogin } from '../auth/githubLogin'
 import { ButtonLoader } from '../components/common/Loading'
@@ -39,21 +39,17 @@ export function AuthPage() {
 
   return (
     <main className="auth-page" aria-labelledby="auth-title">
-      <Link to="/" className="auth-brand-fixed" aria-label="ShipSpace home">
+      <Link to="/" className="auth-brand-fixed" aria-label="KREVO home">
         <span className="auth-mark" aria-hidden="true"><ShipSpaceMark /></span>
-        <span>
-          <strong>ShipSpace</strong>
-          <small>Ship in public</small>
-        </span>
       </Link>
 
       <section className="auth-layout">
         <div className="auth-card">
           <div className="auth-heading">
-            <h1 id="auth-title">{mode === 'signup' ? 'Join ShipSpace' : 'Sign in'}</h1>
+            <h1 id="auth-title">{mode === 'signup' ? 'Join KREVO' : 'Sign in'}</h1>
             <p>
               {mode === 'signin' && (
-                <>New to ShipSpace? <button type="button" onClick={() => setMode('signup')}>Join now</button></>
+                <>New to KREVO? <button type="button" onClick={() => setMode('signup')}>Join now</button></>
               )}
               {mode === 'signup' && (
                 <>Already building here? <button type="button" onClick={() => setMode('signin')}>Sign in</button></>
@@ -98,13 +94,13 @@ export function AuthPage() {
           </button>
 
           <p className="auth-legal-copy">
-            ShipSpace uses GitHub to verify builder identity, bootstrap your profile, and keep sign-in simple.
+            KREVO uses GitHub to verify builder identity, bootstrap your profile, and keep sign-in simple.
           </p>
 
           {error && <p className="home-form-error" role="alert">{error}</p>}
 
           <p className="auth-switch-copy">
-            {mode === 'signin' ? 'New to ShipSpace?' : mode === 'signup' ? 'Already have an account?' : ''}
+            {mode === 'signin' ? 'New to KREVO?' : mode === 'signup' ? 'Already have an account?' : ''}
             {' '}
             {mode !== 'forgot' && (
               <button type="button" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
@@ -127,12 +123,8 @@ function GitHubIcon() {
 }
 
 function ShipSpaceMark() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 15.5 12 4l7 11.5" />
-      <path d="M8 15.5h8" />
-      <path d="M6.5 19h11" />
-      <path d="M12 4v15" />
-    </svg>
-  )
+  return <img src="/logo.png" alt="KREVO Logo" />
 }
+
+
+

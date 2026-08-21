@@ -19,10 +19,11 @@ interface Project {
 }
 
 type ProjectState = 'loading' | 'done' | 'empty' | 'error'
-type HomeFeedFilter = Extract<FeedType, 'personalized' | 'following' | 'trending'>
+type HomeFeedFilter = Extract<FeedType, 'personalized' | 'latest' | 'following' | 'trending'>
 
 const FEED_FILTERS: { label: string; value: HomeFeedFilter }[] = [
   { label: 'For You', value: 'personalized' },
+  { label: 'Latest', value: 'latest' },
   { label: 'Following', value: 'following' },
   { label: 'Trending', value: 'trending' },
 ]

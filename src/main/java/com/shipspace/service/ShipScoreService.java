@@ -10,6 +10,7 @@ import com.shipspace.repository.UserRepository;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -198,6 +199,21 @@ public class ShipScoreService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
+        ScoreEventLog eventLog = ScoreEventLog.builder()
+            .userId(userId)
+            .eventType(eventType)
+            .entityId(effectiveEntityId)
+            .points(eventType.getPoints())
+            .createdAt(Instant.now())
+            .build();
+
+        try {
+            scoreEventLogRepository.save(eventLog);
+        } catch (DuplicateKeyException e) {
+            scoreEventRejectedCounter.increment();
+            return false;
+        }
+
         int oldLevel = user.getLevel();
         RankTier oldRank = user.getRank();
 
@@ -216,15 +232,7 @@ public class ShipScoreService {
             }
         }
 
-        ScoreEventLog eventLog = ScoreEventLog.builder()
-            .userId(userId)
-            .eventType(eventType)
-            .entityId(effectiveEntityId)
-            .createdAt(Instant.now())
-            .build();
-
         userRepository.save(user);
-        scoreEventLogRepository.save(eventLog);
         scoreEventAppliedCounter.increment();
 
         return true;

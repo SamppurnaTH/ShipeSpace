@@ -13,6 +13,8 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.data.domain.*;
+import org.springframework.data.mongodb.core.BulkOperations;
+import org.springframework.data.mongodb.core.MongoTemplate;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -40,15 +42,17 @@ class FeedGenerationPropertyTest {
     private FeedService feedService;
     private ShipRepository shipRepository;
     private FollowingRepository followingRepository;
+    private MongoTemplate mongoTemplate;
     private CacheManager cacheManager;
 
     @BeforeTry
     void setUp() {
         shipRepository = mock(ShipRepository.class);
         followingRepository = mock(FollowingRepository.class);
+        mongoTemplate = mock(MongoTemplate.class);
         cacheManager = new ConcurrentMapCacheManager("trendingFeed", "trendingFeedWithTimeWindow");
         feedService = new FeedService(shipRepository, followingRepository,
-                mock(org.springframework.data.mongodb.core.MongoTemplate.class),
+                mongoTemplate,
                 mock(DistributedLockService.class),
                 mock(com.shipspace.config.ScheduledJobMetrics.class));
     }
@@ -74,7 +78,8 @@ class FeedGenerationPropertyTest {
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
         
-        when(followingRepository.findByFollowerId(userId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         
         // Create ships from followed users with different timestamps
         Instant now = Instant.now();
@@ -140,7 +145,8 @@ class FeedGenerationPropertyTest {
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
         
-        when(followingRepository.findByFollowerId(userId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         
         // Create ships from followed users
         Instant now = Instant.now();
@@ -194,7 +200,8 @@ class FeedGenerationPropertyTest {
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
         
-        when(followingRepository.findByFollowerId(userId)).thenReturn(followingList);
+        when(followingRepository.findByFollowerId(eq(userId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         
         // Create ships with metadata
         Instant now = Instant.now();
@@ -420,7 +427,8 @@ class FeedGenerationPropertyTest {
                 .map(Following::getFolloweeId)
                 .collect(Collectors.toList());
         
-        when(followingRepository.findByFollowerId(requestingUserId)).thenReturn(followingList);
+        lenient().when(followingRepository.findByFollowerId(eq(requestingUserId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(followingList));
         
         // Create ships from both followed and non-followed users
         Instant now = Instant.now();
@@ -565,22 +573,23 @@ class FeedGenerationPropertyTest {
             })
             .collect(Collectors.toList());
         
-        when(shipRepository.findAll()).thenReturn(ships);
-        when(shipRepository.save(any(Ship.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(ships, PageRequest.of(0, 200), ships.size()))
+                .thenReturn(Page.empty(PageRequest.of(1, 200)));
+        BulkOperations bulkOps = mock(BulkOperations.class);
+        when(mongoTemplate.bulkOps(any(BulkOperations.BulkMode.class), eq(Ship.class))).thenReturn(bulkOps);
+        when(bulkOps.updateOne(any(), any())).thenReturn(bulkOps);
         
         // When: Calculating trending scores (which should invalidate cache)
         feedService.calculateTrendingScores();
         
         // Then: All ships should have updated scores
-        verify(shipRepository).findAll();
+        verify(shipRepository, atLeastOnce()).findAll(any(Pageable.class));
         
         // Verify that ships with engagement have non-zero scores
         for (Ship ship : ships) {
             if (ship.getLikeCount() > 0 || ship.getCommentCount() > 0) {
-                // Score should be calculated and updated
-                verify(shipRepository, atLeastOnce()).save(argThat(s -> 
-                    s.getId().equals(ship.getId())
-                ));
+                assertThat(ship.getTrendingScore()).isGreaterThan(0.0);
             }
         }
         

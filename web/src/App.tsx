@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { TopNav } from './components/TopNav'
@@ -22,11 +22,14 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { ErrorPage } from './pages/ErrorPage'
 import { EmptyStatePage } from './pages/EmptyStatePage'
+import { PeoplePage } from './pages/PeoplePage'
+import { AboutPage } from './pages/AboutPage'
 import { SearchPage } from './pages/SearchPage'
 import { CollaborationsPage } from './pages/CollaborationsPage'
 import { AuthenticatedHomePage } from './components/home/AuthenticatedHomePage'
 import {
   AdminAccessRequired,
+  AdminAuditLogsPage,
   AdminDashboardPage,
   AdminForbiddenPage,
   AdminReportsPage,
@@ -172,6 +175,15 @@ function ContentRedirectRoute() {
   return <Navigate to={id ? `/ships/${id}` : '/trending'} replace />
 }
 
+function PlaceholderPage({ title, description }: { title: string; description: string }) {
+  return (
+    <div style={{ maxWidth: 600, margin: '0 auto', padding: 'var(--space-10) var(--space-4)', textAlign: 'center' }}>
+      <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 700, margin: '0 0 var(--space-3) 0' }}>{title}</h1>
+      <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', margin: 0 }}>{description}</p>
+    </div>
+  )
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -184,6 +196,8 @@ function AppRoutes() {
       {/* Protected */}
       <Route path="/feed" element={<ProtectedHomeRoute />} />
       <Route path="/feed/personalized" element={<ProtectedRoute><FeedPage /></ProtectedRoute>} />
+      <Route path="/feed/latest" element={<ProtectedRoute><FeedPage feedType="latest" /></ProtectedRoute>} />
+      <Route path="/feed/following" element={<ProtectedRoute><FeedPage feedType="following" /></ProtectedRoute>} />
       <Route path="/ships/new" element={<CreateShipRoute />} />
       <Route path="/ships/:id" element={<PublicWithShell><ShipDetailPage /></PublicWithShell>} />
       <Route path="/content/:id" element={<ContentRedirectRoute />} />
@@ -193,13 +207,19 @@ function AppRoutes() {
       <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
       <Route path="/collaborations" element={<ProtectedRoute><CollaborationsPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/latest" element={<PublicWithShell><FeedPage feedType="latest" /></PublicWithShell>} />
       <Route path="/trending" element={<PublicWithShell><FeedPage feedType="trending" /></PublicWithShell>} />
       <Route path="/search" element={<PublicWithShell><SearchPage /></PublicWithShell>} />
+      <Route path="/people" element={<PublicWithShell><PeoplePage /></PublicWithShell>} />
+      <Route path="/learning" element={<PublicWithShell><PlaceholderPage title="Learning" description="Discover educational resources and content from builders. Coming soon." /></PublicWithShell>} />
+      <Route path="/shipscore" element={<PublicWithShell><PlaceholderPage title="ShipScore" description="Understand reputation, ranking, and the builder leaderboard. Coming soon." /></PublicWithShell>} />
+      <Route path="/about" element={<PublicWithShell><AboutPage /></PublicWithShell>} />
 
       <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
       <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
       <Route path="/admin/users/:userId" element={<AdminRoute><AdminUserDetailPage /></AdminRoute>} />
       <Route path="/admin/reports" element={<AdminRoute><AdminReportsPage /></AdminRoute>} />
+      <Route path="/admin/audit-logs" element={<AdminRoute><AdminAuditLogsPage /></AdminRoute>} />
 
       {/* Utility */}
       <Route path="/error/:code" element={<ErrorPage />} />

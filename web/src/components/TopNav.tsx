@@ -1,22 +1,18 @@
-﻿import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { getGitHubLoginErrorMessage, startGitHubLogin } from '../auth/githubLogin'
 import { useUnreadCount } from '../hooks/useUnreadCount'
+import { Icon } from './Icon'
 import { Spinner } from './Spinner'
 import { ButtonLoader } from './common/Loading'
 
-const APP_LINKS = [
-  { to: '/feed', label: 'Home' },
-  { to: '/trending', label: 'Explore' },
+const PRIMARY_NAV_LINKS = [
+  { to: '/trending', label: 'Top Content' },
+  { to: '/people', label: 'People' },
+  { to: '/learning', label: 'Learning' },
   { to: '/projects', label: 'Projects' },
-  { to: '/notifications', label: 'Notifications' },
-]
-
-const PUBLIC_LINKS = [
-  { to: '/trending', label: 'Explore' },
-  { to: '/#how-it-works', label: 'How it works' },
-  { to: '/search', label: 'Builders' },
+  { to: '/shipscore', label: 'ShipScore' },
 ]
 
 export function TopNav() {
@@ -64,61 +60,43 @@ export function TopNav() {
   return (
     <header className="top-nav">
       <div className="top-nav-inner">
-        <Link to={user ? '/feed' : '/'} className="top-nav-brand" aria-label="ShipSpace home" onClick={closeMenus}>
+        <Link to={user ? '/feed' : '/'} className="top-nav-brand" aria-label="KREVO home" onClick={closeMenus}>
           <span className="top-nav-mark"><ShipSpaceMark /></span>
-          <span className="top-nav-brand-copy">
-            <strong>ShipSpace</strong>
-            <small>Ship in public</small>
-          </span>
         </Link>
 
-        <nav className="top-nav-links" aria-label={user ? 'Workspace navigation' : 'Public navigation'}>
-          {user ? (
-            <>
-              {APP_LINKS.map(link => (
-                <TopNavLink
-                  key={link.to}
-                  to={link.to}
-                  label={link.label}
-                  active={isActive(location.pathname, link.to)}
-                  badge={link.to === '/notifications' ? unread : 0}
-                />
-              ))}
-              {isAdmin && (
-                <TopNavLink
-                  to="/admin"
-                  label="Admin"
-                  active={isActive(location.pathname, '/admin')}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {PUBLIC_LINKS.map(link => (
-                <TopNavLink key={link.to} to={link.to} label={link.label} active={isActive(location.pathname, link.to)} />
-              ))}
-              <button type="button" className="top-nav-link top-nav-link-button" onClick={handleLogin}>GitHub</button>
-            </>
+        <nav className="top-nav-links" aria-label="Primary navigation">
+          {PRIMARY_NAV_LINKS.map(link => (
+            <TopNavLink
+              key={link.to}
+              to={link.to}
+              label={link.label}
+              active={isActive(location.pathname, link.to)}
+            />
+          ))}
+          {user && isAdmin && (
+            <TopNavLink
+              to="/admin"
+              label="Admin"
+              active={isActive(location.pathname, '/admin')}
+            />
           )}
         </nav>
-
-        {user && (
-          <form className="top-nav-search" role="search" onSubmit={handleSearch}>
-            <label htmlFor="top-nav-search-input">Search ShipSpace</label>
-            <input
-              id="top-nav-search-input"
-              value={searchInput}
-              onChange={event => setSearchInput(event.target.value)}
-              placeholder="Search builders, projects, ships..."
-            />
-          </form>
-        )}
 
         <div className="top-nav-actions">
           {loading ? (
             <Spinner size={16} />
           ) : user ? (
             <>
+              <form className="top-nav-search" role="search" onSubmit={handleSearch}>
+                <label htmlFor="top-nav-search-input">Search builders and ships</label>
+                <input
+                  id="top-nav-search-input"
+                  value={searchInput}
+                  onChange={event => setSearchInput(event.target.value)}
+                  placeholder="Search builders, projects, ships..."
+                />
+              </form>
+
               {isBanned ? (
                 <span className="top-nav-status">Writes blocked</span>
               ) : (
@@ -126,6 +104,13 @@ export function TopNav() {
                   Create Ship
                 </button>
               )}
+
+              <Link to="/notifications" className="top-nav-notifications-icon" aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}>
+                <Icon name="bell" size={20} />
+                {unread > 0 && (
+                  <span className="top-nav-notifications-badge">{unread > 9 ? '9+' : unread}</span>
+                )}
+              </Link>
 
               <div className="top-nav-user">
                 <button
@@ -153,7 +138,7 @@ export function TopNav() {
                       </div>
                       {isAdmin && <Link to="/admin" onClick={closeMenus}>Admin Console</Link>}
                       {isBanned && <span className="top-nav-menu-status">Account writes blocked</span>}
-                      <Link to={`/profile/${user.username}`} onClick={closeMenus}>View Profile</Link>
+                      <Link to={`/profile/${user.id}`} onClick={closeMenus}>View Profile</Link>
                       <Link to="/projects" onClick={closeMenus}>Projects</Link>
                       <Link to="/settings" onClick={closeMenus}>Settings</Link>
                       <button type="button" onClick={async () => { closeMenus(); await logout() }}>Logout</button>
@@ -195,25 +180,21 @@ export function TopNav() {
 
       {mobileMenuOpen && (
         <div className="top-nav-mobile-menu" id="top-nav-mobile-menu">
+          {PRIMARY_NAV_LINKS.map(link => (
+            <Link key={link.to} to={link.to} onClick={closeMenus}>{link.label}</Link>
+          ))}
           {user ? (
             <>
-              {APP_LINKS.map(link => (
-                <Link key={link.to} to={link.to} onClick={closeMenus}>{link.label}</Link>
-              ))}
+              <Link to="/notifications" onClick={closeMenus}>Notifications{unread > 0 ? ` (${unread})` : ''}</Link>
               {isAdmin && <Link to="/admin" onClick={closeMenus}>Admin Console</Link>}
               {!isBanned && <button type="button" onClick={handleCreateShip}>Create Ship</button>}
               {isBanned && <span className="top-nav-mobile-status">Writes blocked</span>}
-              <Link to={`/profile/${user.username}`} onClick={closeMenus}>Profile</Link>
+              <Link to={`/profile/${user.id}`} onClick={closeMenus}>Profile</Link>
               <button type="button" onClick={async () => { closeMenus(); await logout() }}>Logout</button>
             </>
           ) : (
             <>
-              <Link to="/trending" onClick={closeMenus}>Explore</Link>
-              <Link to="/#how-it-works" onClick={closeMenus}>How it works</Link>
-              <Link to="/search" onClick={closeMenus}>Builders</Link>
-              <button type="button" onClick={() => { closeMenus(); void handleLogin() }}>GitHub</button>
               <Link to="/auth?mode=signin" onClick={closeMenus}>Sign in</Link>
-              <Link to="/signup?mode=signup" onClick={closeMenus}>Sign up</Link>
               <button type="button" className="top-nav-primary" onClick={() => { closeMenus(); void handleLogin() }} disabled={loginLoading}>
                 {loginLoading ? (
                   <ButtonLoader label="Connecting..." />
@@ -247,14 +228,7 @@ function isActive(pathname: string, to: string) {
 }
 
 function ShipSpaceMark() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 15.5 12 4l7 11.5" />
-      <path d="M8 15.5h8" />
-      <path d="M6.5 19h11" />
-      <path d="M12 4v15" />
-    </svg>
-  )
+  return <img src="/logo.png" alt="KREVO Logo" />
 }
 
 function GitHubIcon() {
@@ -272,4 +246,6 @@ function ChevronDownIcon() {
     </svg>
   )
 }
+
+
 

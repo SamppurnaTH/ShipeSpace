@@ -14,6 +14,8 @@ public interface NotificationRepository extends MongoRepository<Notification, St
 
     Page<Notification> findByUserIdOrderByCreatedAtDesc(String userId, Pageable pageable);
 
+    Page<Notification> findByUserId(String userId, Pageable pageable);
+
     long countByUserIdAndReadFalse(String userId);
 
     // Used by bulk markAllAsRead — do NOT add Pageable.unpaged() calls here

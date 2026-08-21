@@ -203,8 +203,16 @@ public class EngagementService {
                 commentUpvoteRepository.findByUserIdAndCommentId(userId, commentId);
 
         if (existingUpvote.isPresent()) {
-            commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
-            // Atomic decrement
+            long deleted = commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+            if (deleted == 0) {
+                Comment current = commentRepository.findById(commentId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+                return CommentUpvoteToggleResponse.builder()
+                        .upvoted(false)
+                        .upvoteCount(Math.max(0, current.getUpvotes()))
+                        .qualifiedForScoring(false)
+                        .build();
+            }
             Comment updated = atomicIncrementUpvotes(commentId, -1);
             log.info("User {} removed upvote from comment {}", userId, commentId);
             return CommentUpvoteToggleResponse.builder()
@@ -248,7 +256,16 @@ public class EngagementService {
 
         } catch (DuplicateKeyException e) {
             log.warn("Race condition on upvote for comment {} by user {}, treating as remove", commentId, userId);
-            commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+            long deleted = commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+            if (deleted == 0) {
+                Comment current = commentRepository.findById(commentId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Comment", commentId));
+                return CommentUpvoteToggleResponse.builder()
+                        .upvoted(false)
+                        .upvoteCount(Math.max(0, current.getUpvotes()))
+                        .qualifiedForScoring(false)
+                        .build();
+            }
             Comment updated = atomicIncrementUpvotes(commentId, -1);
             return CommentUpvoteToggleResponse.builder()
                     .upvoted(false)
@@ -263,6 +280,13 @@ public class EngagementService {
      * Batch-fetches all comment authors in one query instead of N individual lookups.
      */
     public Page<CommentResponse> getShipComments(String shipId, Pageable pageable) {
+        return getShipComments(shipId, pageable, null);
+    }
+
+    /**
+     * Get comments for a ship with optional current-user upvote enrichment.
+     */
+    public Page<CommentResponse> getShipComments(String shipId, Pageable pageable, String currentUserId) {
         if (!shipRepository.existsById(shipId)) {
             throw new ResourceNotFoundException("Ship", shipId);
         }
@@ -276,8 +300,20 @@ public class EngagementService {
         Map<String, User> userMap = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
 
+        Set<String> upvotedCommentIds = Set.of();
+        if (currentUserId != null && !currentUserId.isBlank() && !comments.isEmpty()) {
+            Set<String> commentIds = comments.getContent().stream()
+                    .map(Comment::getId)
+                    .collect(Collectors.toSet());
+            upvotedCommentIds = commentUpvoteRepository.findByUserIdAndCommentIdIn(currentUserId, commentIds)
+                    .stream()
+                    .map(CommentUpvote::getCommentId)
+                    .collect(Collectors.toSet());
+        }
+
+        Set<String> finalUpvotedCommentIds = upvotedCommentIds;
         List<CommentResponse> responses = comments.getContent().stream()
-                .map(c -> buildCommentResponse(c, userMap.get(c.getUserId())))
+                .map(c -> buildCommentResponse(c, userMap.get(c.getUserId()), finalUpvotedCommentIds.contains(c.getId())))
                 .collect(Collectors.toList());
 
         return new PageImpl<>(responses, pageable, comments.getTotalElements());
@@ -428,7 +464,11 @@ public class EngagementService {
             return CommentUpvoteToggleResponse.builder().upvoted(false)
                     .upvoteCount(comment.getUpvotes()).qualifiedForScoring(false).build();
         }
-        commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+        long deleted = commentUpvoteRepository.deleteByUserIdAndCommentId(userId, commentId);
+        if (deleted == 0) {
+            return CommentUpvoteToggleResponse.builder().upvoted(false)
+                    .upvoteCount(comment.getUpvotes()).qualifiedForScoring(false).build();
+        }
         Comment updated = atomicIncrementUpvotes(commentId, -1);
         return CommentUpvoteToggleResponse.builder().upvoted(false)
                 .upvoteCount(Math.max(0, updated.getUpvotes())).qualifiedForScoring(false).build();
@@ -452,6 +492,10 @@ public class EngagementService {
     }
 
     private CommentResponse buildCommentResponse(Comment comment, User user) {
+        return buildCommentResponse(comment, user, false);
+    }
+
+    private CommentResponse buildCommentResponse(Comment comment, User user, boolean upvotedByCurrentUser) {
         CommentResponse.UserProfileSummary commenter = null;
         if (user != null) {
             commenter = CommentResponse.UserProfileSummary.builder()
@@ -464,7 +508,10 @@ public class EngagementService {
         return CommentResponse.builder()
                 .id(comment.getId())
                 .shipId(comment.getShipId())
+                .userId(comment.getUserId())
                 .content(comment.getContent())
+                .upvotes(comment.getUpvotes())
+                .upvotedByCurrentUser(upvotedByCurrentUser)
                 .commenter(commenter)
                 .createdAt(comment.getCreatedAt())
                 .updatedAt(comment.getUpdatedAt())
@@ -500,6 +547,7 @@ public class EngagementService {
         if (!comment.getUserId().equals(userId)) {
             throw new com.shipspace.exception.ForbiddenException("delete", "comment");
         }
+        commentUpvoteRepository.deleteByCommentId(commentId);
         commentRepository.deleteById(commentId);
         shipCountRepository.incrementCommentCount(comment.getShipId(), -1);
         log.info("Deleted comment {} by user {}", commentId, userId);

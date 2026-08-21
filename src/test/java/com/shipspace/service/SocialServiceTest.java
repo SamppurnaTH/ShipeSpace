@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -112,7 +113,7 @@ class SocialServiceTest {
         verify(userCountRepository).incrementFollowingCount(followerId, 1);
         verify(userCountRepository).incrementFollowerCount(followeeId, 1);
         verify(notificationDispatchService).dispatch(eq(followeeId), eq("FOLLOW"), anyString(),
-                eq(followerId), any(), eq(followerId), eq("/users/" + followerId));
+                eq(followerId), any(), eq(followerId), eq("/profile/" + followerId));
     }
 
     @Test
@@ -184,7 +185,7 @@ class SocialServiceTest {
     void unfollowUser_Success() {
         // Arrange
         when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
-        doNothing().when(followingRepository).deleteByFollowerIdAndFolloweeId(followerId, followeeId);
+        when(followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(1L);
 
         // Act
         socialService.unfollowUser(followerId, followeeId);
@@ -196,6 +197,31 @@ class SocialServiceTest {
         verify(followingRepository).deleteByFollowerIdAndFolloweeId(followerId, followeeId);
         verify(userCountRepository).incrementFollowingCount(followerId, -1);
         verify(userCountRepository).incrementFollowerCount(followeeId, -1);
+    }
+
+    @Test
+    @DisplayName("Should handle concurrent duplicate follow without count drift")
+    void followUser_ConcurrentDuplicateFollow_Idempotent() {
+        when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(false);
+        when(followingRepository.save(any(Following.class))).thenThrow(new DuplicateKeyException("duplicate"));
+
+        socialService.followUser(followerId, followeeId);
+
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
+        verify(notificationDispatchService, never()).dispatch(anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Should handle concurrent unfollow without count drift")
+    void unfollowUser_ConcurrentDelete_Idempotent() {
+        when(followingRepository.existsByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(true);
+        when(followingRepository.deleteByFollowerIdAndFolloweeId(followerId, followeeId)).thenReturn(0L);
+
+        socialService.unfollowUser(followerId, followeeId);
+
+        verify(userCountRepository, never()).incrementFollowingCount(anyString(), anyInt());
+        verify(userCountRepository, never()).incrementFollowerCount(anyString(), anyInt());
     }
 
     @Test

@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast'
 import { ShipCard } from '../components/ShipCard'
 import { ShipCardSkeleton } from '../components/ShipCardSkeleton'
 import { ProjectHeaderSkeleton } from '../components/common/Loading'
-import { getProject, getProjectShips, likeShip, unlikeShip } from '../api/endpoints'
+import { getProject, getProjectShips, getSentCollabs, likeShip, requestCollaboration, unlikeShip } from '../api/endpoints'
 import { Icon } from '../components/Icon'
 
 export function ProjectDetailPage() {
@@ -18,6 +18,8 @@ export function ProjectDetailPage() {
   const [loading, setLoading] = useState(true)
   const [shipsLoading, setShipsLoading] = useState(true)
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set())
+  const [collaborationStatus, setCollaborationStatus] = useState<string | null>(null)
+  const [collaborationPending, setCollaborationPending] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -28,6 +30,17 @@ export function ProjectDetailPage() {
       .catch(() => toast('Could not load project', 'error'))
       .finally(() => { setLoading(false); setShipsLoading(false) })
   }, [id])
+
+  useEffect(() => {
+    if (!id || !user) return
+    getSentCollabs(0, 50)
+      .then(response => {
+        const list = response.data.content ?? response.data ?? []
+        const existing = list.find((item: any) => item.projectId === id)
+        setCollaborationStatus(existing?.status ?? null)
+      })
+      .catch(() => {})
+  }, [id, user])
 
   const toggleLike = async (shipId: string) => {
     if (!user) return
@@ -61,6 +74,28 @@ export function ProjectDetailPage() {
     }
   }
 
+  const handleRequestCollaboration = async () => {
+    if (!id || !user) {
+      toast('Sign in to request collaboration.', 'error')
+      return
+    }
+    if (user.banned) {
+      toast('Writes are blocked for this account.', 'error')
+      return
+    }
+    setCollaborationPending(true)
+    try {
+      const response = await requestCollaboration(id)
+      setCollaborationStatus(response.data.status ?? 'PENDING')
+      toast(response.data.status === 'PENDING' ? 'Collaboration request sent' : 'Collaboration request already exists', 'success')
+    } catch (err: any) {
+      const message = err?.response?.data?.message ?? 'Could not request collaboration.'
+      toast(message, 'error')
+    } finally {
+      setCollaborationPending(false)
+    }
+  }
+
   if (loading) return (
     <div style={{ maxWidth: 800, margin: '0 auto' }} aria-busy="true">
       <ProjectHeaderSkeleton />
@@ -78,6 +113,8 @@ export function ProjectDetailPage() {
   )
 
   const isWriteBlocked = Boolean(user?.banned)
+  const isOwner = Boolean(user && user.id === project.userId)
+  const canRequestCollaboration = Boolean(user && !isOwner && !isWriteBlocked && !collaborationStatus)
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
@@ -100,11 +137,36 @@ export function ProjectDetailPage() {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
-          <span>{project.shipCount ?? 0} ships</span>
-          {project.userId && (
-            <Link to={`/profile/${project.userId}`} style={{ color: 'var(--color-brand-dim)' }}>
-              View owner
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span>{project.shipCount ?? 0} ships</span>
+            {project.userId && (
+              <Link to={`/profile/${project.userId}`} style={{ color: 'var(--color-brand-dim)' }}>
+                View owner
+              </Link>
+            )}
+          </div>
+
+          {user ? (
+            isOwner ? (
+              <span style={collaborationPillStyle}>Your project</span>
+            ) : (
+              <button
+                type="button"
+                disabled={!canRequestCollaboration || collaborationPending}
+                onClick={handleRequestCollaboration}
+                style={collaborationButtonStyle(!canRequestCollaboration || collaborationPending)}
+              >
+                {collaborationPending
+                  ? 'Sending...'
+                  : collaborationStatus
+                    ? `Collaboration ${collaborationStatus.toLowerCase()}`
+                    : 'Request collaboration'}
+              </button>
+            )
+          ) : (
+            <Link to="/auth?mode=signin" style={collaborationLinkStyle}>
+              Sign in to collaborate
             </Link>
           )}
         </div>
@@ -139,9 +201,44 @@ export function ProjectDetailPage() {
           liked={likedIds.has(s.id)}
           canLike={!!user && !isWriteBlocked}
           onLike={() => toggleLike(s.id)}
-          isOwner={!!user && user.id === project.userId}
+          isOwner={isOwner}
         />
       ))}
     </div>
   )
+}
+
+const collaborationPillStyle: React.CSSProperties = {
+  padding: '8px 14px',
+  borderRadius: 'var(--radius-full)',
+  background: 'var(--color-surface-2)',
+  color: 'var(--color-text-muted)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 700,
+}
+
+const collaborationLinkStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '9px 16px',
+  borderRadius: 'var(--radius-md)',
+  background: 'var(--color-brand)',
+  color: '#fff',
+  textDecoration: 'none',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 700,
+}
+
+function collaborationButtonStyle(disabled: boolean): React.CSSProperties {
+  return {
+    padding: '9px 16px',
+    borderRadius: 'var(--radius-md)',
+    border: disabled ? '1px solid var(--color-border)' : 'none',
+    background: disabled ? 'var(--color-surface-2)' : 'var(--color-brand)',
+    color: disabled ? 'var(--color-text-muted)' : '#fff',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    fontSize: 'var(--text-sm)',
+    fontWeight: 700,
+    fontFamily: 'inherit',
+  }
 }

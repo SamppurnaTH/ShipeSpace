@@ -112,6 +112,35 @@ class FeedControllerTest {
     }
 
     @Test
+    @DisplayName("Should get latest feed without authentication")
+    void getLatestFeed_Success_Unauthenticated() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Page<Ship> shipsPage = new PageImpl<>(Collections.singletonList(ship), pageable, 1);
+
+        when(feedService.getLatestFeed(pageable)).thenReturn(shipsPage);
+        when(projectService.findAllByIds(Set.of("project1"))).thenReturn(List.of(project));
+        when(userService.findAllByIds(Set.of(userId))).thenReturn(List.of(user));
+
+        when(dtoMapper.toShipResponse(ship)).thenReturn(shipResponse);
+        when(dtoMapper.toProjectResponse(project)).thenReturn(projectResponse);
+
+        ResponseEntity<Page<FeedItemResponse>> response = feedController.getLatestFeed(null, 0, 20);
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getContent()).hasSize(1);
+
+        FeedItemResponse feedItem = response.getBody().getContent().get(0);
+        assertThat(feedItem.getShip().getId()).isEqualTo("ship1");
+        assertThat(feedItem.getProject().getId()).isEqualTo("project1");
+        assertThat(feedItem.getUser().getId()).isEqualTo(userId);
+        assertThat(feedItem.getLiked()).isNull();
+
+        verify(feedService).getLatestFeed(pageable);
+        verify(engagementService, never()).getLikedShipIds(anyString(), anySet());
+    }
+
+    @Test
     @DisplayName("Should get following feed for authenticated user")
     void getFollowingFeed_Success() {
         Pageable pageable = PageRequest.of(0, 20);

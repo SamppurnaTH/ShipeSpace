@@ -58,6 +58,18 @@ class BannedUserWriteFilterTest {
         verify(chain, never()).doFilter(request, response);
     }
 
+    @Test
+    void bannedUser_canLogoutWhenApiContextPathIsPresent() throws Exception {
+        authenticate("user-1");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/logout");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, chain);
+
+        verify(chain).doFilter(request, response);
+        verify(userRepository, never()).findById("user-1");
+    }
+
     private void authenticate(String userId) {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId, null, java.util.List.of()));

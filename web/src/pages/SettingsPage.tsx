@@ -99,7 +99,6 @@ const inputStyle: React.CSSProperties = {
   padding: 'var(--space-3)',
   color: 'var(--color-text-primary)',
   fontSize: 'var(--text-sm)',
-  outline: 'none',
   width: '100%',
 }
 const counterStyle: React.CSSProperties = {

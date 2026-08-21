@@ -92,7 +92,7 @@ export function SideNav() {
       {user && (
         <>
           <Link
-            to={`/profile/${user.username}`}
+            to={`/profile/${user.id}`}
             style={{
               ...navItemBase,
               color: location.pathname.startsWith('/profile') ? 'var(--color-brand)' : 'var(--color-text-secondary)',

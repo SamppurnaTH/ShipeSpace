@@ -279,7 +279,10 @@ class ProjectServiceTest {
         assertThat(result.getContent().get(1).getId()).isEqualTo("ship1");
 
         verify(projectRepository).findById("project123");
-        verify(shipRepository).findByProjectId(eq("project123"), any(Pageable.class));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(shipRepository).findByProjectId(eq("project123"), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("id")).isNotNull();
     }
 
     @Test
@@ -376,5 +379,41 @@ class ProjectServiceTest {
         assertThat(response.getExternalLinks()).hasSize(1);
         assertThat(response.getExternalLinks().get(0).getType()).isEqualTo("github");
         assertThat(response.getExternalLinks().get(0).getUrl()).isEqualTo("https://github.com/user/repo");
+    }
+
+    @Test
+    @DisplayName("Should delete owned project with associated ships and cascade references")
+    void shouldDeleteOwnedProjectWithAssociatedShipsAndCascadeReferences() {
+        // Given
+        Ship ship1 = Ship.builder().id("ship1").projectId("project123").userId("user123").build();
+        Ship ship2 = Ship.builder().id("ship2").projectId("project123").userId("user123").build();
+        when(projectRepository.findById("project123")).thenReturn(Optional.of(testProject));
+        when(shipRepository.findIdsByProjectId("project123")).thenReturn(List.of(ship1, ship2));
+        doNothing().when(userService).decrementProjectCount("user123");
+
+        // When
+        projectService.deleteProject("project123", "user123");
+
+        // Then
+        verify(shipRepository).deleteByProjectId("project123");
+        verify(projectRepository).deleteById("project123");
+        verify(userService).decrementProjectCount("user123");
+        verify(cascadeDeleteService).deleteProjectCascade("project123", List.of("ship1", "ship2"));
+    }
+
+    @Test
+    @DisplayName("Should deny project deletion by non-owner")
+    void shouldDenyProjectDeletionByNonOwner() {
+        // Given
+        when(projectRepository.findById("project123")).thenReturn(Optional.of(testProject));
+
+        // When & Then
+        assertThatThrownBy(() -> projectService.deleteProject("project123", "otherUser"))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("project");
+
+        verify(shipRepository, never()).deleteByProjectId(anyString());
+        verify(projectRepository, never()).deleteById(anyString());
+        verify(cascadeDeleteService, never()).deleteProjectCascade(anyString(), any());
     }
 }

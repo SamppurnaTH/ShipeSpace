@@ -80,6 +80,12 @@ public class ScoreEventLog {
     private String entityId;
 
     /**
+     * Number of ShipScore points awarded for this event at the time it was applied.
+     * Stored for auditability even if future point economics change.
+     */
+    private Integer points;
+
+    /**
      * Timestamp when the scoring event was logged.
      * TTL: auto-delete after 90 days — idempotency only needs to cover realistic replay windows.
      */
