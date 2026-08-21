@@ -1,5 +1,7 @@
 package com.shipspace.config;
 
+import java.net.URI;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,19 +28,42 @@ public class RedisConfig {
     @Value("${spring.data.redis.password:}")
     private String redisPassword;
 
+    @Value("${spring.data.redis.url:${REDIS_URL:}}")
+    private String redisUrl;
+
     /**
      * Explicit LettuceConnectionFactory so we can disable eager connection
      * validation — prevents startup hang when Redis is slow to accept connections.
      */
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
-        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisHost, redisPort);
-        if (redisPassword != null && !redisPassword.isBlank()) {
+        RedisStandaloneConfiguration config = redisUrl != null && !redisUrl.isBlank()
+                ? redisConfigFromUrl(redisUrl)
+                : new RedisStandaloneConfiguration(redisHost, redisPort);
+        if ((redisUrl == null || redisUrl.isBlank()) && redisPassword != null && !redisPassword.isBlank()) {
             config.setPassword(redisPassword);
         }
         LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
         factory.setValidateConnection(false); // don't block startup on Redis availability
         return factory;
+    }
+
+    private RedisStandaloneConfiguration redisConfigFromUrl(String value) {
+        URI uri = URI.create(value);
+        RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(
+                uri.getHost(),
+                uri.getPort() > 0 ? uri.getPort() : 6379);
+        String userInfo = uri.getUserInfo();
+        if (userInfo != null && !userInfo.isBlank()) {
+            String[] parts = userInfo.split(":", 2);
+            if (parts.length == 2) {
+                config.setUsername(parts[0]);
+                config.setPassword(parts[1]);
+            } else {
+                config.setPassword(parts[0]);
+            }
+        }
+        return config;
     }
 
     /**
