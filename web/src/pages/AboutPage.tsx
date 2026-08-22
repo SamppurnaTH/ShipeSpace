@@ -45,7 +45,7 @@ export function AboutPage() {
             KREVO is a builder network for people who turn ideas into real projects. Your work should speak louder than your title.
           </p>
           <div className="public-actions">
-            <Link className="public-button public-button-primary" to={user ? '/projects' : '/auth'}>
+            <Link className="public-button public-button-primary" to={user ? '/projects' : '/auth?mode=signup'}>
               {user ? 'Create a project' : 'Continue with GitHub'}
             </Link>
             <Link className="public-button public-button-secondary" to="/trending">
@@ -110,7 +110,7 @@ export function AboutPage() {
             Start with GitHub, create a project, publish Ships, and let your profile grow through visible work.
           </p>
         </div>
-        <Link className="public-button public-button-primary" to={user ? '/ships/new' : '/auth'}>
+        <Link className="public-button public-button-primary" to={user ? '/ships/new' : '/auth?mode=signup'}>
           {user ? 'Publish a Ship' : 'Start building'}
         </Link>
       </section>

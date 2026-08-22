@@ -507,7 +507,7 @@ export function HelpPage() {
             Official support contact information will be published through KREVO channels before broader launch. For now, keep sensitive credentials, private keys, and confidential project data out of public content.
           </p>
         </div>
-        <Link className="public-button public-button-primary" to={user ? '/feed' : '/auth'}>
+        <Link className="public-button public-button-primary" to={user ? '/feed' : '/auth?mode=signup'}>
           {user ? 'Go to KREVO' : 'Continue with GitHub'}
         </Link>
       </section>

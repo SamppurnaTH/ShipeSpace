@@ -1,11 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { getGitHubLoginErrorMessage, startGitHubLogin } from '../auth/githubLogin'
 import { useUnreadCount } from '../hooks/useUnreadCount'
 import { Icon } from './Icon'
 import { Spinner } from './Spinner'
-import { ButtonLoader } from './common/Loading'
 
 const PRIMARY_NAV_LINKS = [
   { to: '/trending', label: 'Top Content' },
@@ -22,20 +20,14 @@ export function TopNav() {
   const navigate = useNavigate()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [loginLoading, setLoginLoading] = useState(false)
   const [searchInput, setSearchInput] = useState('')
 
   const isBanned = Boolean(user?.banned)
   const isAdmin = Boolean(user?.roles?.some(role => role === 'ADMIN' || role === 'ROLE_ADMIN'))
 
-  const handleLogin = async () => {
-    setLoginLoading(true)
-    try {
-      await startGitHubLogin(location.pathname.startsWith('/admin') ? location.pathname : undefined)
-    } catch (err) {
-      window.alert(getGitHubLoginErrorMessage(err))
-      setLoginLoading(false)
-    }
+  const handleSignup = () => {
+    closeMenus()
+    navigate('/auth?mode=signup')
   }
 
   const closeMenus = () => {
@@ -150,15 +142,9 @@ export function TopNav() {
           ) : (
             <>
               <Link to="/auth?mode=signin" className="top-nav-secondary">Sign in</Link>
-              <button type="button" className="top-nav-primary" onClick={handleLogin} disabled={loginLoading}>
-                {loginLoading ? (
-                  <ButtonLoader label="Connecting..." />
-                ) : (
-                  <>
-                    <GitHubIcon />
-                    Continue with GitHub
-                  </>
-                )}
+              <button type="button" className="top-nav-primary" onClick={handleSignup}>
+                <GitHubIcon />
+                Continue with GitHub
               </button>
             </>
           )}
@@ -195,15 +181,9 @@ export function TopNav() {
           ) : (
             <>
               <Link to="/auth?mode=signin" onClick={closeMenus}>Sign in</Link>
-              <button type="button" className="top-nav-primary" onClick={() => { closeMenus(); void handleLogin() }} disabled={loginLoading}>
-                {loginLoading ? (
-                  <ButtonLoader label="Connecting..." />
-                ) : (
-                  <>
-                    <GitHubIcon />
-                    Continue with GitHub
-                  </>
-                )}
+              <button type="button" className="top-nav-primary" onClick={handleSignup}>
+                <GitHubIcon />
+                Continue with GitHub
               </button>
             </>
           )}

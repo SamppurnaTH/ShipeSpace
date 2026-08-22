@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getTrendingFeed } from '../../api/endpoints'
-import { getGitHubLoginErrorMessage, startGitHubLogin } from '../../auth/githubLogin'
 import builderCommunityImage from '../../assets/home/shipspace-builder-community.png'
 import builderProfileTimelineImage from '../../assets/home/shipspace-builder-profile-timeline.png'
 import audienceVisualImage from '../../assets/home/shipspace-audience-visual.png'
@@ -9,7 +8,7 @@ import launchPadVisualImage from '../../assets/home/shipspace-launch-pad-visual.
 import reputationVisualImage from '../../assets/home/shipspace-reputation-visual.png'
 import workflowVisualImage from '../../assets/home/shipspace-workflow-visual.png'
 import type { FeedItem } from '../../hooks/useFeed'
-import { ButtonLoader, ShipCardSkeleton } from '../common/Loading'
+import { ShipCardSkeleton } from '../common/Loading'
 import { HomeEmptyState } from './HomeEmptyState'
 import { HomeShipPreview } from './HomeShipPreview'
 
@@ -74,8 +73,8 @@ const FOOTER_GROUPS = [
   {
     title: 'Start shipping',
     links: [
-      { label: 'Create project', to: '/auth' },
-      { label: 'Publish ship', to: '/auth' },
+      { label: 'Create project', to: '/auth?mode=signup' },
+      { label: 'Publish ship', to: '/auth?mode=signup' },
       { label: 'Explore ships', to: '/trending' },
       { label: 'Find builders', to: '/people' },
     ],
@@ -103,7 +102,7 @@ const FOOTER_GROUPS = [
     links: [
       { label: 'About KREVO', to: '/about' },
       { label: 'Public discovery', to: '/trending' },
-      { label: 'GitHub login', to: '/auth' },
+      { label: 'GitHub login', to: '/auth?mode=signup' },
       { label: 'Builder search', to: '/people' },
     ],
   },
@@ -121,8 +120,6 @@ const FOOTER_GROUPS = [
 export function PublicHomePage() {
   const [items, setItems]         = useState<FeedItem[]>([])
   const [state, setState]         = useState<PreviewState>('loading')
-  const [loginError, setLoginError] = useState('')
-  const [loginLoading, setLoginLoading] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -138,17 +135,6 @@ export function PublicHomePage() {
       .catch(() => { if (alive) setState('error') })
     return () => { alive = false }
   }, [])
-
-  const handleLogin = async () => {
-    setLoginError('')
-    setLoginLoading(true)
-    try {
-      await startGitHubLogin()
-    } catch (err) {
-      setLoginError(getGitHubLoginErrorMessage(err))
-      setLoginLoading(false)
-    }
-  }
 
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
@@ -171,16 +157,10 @@ export function PublicHomePage() {
 
           <div className="home-header-actions">
             <Link className="home-header-signin" to="/auth?mode=signin">Sign in</Link>
-            <button className="home-btn home-btn-primary" onClick={handleLogin} disabled={loginLoading}>
-              {loginLoading ? (
-                <ButtonLoader label="Connecting..." />
-              ) : (
-                <>
-                  <GitHubIcon />
-                  Continue with GitHub
-                </>
-              )}
-            </button>
+            <Link className="home-btn home-btn-primary" to="/auth?mode=signup">
+              <GitHubIcon />
+              Continue with GitHub
+            </Link>
           </div>
 
           <button
@@ -204,16 +184,10 @@ export function PublicHomePage() {
             ))}
             <Link to="/auth?mode=signin" onClick={closeMobileMenu}>Sign in</Link>
             <Link to="/signup?mode=signup" onClick={closeMobileMenu}>Sign up</Link>
-            <button className="home-btn home-btn-primary" type="button" onClick={() => { closeMobileMenu(); void handleLogin() }} disabled={loginLoading}>
-              {loginLoading ? (
-                <ButtonLoader label="Connecting..." />
-              ) : (
-                <>
-                  <GitHubIcon />
-                  Continue with GitHub
-                </>
-              )}
-            </button>
+            <Link className="home-btn home-btn-primary" to="/auth?mode=signup" onClick={closeMobileMenu}>
+              <GitHubIcon />
+              Continue with GitHub
+            </Link>
           </div>
         )}
       </header>
@@ -229,16 +203,10 @@ export function PublicHomePage() {
               through real progress instead of polished resumes.
             </p>
             <div className="home-cta-row">
-              <button className="home-btn home-btn-primary home-btn-large" onClick={handleLogin} disabled={loginLoading}>
-                {loginLoading ? (
-                  <ButtonLoader label="Connecting..." />
-                ) : (
-                  <>
-                    <GitHubIcon />
-                    Continue with GitHub
-                  </>
-                )}
-              </button>
+              <Link className="home-btn home-btn-primary home-btn-large" to="/auth?mode=signup">
+                <GitHubIcon />
+                Continue with GitHub
+              </Link>
               <Link className="home-btn home-btn-secondary home-btn-large" to="/trending">
                 Explore ships
               </Link>
@@ -246,7 +214,6 @@ export function PublicHomePage() {
             <p className="home-hero-support">
               New to KREVO? Join with GitHub and start from your developer identity.
             </p>
-            {loginError && <p className="home-form-error" role="alert">{loginError}</p>}
           </div>
 
           <div className="home-hero-preview" aria-label="KREVO product preview">
@@ -460,16 +427,10 @@ export function PublicHomePage() {
               <h2 id="home-final-title">Turn your next commit into visible momentum.</h2>
               <p>Start with GitHub, create a project log, and let each ship become part of your builder story.</p>
               <div className="home-cta-row">
-                <button className="home-btn home-btn-cta-primary home-btn-large" onClick={handleLogin} disabled={loginLoading}>
-                  {loginLoading ? (
-                    <ButtonLoader label="Connecting..." />
-                  ) : (
-                    <>
-                      <GitHubIcon />
-                      Continue with GitHub
-                    </>
-                  )}
-                </button>
+                <Link className="home-btn home-btn-cta-primary home-btn-large" to="/auth?mode=signup">
+                  <GitHubIcon />
+                  Continue with GitHub
+                </Link>
                 <Link className="home-btn home-btn-cta-secondary home-btn-large" to="/trending">
                   Explore ships
                 </Link>
