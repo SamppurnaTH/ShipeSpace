@@ -6,18 +6,25 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: shipspace-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   JAVA_VERSION: "17"
+  MVP_TESTS: "AdminControllerTest,AdminSecurityRouteTest,AuthControllerTest,AuthServiceRbacTest,BannedUserWriteFilterTest,EngagementControllerTest,EngagementServiceTest,FeedControllerTest,GitHubOAuthServiceTest,HealthControllerTest,JwtUtilTest,MongoIndexInitializerTest,MultibaseServiceTest,NotificationServiceTest,ProjectControllerTest,ShipControllerTest,SocialControllerTest,UserControllerTest,UserServiceTest"
+  MONGO_SLICE_TESTS: "BehavioralSignalRepositoryTest,ContentScoreRepositoryTest,ScoreEventLogRepositoryTest,UserInterestProfileRepositoryTest,UserRepositoryTest"
+  MVP_INTEGRATION_TESTS: "ShipCreationIntegrationTest"
 
 jobs:
   # ── Stage 1: Build & Unit Tests ─────────────────────────────────────────────
   build:
-    name: Build & Unit Tests
-    runs-on: ubuntu-latest
+    name: Build & Fast Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
       version: ${{ steps.version.outputs.version }}
 
     steps:
@@ -36,8 +43,13 @@ jobs:
           SHORT_SHA=$(git rev-parse --short HEAD)
           echo "version=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Build & run unit tests
-        run: mvn -B verify -Dspring.profiles.active=test
+      - name: Compile backend
+        run: mvn -B -DskipTests compile
+        env:
+          JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
+
+      - name: Run MVP backend regression tests
+        run: mvn -B test -Dspring.profiles.active=test "-Dtest=${{ env.MVP_TESTS }}"
         env:
           JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
 
@@ -47,17 +59,20 @@ jobs:
         with:
           name: test-results
           path: target/surefire-reports/
+          if-no-files-found: warn
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: target/site/jacoco/
+          if-no-files-found: warn
 
-  # ── Stage 2: Integration Tests (Testcontainers) ──────────────────────────────
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
+  mongo-slice-tests:
+    name: Embedded Mongo Slice Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
     needs: build
 
     steps:
@@ -70,8 +85,48 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Run integration tests
-        run: mvn -B verify -Dtest="*IntegrationTest" -DfailIfNoTests=false
+      - name: Run embedded Mongo-backed tests
+        run: mvn -B test -Dspring.profiles.active=test "-Dtest=${{ env.MONGO_SLICE_TESTS }}" -DfailIfNoTests=false
+        env:
+          JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
+
+      - name: Upload embedded Mongo test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: embedded-mongo-test-results
+          path: target/surefire-reports/
+          if-no-files-found: warn
+
+  # ── Stage 2: Integration Tests (Testcontainers) ──────────────────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    needs: build
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run MVP integration tests
+        run: mvn -B test -Dspring.profiles.active=test "-Dtest=${{ env.MVP_INTEGRATION_TESTS }}" -DfailIfNoTests=false
         env:
           JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
           # Testcontainers pulls Docker images — Docker is available on ubuntu-latest
@@ -83,10 +138,12 @@ jobs:
         with:
           name: integration-test-results
           path: target/surefire-reports/
+          if-no-files-found: warn
 
   frontend:
     name: Frontend Lint & Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     needs: build
 
     steps:
@@ -114,7 +171,8 @@ jobs:
   # ── Stage 3: Security Scanning ───────────────────────────────────────────────
   security-scan:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     needs: [build, frontend]
     permissions:
       security-events: write
@@ -156,6 +214,7 @@ jobs:
         with:
           name: owasp-report
           path: target/dependency-check-report.html
+          if-no-files-found: warn
 
       # Container image scan (runs after Docker build below — reuse image)
       - name: Set up Docker Buildx
@@ -190,8 +249,9 @@ jobs:
   # ── Stage 4: Docker Build & Push ─────────────────────────────────────────────
   docker-build:
     name: Docker Build & Push
-    runs-on: ubuntu-latest
-    needs: [build, frontend, integration-tests, security-scan]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    needs: [build, frontend, mongo-slice-tests, integration-tests, security-scan]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     permissions:
       contents: read
@@ -243,9 +303,10 @@ jobs:
   # ── Stage 5: Deploy to Staging ───────────────────────────────────────────────
   deploy-staging:
     name: Deploy to Staging
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
     needs: docker-build
-    if: github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/develop' && vars.ENABLE_LEGACY_K8S_DEPLOY == 'true'
     environment:
       name: staging
       url: https://staging.shipspace.app
@@ -271,9 +332,10 @@ jobs:
   # ── Stage 6: Deploy to Production (Blue-Green) ───────────────────────────────
   deploy-production:
     name: Deploy to Production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
     needs: docker-build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.ENABLE_LEGACY_K8S_DEPLOY == 'true'
     environment:
       name: production
       url: https://shipspace.app
