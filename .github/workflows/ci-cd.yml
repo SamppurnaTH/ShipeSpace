@@ -54,7 +54,7 @@ jobs:
           JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
 
       - name: Upload test results
-        if: always()
+        if: always() && vars.ENABLE_CI_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: test-results
@@ -62,7 +62,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload coverage report
-        if: always()
+        if: always() && vars.ENABLE_CI_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -91,7 +91,7 @@ jobs:
           JWT_SECRET: test-secret-key-for-ci-minimum-32-chars!!
 
       - name: Upload embedded Mongo test results
-        if: always()
+        if: always() && vars.ENABLE_CI_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: embedded-mongo-test-results
@@ -133,7 +133,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
       - name: Upload integration test results
-        if: always()
+        if: always() && vars.ENABLE_CI_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-results
@@ -209,7 +209,7 @@ jobs:
         continue-on-error: true  # Don't block on first run — review findings
 
       - name: Upload OWASP report
-        if: always()
+        if: always() && vars.ENABLE_CI_ARTIFACTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: owasp-report
