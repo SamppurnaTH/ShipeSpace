@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { TopNav } from './components/TopNav'
@@ -135,6 +135,12 @@ function PublicWithShell({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>
 }
 
+function PublicStandaloneRoute({ children }: { children: React.ReactNode }) {
+  const { loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  return <AppShell wideMain leftPanel={false} rightPanel={false}>{children}</AppShell>
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
@@ -214,10 +220,10 @@ function AppRoutes() {
       <Route path="/people" element={<PublicWithShell><PeoplePage /></PublicWithShell>} />
       <Route path="/learning" element={<PublicWithShell><PlaceholderPage title="Learning" description="Discover educational resources and content from builders. Coming soon." /></PublicWithShell>} />
       <Route path="/shipscore" element={<PublicWithShell><PlaceholderPage title="ShipScore" description="Understand reputation, ranking, and the builder leaderboard. Coming soon." /></PublicWithShell>} />
-      <Route path="/about" element={<PublicWithShell><AboutPage /></PublicWithShell>} />
-      <Route path="/help" element={<PublicWithShell><HelpPage /></PublicWithShell>} />
-      <Route path="/privacy" element={<PublicWithShell><PrivacyPage /></PublicWithShell>} />
-      <Route path="/terms" element={<PublicWithShell><TermsPage /></PublicWithShell>} />
+      <Route path="/about" element={<PublicStandaloneRoute><AboutPage /></PublicStandaloneRoute>} />
+      <Route path="/help" element={<PublicStandaloneRoute><HelpPage /></PublicStandaloneRoute>} />
+      <Route path="/privacy" element={<PublicStandaloneRoute><PrivacyPage /></PublicStandaloneRoute>} />
+      <Route path="/terms" element={<PublicStandaloneRoute><TermsPage /></PublicStandaloneRoute>} />
 
       <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
       <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />

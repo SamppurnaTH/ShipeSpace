@@ -1736,3 +1736,59 @@ Professional legal review is recommended before broad commercial/public launch f
 #### Decision
 
 **PUBLIC PAGE UX REDESIGN COMPLETE**
+
+### Policy Layout Centering Fix
+
+**Date:** 2026-08-22
+
+#### Root Cause
+
+The Privacy and Terms pages were using the same `PublicWithShell` route wrapper as normal public discovery pages. That wrapper renders through the standard app shell center column, which is optimized for feed/dashboard surfaces and constrained by the global center-column width. As a result, the policy page's own `max-width` and grid rules were being applied inside an artificially narrow parent, leaving the legal content visually anchored left with too much unused desktop space.
+
+#### Shared Layout Changes
+
+| Area | Change |
+| --- | --- |
+| Route wrapper | Added `PublicStandaloneRoute` for About, Help, Privacy, and Terms so public information pages can use the full-width public layout without side panels. |
+| Container | Set policy pages to a centered `min(100% - 40px, 1150px)` container. |
+| Hero | Kept hero content left-aligned inside the centered container, widened the hero measure, and reduced policy H1 scale to avoid awkward desktop wrapping. |
+| TOC/article grid | Updated the shared policy grid to `230px + remaining width` with a balanced gap. |
+| Article treatment | Replaced repeated narrow legal cards with one flowing article card, subtle section separators, and left-aligned body text. |
+| Readability | Capped paragraph/list line length while allowing the article card itself to occupy the available desktop width. |
+
+#### Terms Result
+
+The Terms page now sits as a centered policy system beneath the canonical KREVO navbar. The eyebrow, H1, intro, date, TOC, and article share a consistent left edge within the centered container, while long-form legal content remains left-aligned and easier to scan.
+
+#### Privacy Result
+
+The Privacy page uses the same corrected shared policy layout as Terms. No separate layout math or one-off privacy-specific styling was introduced.
+
+#### Responsive Matrix
+
+| Width | Terms | Privacy |
+| --- | --- | --- |
+| 390 | Shared CSS collapses to single-column policy layout with horizontal section nav | Shared CSS collapses to single-column policy layout with horizontal section nav |
+| 768 | Shared CSS keeps policy content single-column and avoids squeezed two-column layout | Shared CSS keeps policy content single-column and avoids squeezed two-column layout |
+| 1024 | Shared CSS uses desktop grid with reduced available space and centered container | Shared CSS uses desktop grid with reduced available space and centered container |
+| 1440 | Centered 1150px policy system with TOC and article grid | Centered 1150px policy system with TOC and article grid |
+| 1920 | Policy system remains centered instead of sitting in the left third of the viewport | Policy system remains centered instead of sitting in the left third of the viewport |
+
+#### Files Changed
+
+| File | Change |
+| --- | --- |
+| `web/src/App.tsx` | Added `PublicStandaloneRoute` and moved About, Help, Privacy, and Terms onto the standalone public layout. |
+| `web/src/index.css` | Adjusted shared policy container, hero, TOC/article grid, article card, section separators, and responsive content padding. |
+| `docs/MVP_Tracking_Document.md` | Recorded policy layout root cause, fix, and verification evidence. |
+
+#### Verification
+
+| Command | Result |
+| --- | --- |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run lint` | PASS - 0 errors, existing warnings only |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run build` | PASS |
+
+#### Decision
+
+**POLICY LAYOUT FIX COMPLETE**
