@@ -101,10 +101,19 @@ const FOOTER_GROUPS = [
   {
     title: 'KREVO',
     links: [
-      { label: 'About', to: '/about' },
-      { label: 'Help', to: '/help' },
-      { label: 'Privacy', to: '/privacy' },
-      { label: 'Terms', to: '/terms' },
+      { label: 'About KREVO', to: '/about' },
+      { label: 'Public discovery', to: '/trending' },
+      { label: 'GitHub login', to: '/auth' },
+      { label: 'Builder search', to: '/people' },
+    ],
+  },
+  {
+    title: 'Legal & support',
+    links: [
+      { label: 'Help Center', to: '/help' },
+      { label: 'Privacy Policy', to: '/privacy' },
+      { label: 'Terms of Use', to: '/terms' },
+      { label: 'Beta status', to: '/about' },
     ],
   },
 ]

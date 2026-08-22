@@ -17,9 +17,11 @@ export function AuthPage() {
   }, [location.pathname, searchParams])
   const [githubLoading, setGithubLoading] = useState(false)
   const [error, setError] = useState('')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   useEffect(() => {
     setError('')
+    if (mode !== 'signup') setAcceptedTerms(false)
   }, [mode])
 
   const setMode = (nextMode: AuthMode) => {
@@ -27,6 +29,10 @@ export function AuthPage() {
   }
 
   const handleGitHubLogin = async () => {
+    if (mode === 'signup' && !acceptedTerms) {
+      setError('Please accept the Terms of Use and Privacy Policy to continue.')
+      return
+    }
     setGithubLoading(true)
     setError('')
     try {
@@ -80,7 +86,7 @@ export function AuthPage() {
 
           <button
             onClick={handleGitHubLogin}
-            disabled={githubLoading}
+            disabled={githubLoading || (mode === 'signup' && !acceptedTerms)}
             className="auth-provider-button auth-provider-primary"
           >
             {githubLoading ? (
@@ -96,6 +102,23 @@ export function AuthPage() {
           <p className="auth-legal-copy">
             KREVO uses GitHub to verify builder identity, bootstrap your profile, and keep sign-in simple.
           </p>
+
+          {mode === 'signup' && (
+            <div className="auth-checkbox auth-terms-checkbox">
+              <input
+                id="auth-terms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={event => {
+                  setAcceptedTerms(event.target.checked)
+                  if (event.target.checked) setError('')
+                }}
+              />
+              <label htmlFor="auth-terms">
+                I agree to KREVO&apos;s <Link to="/terms">Terms of Use</Link> and <Link to="/privacy">Privacy Policy</Link>.
+              </label>
+            </div>
+          )}
 
           {error && <p className="home-form-error" role="alert">{error}</p>}
 

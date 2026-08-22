@@ -2177,7 +2177,7 @@
 .home-footer-inner {
   max-width: var(--layout-max);
   padding: 54px var(--space-5) 38px;
-  grid-template-columns: minmax(240px,1.35fr) repeat(4,minmax(0,1fr));
+  grid-template-columns: minmax(240px,1.35fr) repeat(5,minmax(0,1fr));
   gap: 38px;
   margin: 0 auto;
   display: grid
@@ -2641,6 +2641,29 @@
   height: 18px;
   min-height: 0;
   accent-color: var(--color-primary)
+}
+
+.auth-terms-checkbox {
+  align-items: flex-start!important;
+  margin-top: 16px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45
+}
+
+.auth-terms-checkbox label {
+  cursor: pointer
+}
+
+.auth-terms-checkbox a {
+  color: var(--color-primary);
+  font-weight: 700;
+  text-decoration: none
+}
+
+.auth-terms-checkbox a:hover,
+.auth-terms-checkbox a:focus-visible {
+  text-decoration: underline
 }
 
 .auth-notice {
