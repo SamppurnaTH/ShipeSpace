@@ -1547,3 +1547,117 @@ The correct release posture is:
 **Controlled production beta announcement: NOT YET**
 
 Proceed with manual acceptance using real GitHub accounts and a configured Multibase environment. Fix only defects that directly block those gates. After the gates pass, freeze the MVP and move to controlled beta.
+
+## 19. KREVO Public Information & Policy Pages
+
+**Date:** 2026-08-22
+
+### Scope
+
+Audited and improved the public information/policy routes:
+
+| Route | Purpose | Status |
+| --- | --- | --- |
+| `/about` | Customer-facing product explanation | Updated |
+| `/help` | New-user workflow and troubleshooting guide | Updated |
+| `/privacy` | Beta-ready factual privacy summary | Updated |
+| `/terms` | Beta-ready factual terms summary | Updated |
+
+### Existing Page Audit
+
+| Area | Finding | Action |
+| --- | --- | --- |
+| About | Clear but too lightweight; did not fully explain the builder loop | Rewritten as product-facing KREVO positioning |
+| Help | Draft quality and too short for a new user | Expanded into workflow-oriented help sections |
+| Privacy | Draft summary only; missing token/storage, public-data, retention, provider, and legal-review caveats | Rewritten from actual implementation facts |
+| Terms | Draft summary only; missing public-content, acceptable-use, moderation, ShipScore, collaboration, and beta availability language | Rewritten as cautious beta terms |
+| Shared footer | Duplicate mini-footer appeared above info pages from the right panel | Removed from `RightPanel.tsx` |
+
+### Actual Data-Practice Inventory
+
+| Data Category | Collected/Stored? | Source | Purpose | Stored Where | Retention Known? | Public? |
+| --- | --- | --- | --- | --- | --- | --- |
+| GitHub numeric user ID | Yes | GitHub OAuth | Account identity and admin bootstrap | MongoDB `users.githubId` | No formal deletion policy | Admin/internal; not generic public profile |
+| GitHub username/avatar/email/profile fields | Yes, as available | GitHub OAuth scopes `read:user,user:email` | Profile/account creation | MongoDB `users` | No formal deletion policy | Username/avatar/profile fields may be public |
+| JWT access/refresh tokens | Yes on client | KREVO auth response | Authenticated session | Browser `localStorage` | Until cleared/expiry | No |
+| OAuth state | Yes | `/auth/state` | OAuth CSRF protection | Redis | About 10 minutes | No |
+| Projects and ships | Yes | User-created content | Public project timeline/feed | MongoDB `projects`, `ships` | No formal deletion policy | Yes |
+| Ship media references | Yes | User upload flow | Display ship media | MongoDB + media storage provider | No formal deletion policy | Yes when attached to public ships |
+| Comments, likes, follows, collaboration requests | Yes | User actions | Engagement/collaboration | MongoDB | No formal deletion policy | Comments/follow counts may be public; collaboration inbox is private |
+| Notifications | Yes | Platform actions | In-app alerts | MongoDB `notifications` | 90-day TTL | Private to recipient |
+| ShipScore/rank and score events | Yes | Platform scoring service | Reputation features and idempotency | MongoDB `users`, `score_event_log` | Score logs 90-day TTL | Score/rank may be public |
+| Behavioral signals | Yes | Product interactions | Discovery/personalization | MongoDB `behavioral_signals` | 90-day TTL | No |
+| Admin audit logs | Yes | Admin moderation actions | Accountability | MongoDB `audit_logs` | 365-day TTL | Admin-only |
+| Rate-limit/token blacklist records | Yes | Auth/API security | Abuse prevention and logout/rotation | Redis | TTL based on window/token expiry | No |
+
+### Public vs Private Data Matrix
+
+| Public/Readable | Authenticated/Private | Admin-only |
+| --- | --- | --- |
+| Public profiles, projects, ships, comments, search results, trending/latest feeds, ShipScore/rank where exposed | Current session, settings, notifications, collaboration inbox/sent views, following feed state | Admin dashboard, admin user detail, reports, audit logs, role/ban controls |
+
+### Authentication / Storage Facts
+
+- KREVO uses GitHub OAuth as the beta authentication method.
+- Frontend requests GitHub scopes `read:user,user:email`.
+- KREVO issues its own JWT access and refresh tokens.
+- The React app currently stores tokens in browser `localStorage`.
+- The OAuth return path is stored in `sessionStorage`.
+- Logout clears local tokens and calls the backend logout endpoint for token revocation.
+- No evidence of email/password authentication in the current MVP.
+
+### External Providers / Tracking Facts
+
+- GitHub is used for OAuth identity.
+- MongoDB stores product data.
+- Redis stores OAuth state, token blacklist/rate-limit/cache style data.
+- Media upload uses the configured media-storage service path.
+- No Google Analytics, GA4, Mixpanel, Segment, PostHog, Meta Pixel, Hotjar, or advertising system was found in the codebase audit.
+
+### Claims Avoided or Corrected
+
+The updated pages intentionally do not claim:
+
+- GDPR/CCPA/SOC 2/ISO/HIPAA/PCI/COPPA compliance.
+- Guaranteed deletion, uptime, security, employment outcomes, or collaboration outcomes.
+- Email/password login, password reset, billing/refunds, or paid subscriptions.
+- GitHub password access, private repository access, contribution verification, or GitHub endorsement.
+- ShipScore as an objective proof of professional skill.
+
+### CEO Decisions Pending
+
+| Decision | Current Evidence | Recommendation | CEO Approval Needed |
+| --- | --- | --- | --- |
+| Sell user data? | No advertising/sales system found | Make an explicit policy before public launch | Yes |
+| Advertising? | No ad system found | Keep beta copy factual: current product has no ad system | Yes for long-term commitment |
+| User-content license | Product needs permission to host/display content | Legal counsel should draft final license | Yes |
+| Account deletion requests | No self-service deletion flow found | Define request process before broader launch | Yes |
+| Minimum age | No finalized policy found | Legal review required | Yes |
+| Governing jurisdiction | Not defined | Do not invent in product copy | Yes |
+| Legal entity name | Not defined | Add only after business/legal decision | Yes |
+| Privacy/support contact | Not configured in repo | Publish official channel before broad launch | Yes |
+| Retention policy | Some TTLs exist, broad content retention undefined | Define formal retention/deletion policy | Yes |
+
+### Legal Review Flags
+
+Professional legal review is recommended before broad commercial/public launch for privacy rights by jurisdiction, children/minimum-age rules, international data handling, content licensing, liability language, governing law, deletion obligations, legal entity identity, and official contact channels.
+
+### Verification
+
+| Command | Result |
+| --- | --- |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run lint` | PASS - 0 errors, existing warnings only |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run build` | PASS |
+
+### Manual Gates
+
+| Gate | Status |
+| --- | --- |
+| `/about`, `/help`, `/privacy`, `/terms` direct navigation | Pending browser confirmation after deploy |
+| Footer links to public info pages | Pending browser confirmation after deploy |
+| Mobile 390/768 and desktop 1024/1440 visual pass | Pending browser confirmation after deploy |
+| Legal/professional review | Required before broad public/commercial launch |
+
+### Decision
+
+**PUBLIC PAGES BETA READY**
