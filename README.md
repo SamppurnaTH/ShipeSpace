@@ -1,450 +1,336 @@
-﻿<div align="center">
-  <img src="assets/logo.png" alt="ShipSpace — The Social Network for Builders" width="100%" />
+# ShipSpace
 
-  <br/><br/>
+ShipSpace, currently branded in deployment as **KREVO**, is a builder-focused social shipping platform for developers, students, makers, indie hackers, and technical teams who want to show real project progress.
 
-  # 🚀 KREVO
+Instead of treating a profile as a static resume, ShipSpace turns projects, updates, collaboration, feedback, and reputation into a public builder timeline.
 
-  **Create. Ship. Evolve.**
+## Current Status
 
-  <br/>
+ShipSpace is in **Beta 0.1 / Internal Beta readiness**.
 
-  ![Java](https://img.shields.io/badge/Java-17-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-  ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
-  ![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-  ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-  ![MongoDB](https://img.shields.io/badge/MongoDB-6+-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
-  ![Redis](https://img.shields.io/badge/Redis-7+-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-  ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-  ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
+The application code, CI pipeline, Docker image build, and Render-first deployment blueprint are in place. The next release activity is not feature expansion; it is controlled beta deployment and manual acceptance testing.
 
-  <br/>
+| Area | Status |
+| --- | --- |
+| Student/User MVP features | Complete |
+| Admin MVP features | Complete for beta operations |
+| Backend MVP contract | Frozen for beta |
+| Frontend MVP experience | Implemented |
+| GitHub Actions CI | Passing |
+| Docker image build and push | Passing |
+| Render blueprint | Present |
+| Manual browser release gates | Pending |
+| Public production launch | Not yet |
 
-  <a href="#-what-is-krevo">Overview</a> •
-  <a href="#-tech-stack">Stack</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-api-reference">API</a> •
-  <a href="#-local-setup">Setup</a> •
-  <a href="#-roadmap">Roadmap</a>
+## Product Capabilities
 
-</div>
+ShipSpace supports the core beta loop:
 
----
+- GitHub OAuth login with JWT sessions
+- USER and ADMIN role-based access control
+- Admin bootstrap through numeric GitHub IDs
+- Project creation and public project timelines
+- Ship creation for project-linked updates
+- Public discovery through trending feeds and search
+- Likes, comments, follows, and collaboration requests
+- In-app notifications with unread/read state
+- ShipScore and rank progression
+- Media upload validation before storage handoff
+- Banned-user write blocking while preserving reads and logout
+- Admin dashboard, user management, ban/unban, reports, audit logs, and moderation views
 
-## 🌐 What is KREVO?
+## Tech Stack
 
-KREVO is a **social platform built exclusively for technical builders** — indie hackers, side-project developers, and early-stage founders. While Twitter rewards hot takes and LinkedIn celebrates job promotions, KREVO rewards one thing: **actually building**.
+| Layer | Technology |
+| --- | --- |
+| Backend | Java 17, Spring Boot 3.2 |
+| Frontend | React 19, TypeScript, Vite |
+| Database | MongoDB 7 |
+| Cache/session support | Redis 7 |
+| Authentication | GitHub OAuth 2.0, JWT |
+| Storage integration | Multibase-compatible upload service placeholder |
+| Containerization | Docker, Docker Compose |
+| CI/CD | GitHub Actions |
+| Beta deployment target | Render free tier plus MongoDB Atlas |
 
-Every piece of content on KREVO is a **Ship** — a project update anchored to a persistent **Project**. This creates a transparent, chronological log of your building journey visible to the whole community.
+## Architecture
 
-| Platform | Problem |
-|---|---|
-| **Twitter/X** | Noise and engagement bait drown out technical signal |
-| **LinkedIn** | Corporate signaling over real building progress |
-| **GitHub** | Great for code, missing the social discovery layer |
-| ✅ **KREVO** | Content = project updates. Proof of work, always. |
-
----
-
-## 🛠 Tech Stack
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Backend API** | Spring Boot 3.2 (Java 17) | Core REST API, business logic |
-| **Frontend** | React 19 + TypeScript + Vite | Single-page application |
-| **Primary Database** | MongoDB 6+ | Users, ships, projects, notifications |
-| **Cache** | Redis 7+ (Lettuce client) | Trending feed, rate limiting, token blacklist |
-| **Authentication** | GitHub OAuth 2.0 + JWT (JJWT 0.12.3) | Secure, builder-quality identity |
-| **Image Storage** | Multibase (content-addressed) | Image upload backend integration |
-| **Reverse Proxy** | Nginx | SSL termination, routing |
-| **API Docs** | SpringDoc OpenAPI 3 (Swagger UI) | Dev/staging only |
-| **Async Processing** | Spring `@Async` + bounded thread pool | Non-blocking background tasks |
-| **Scheduled Jobs** | Spring `@Scheduled` | Score decay, trending recalculation |
-| **Containerization** | Docker + Docker Compose | Portable, reproducible deployments |
-| **CI/CD** | GitHub Actions | Lint, type-check, automated tests |
-
-> Current implementation note: the frontend is React/Vite, the backend is Spring Boot, and persistence is MongoDB/Redis. Older Supabase/Postgres/Next.js architecture notes are not part of the current MVP implementation.
-
----
-
-## 🏗 Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                        Client                            │
-│              (React 19 + TypeScript + Vite)              │
-└──────────────────────────┬──────────────────────────────┘
-                           │ HTTPS
-                           ▼
-┌──────────────────────────────────────────────────────────┐
-│                    Nginx (Reverse Proxy)                  │
-│              SSL Termination · Load Balancing             │
-└──────────────────────────┬───────────────────────────────┘
-                           │
-                           ▼
-┌──────────────────────────────────────────────────────────┐
-│               Spring Boot API  (Port 8080)                │
-│                                                           │
-│  ┌────────────┐  ┌────────────┐  ┌───────────────────┐  │
-│  │    Auth    │  │    Feed    │  │    Engagement     │  │
-│  │ GitHub OAuth│  │ Following  │  │  Likes · Comments │  │
-│  │  JWT Tokens│  │ Trending   │  │  Atomic counters  │  │
-│  │            │  │ Personalized│  │                   │  │
-│  └────────────┘  └────────────┘  └───────────────────┘  │
-│                                                           │
-│  ┌────────────┐  ┌────────────┐  ┌───────────────────┐  │
-│  │   Social   │  │  Scoring   │  │  Personalization  │  │
-│  │ Follow/    │  │ ShipScore  │  │ BehavioralSignal  │  │
-│  │ Unfollow   │  │ Levels 1-30│  │ InterestProfile   │  │
-│  │ Counters   │  │ Rank Tiers │  │ Hybrid Feed       │  │
-│  └────────────┘  └────────────┘  └───────────────────┘  │
-│                                                           │
-│  Scheduled Jobs:                                          │
-│  ├── ScoreDecayJob         @ 02:00 AM daily               │
-│  ├── TrendingRecalculation @ every 15 min                 │
-│  ├── TimeDecayJob          @ midnight                     │
-│  └── CounterReconciliation @ 03:00 AM daily               │
-└───────────────┬───────────────────────┬──────────────────┘
-                │                       │
-                ▼                       ▼
-┌──────────────────────┐  ┌────────────────────────────────┐
-│   MongoDB (Primary)  │  │    Redis (Cache & Control)     │
-│  · Users             │  │  · Trending feed cache         │
-│  · Projects          │  │  · Rate limiting (IP-based)    │
-│  · Ships             │  │  · JWT token blacklist         │
-│  · Notifications     │  │  · User interest profiles      │
-│  · Comments          │  └────────────────────────────────┘
-└──────────────────────┘
+```text
+Browser
+  |
+  | React/Vite frontend
+  v
+ShipSpace Web
+  |
+  | REST API calls
+  v
+Spring Boot API
+  |
+  +--> MongoDB: users, projects, ships, comments, reports, notifications, audit logs
+  |
+  +--> Redis: token blacklist, cache, rate limiting support
+  |
+  +--> GitHub OAuth: identity provider
+  |
+  +--> Media storage service: validated image upload target
 ```
 
----
+The repository is a monorepo:
 
-## ✨ Features
+```text
+.
+├── src/                         Backend source
+├── web/                         React/Vite frontend
+├── docs/                        MVP tracking, deployment, and QA runbooks
+├── ops/                         Operational scripts and smoke checks
+├── observability/               Monitoring configuration
+├── .github/workflows/           CI/CD pipeline
+├── docker-compose.yml           Local full-stack runtime
+├── Dockerfile                   Backend container image
+├── render.yaml                  Render beta deployment blueprint
+└── pom.xml                      Maven project
+```
 
-### 🔐 Authentication & Identity
-- **GitHub OAuth 2.0** — Builder-quality identity, no email/password noise
-- **JWT Access + Refresh Tokens** — Secure, stateless session management
-- **Token Blacklist** — Instant revocation on logout via Redis
-
-### 📦 Projects & Ships
-- **Project Entity** — Name, one-liner, status (`Idea → Building → Live → Archived`), website/repo URLs
-- **Ships (Updates)** — Atomic posts tied to a project (max 500 chars + code snippets + up to 4 images)
-- **10-Minute Edit Window** — Ships become immutable historical records after grace period
-- **Content-Addressed Image Storage** — EXIF-stripped, deduplication built-in
-
-### 📡 Feeds
-| Feed | Description |
-|---|---|
-| **Following** | Pure reverse-chronological feed from followed builders |
-| **Trending** | Engagement-ranked, normalized by follower count + time decay |
-| **Personalized** | Hybrid feed using behavioral signals and interest profile matching |
-
-### 🏆 ShipScore Progression System
-Gamified reputation system that rewards consistent shipping and meaningful engagement.
-
-| Rank Tier | Levels | How to Earn |
-|---|---|---|
-| 🔵 **DOCKED** | 1 – 5 | First ships and likes |
-| 🟢 **SAILING** | 6 – 10 | Regular shipping cadence |
-| 🟡 **NAVIGATOR** | 11 – 15 | High-quality ships with engagement |
-| 🟠 **CAPTAIN** | 16 – 20 | Community leader, consistent output |
-| 🔴 **COMMODORE** | 21 – 25 | Top-tier builders |
-| 🟣 **FLEET_ADMIRAL** | 26 – 30 | Elite. Proof of sustained work. |
-
-### 💬 Engagement
-- **Rocket 🚀 Likes** — Atomic `$inc` counters, toggle semantics
-- **Threaded Comments** — Max depth 3, with comment upvotes
-- **Notifications** — Real-time alerts for likes, follows, comments
-
-### ⚙️ Operations
-- **Rate Limiting** — Auth endpoints: 10 req/min per IP (Redis-backed)
-- **Auto-Index Init** — Idempotent `MongoConfig.initIndexes()` on startup
-- **Score Decay** — Prevents stale content from dominating feeds
-
----
-
-## 📡 API Reference
-
-> **Base URL:** `http://localhost:8080/api`  
-> **Auth:** Bearer JWT token in `Authorization` header
-
-### Authentication
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `POST` | `/auth/github` | — | GitHub OAuth login / register |
-| `POST` | `/auth/refresh` | — | Refresh access token |
-| `GET` | `/auth/me` | ✅ | Get current user profile |
-| `POST` | `/auth/logout` | ✅ | Revoke tokens |
-
-### Users
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `GET` | `/users/{id}` | — | Public profile |
-| `GET` | `/users/{id}/ships` | — | Public ships for a user |
-| `PUT` | `/users/me` | ✅ | Update own profile |
-| `GET` | `/users/me/projects` | ✅ | List my projects |
-| `GET` | `/users/me/activity` | ✅ | My activity timeline |
-
-### Projects
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `POST` | `/projects` | ✅ | Create a project |
-| `GET` | `/projects/{id}` | — | Get project details |
-| `PUT` | `/projects/{id}` | ✅ | Update project |
-| `DELETE` | `/projects/{id}` | ✅ | Delete project + all ships |
-| `GET` | `/projects/{id}/ships` | — | All ships for a project |
-
-### Ships
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `POST` | `/ships` | ✅ | Publish a ship |
-| `GET` | `/ships/{id}` | — | Get ship details |
-| `PUT` | `/ships/{id}` | ✅ | Edit ship (10-min window) |
-| `DELETE` | `/ships/{id}` | ✅ | Delete ship |
-| `POST` | `/ships/{id}/images` | ✅ | Upload images |
-| `PUT` | `/ships/{id}/like` | ✅ | Like a ship |
-| `DELETE` | `/ships/{id}/like` | ✅ | Unlike a ship |
-| `POST` | `/ships/{id}/comments` | ✅ | Add comment |
-| `GET` | `/ships/{id}/comments` | — | Get comments |
-| `DELETE` | `/ships/comments/{id}` | ✅ | Delete comment |
-
-### Feeds
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `GET` | `/feeds/following` | ✅ | Chronological following feed |
-| `GET` | `/feeds/trending` | — | Global trending feed |
-| `GET` | `/feeds/trending/{window}` | — | Trending by window: `24h` / `7d` / `30d` |
-| `GET` | `/feeds/personalized` | ✅ | AI-hybrid personalized feed |
-
-### Notifications
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `GET` | `/notifications` | ✅ | All notifications |
-| `GET` | `/notifications/unread-count` | ✅ | Unread count |
-| `PUT` | `/notifications/{id}/read` | ✅ | Mark single as read |
-| `PUT` | `/notifications/read-all` | ✅ | Mark all as read |
-
-### System
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|:----:|-------------|
-| `GET` | `/health` | — | Health check |
-
-### MVP Public Route Policy
-
-Anonymous users can read public profiles, public user ships, public project details, public project ships, public ship details, public comments/likes, rank summaries, trending feeds, search, health, and auth bootstrap endpoints. Mutations require authentication. Banned users can still read and log out, but cannot perform write actions.
-
----
-
-## 🚀 Local Setup
+## Local Development
 
 ### Prerequisites
 
-| Requirement | Version |
-|---|---|
-| Java | 17+ |
-| Maven | 3.6+ |
-| MongoDB | 6+ (standalone or replica set) |
-| Redis | 7+ |
-| Node.js | 18+ (for frontend) |
+- Java 17
+- Node.js 20
+- Docker Desktop
+- GitHub OAuth App
 
-### 1. Clone & Configure
+### Environment
 
-```bash
-git clone https://github.com/SamppurnaTH/ShipSpace.git
-cd ShipSpace
-cp .env.example .env
+Copy the example files and fill in the required values:
+
+```powershell
+copy .env.example .env
+copy web\.env.example web\.env
 ```
 
-Edit `.env` with your credentials:
+Minimum backend values:
 
 ```env
-# Database
 MONGODB_URI=mongodb://localhost:27017/shipspace
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# Auth — JWT
-JWT_SECRET=<min-256-bit-secret>
-JWT_EXPIRATION=86400000
-JWT_REFRESH_EXPIRATION=604800000
-
-# Auth — GitHub OAuth App
-GITHUB_CLIENT_ID=<your-github-oauth-app-client-id>
-GITHUB_CLIENT_SECRET=<your-github-oauth-app-client-secret>
-GITHUB_REDIRECT_URI=http://localhost:3000/auth/callback
-ADMIN_GITHUB_IDS=<comma-separated-github-numeric-ids-for-admins>
-
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:3000
+JWT_SECRET=CHANGE_ME_use_openssl_rand_hex_32
+GITHUB_CLIENT_ID=CHANGE_ME
+GITHUB_CLIENT_SECRET=CHANGE_ME
+GITHUB_REDIRECT_URI=http://localhost:3005/auth/callback
+ADMIN_GITHUB_IDS=
+CORS_ALLOWED_ORIGINS=http://localhost:3005
 ```
 
-> 💡 Create a GitHub OAuth App at [github.com/settings/developers](https://github.com/settings/developers). Set the callback URL to `http://localhost:3000/auth/callback`.
+Minimum frontend values:
 
-### 2. Run the Backend
-
-```bash
-mvn spring-boot:run
+```env
+VITE_API_BASE_URL=/api
+VITE_GITHUB_CLIENT_ID=CHANGE_ME_GITHUB_CLIENT_ID
+VITE_GITHUB_REDIRECT_URI=http://localhost:3005/auth/callback
 ```
 
-Verify: `curl http://localhost:8080/api/health`
+`ADMIN_GITHUB_IDS` must contain numeric GitHub IDs, not usernames.
 
-### 3. Run the Frontend
+### Run With Docker Compose
 
-```bash
+This is the recommended local beta runtime.
+
+```powershell
+docker compose up --build -d
+```
+
+Services:
+
+| Service | URL |
+| --- | --- |
+| Frontend | `http://localhost:3005` |
+| Backend API | `http://localhost:8086/api` |
+| MongoDB | `localhost:27017` |
+| Redis | `localhost:6380` |
+
+Health checks:
+
+```powershell
+Invoke-WebRequest http://localhost:8086/api/actuator/health/liveness
+Invoke-WebRequest http://localhost:8086/api/health
+```
+
+### Run Frontend Separately
+
+```powershell
 cd web
-cp .env.example .env     # set VITE_API_BASE_URL=http://localhost:8080
-npm install
-npm run dev              # http://localhost:3000
+npm ci --legacy-peer-deps
+npm run dev
 ```
 
-### 4. Docker (All-in-One)
+### Run Backend Separately
 
-```bash
-docker-compose up
+```powershell
+.\mvnw.cmd spring-boot:run
 ```
 
-Services started: `shipspace-api`, `mongodb`, `redis`, `nginx`
+Standalone backend defaults to port `8080` unless `PORT` is overridden.
 
-For full observability stack (Prometheus + Grafana):
+## Testing And Verification
 
-```bash
-docker-compose -f docker-compose.observability.yml up
+Backend compile:
+
+```powershell
+.\mvnw.cmd -q -DskipTests compile
 ```
 
----
+Frontend checks:
 
-## 🔒 Production Notes
-
-| Topic | Detail |
-|---|---|
-| **MongoDB Transactions** | `@Transactional` requires a **replica set**. Annotations are silently ignored on standalone instances. |
-| **Index Management** | Auto-index creation is **disabled**. Indexes are applied idempotently via `MongoConfig.initIndexes()` on startup. |
-| **Rate Limiting** | Auth endpoints rate-limited at 10 req/min per IP. Requires Redis. |
-| **Swagger UI** | Disabled by default. Enable with `SWAGGER_ENABLED=true` in dev/staging only. |
-| **Score Decay** | Runs daily at 2:00 AM. Requires `@EnableScheduling` (already enabled). |
-| **Trending** | Recalculated every 15 minutes. Tune via `feed.trending.recalculation-interval-ms`. |
-| **Media Security** | Backend validates file size and image magic bytes before Multibase upload. EXIF stripping, malware scanning, and signed/public delivery must be verified against Multibase before production release. |
-| **Admin Bootstrap** | Set `ADMIN_GITHUB_IDS` to grant initial admins on GitHub login. |
-| **Branch Strategy** | `main` → Production · `develop` → Staging |
-
----
-
-## 📁 Project Structure
-
-```
-ShipSpace/
-├── src/
-│   └── main/
-│       ├── java/com/shipspace/
-│       │   ├── ShipSpaceApplication.java   ← Entry point
-│       │   ├── config/                     ← MongoDB, Redis, security, async config
-│       │   ├── controller/                 ← REST controllers
-│       │   ├── service/                    ← Business logic
-│       │   ├── repository/                 ← MongoDB repositories
-│       │   ├── model/                      ← Domain entities
-│       │   ├── dto/                        ← Request/response DTOs
-│       │   ├── security/                   ← JWT filter, OAuth handler
-│       │   ├── exception/                  ← Global exception handling
-│       │   └── util/                       ← Shared utilities
-│       └── resources/
-│           └── application.yml
-├── web/                                    ← React 19 + TypeScript + Vite frontend
-│   ├── src/
-│   ├── public/
-│   ├── vite.config.ts
-│   └── package.json
-├── docs/
-│   └── ShipSpace_Master_Documentation.md
-├── .github/
-│   └── workflows/                          ← CI/CD pipelines
-├── assets/
-│   └── hero_banner.png
-├── nginx.conf                              ← Production reverse proxy config
-├── docker-compose.yml
-├── docker-compose.observability.yml        ← Prometheus + Grafana stack
-├── Dockerfile
-└── pom.xml
+```powershell
+cd web
+npm.cmd run lint
+npm.cmd run build
 ```
 
----
+Docker smoke test:
 
-## 🗺 Roadmap
+```powershell
+powershell -ExecutionPolicy Bypass -File .\ops\mvp-smoke-test.ps1 -SkipBuildChecks
+```
 
-### ✅ Phase 1 — MVP: Core Ship Loop
-- [x] GitHub OAuth authentication
-- [x] Project & Ship CRUD
-- [x] Following + Trending feeds
-- [x] Likes, comments, notifications
-- [x] ShipScore gamification (Levels 1–30)
-- [x] Docker deployment
+GitHub Actions currently runs:
 
-### 🔄 Phase 2 — Beta: Retention
-- [ ] Personalized hybrid feed (85% complete)
-- [ ] Weekly digest emails
-- [ ] Builder collaboration tools
-- [ ] Mobile-responsive frontend polish
+- backend compile
+- curated MVP backend regression tests
+- embedded Mongo repository slice tests
+- MVP ship creation integration test with Mongo service
+- frontend lint and build
+- OWASP dependency check
+- Trivy container scan
+- Docker build and push to GHCR
 
-### 🔮 Phase 3 — v1.0: Trust
-- [ ] Verified milestones via GitHub API
-- [ ] Stripe integration for revenue milestones
-- [ ] Analytics dashboard for builders
-- [ ] Public API for third-party integrations
+CI artifacts are disabled by default to avoid free-tier storage quota failures. Enable them with repository variable `ENABLE_CI_ARTIFACTS=true`.
 
----
+CodeQL is opt-in because GitHub code scanning must be enabled for the repository first. Enable it with `ENABLE_CODEQL_SCAN=true` after repository security settings are ready.
 
-## 📊 Success Metrics
+Legacy Kubernetes deploy jobs are disabled by default. Enable only when that deployment path exists with `ENABLE_LEGACY_K8S_DEPLOY=true`.
 
-| Metric | Target |
-|---|---|
-| **WASB** (Weekly Active Shipping Builders) | ≥ 25 at Phase 1 launch |
-| **Project Update Frequency** | ≥ 1.5 ships/builder/week |
-| **Feedback Velocity** | ≥ 3 meaningful comments/ship within 48h |
-| **4-Week Builder Retention** | ≥ 25% |
-| **Signal-to-Noise Ratio** | ≥ 80% project-linked content |
+## Deployment
 
----
+The current beta deployment path is **Render first, AWS later**.
 
-## 👥 Contributors
+`render.yaml` defines:
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/SamppurnaTH">
-        <img src="https://github.com/SamppurnaTH.png" width="80px" style="border-radius:50%" /><br/>
-        <sub><b>Venu Thota</b></sub>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/KumarMannepalli">
-        <img src="https://github.com/KumarMannepalli.png" width="80px" style="border-radius:50%" /><br/>
-        <sub><b>Kumar Mannepalli</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
+- `krevo-web`: static frontend service
+- `krevo-api`: Docker backend web service
+- `krevo-redis`: Render Key Value service
 
----
+MongoDB is expected to be external, preferably MongoDB Atlas for beta.
 
-## ⚠️ Disclaimer
+Deployment details are documented in:
 
-KREVO is an independent open-source project. It is not affiliated with, endorsed by, or connected to any existing platform or company. All trademarks belong to their respective owners.
+- `docs/RENDER_DEPLOYMENT.md`
+- `docs/MVP_Manual_QA_Runbook.md`
+- `docs/MVP_Tracking_Document.md`
 
----
+Required Render secrets include:
 
-<div align="center">
+```env
+MONGODB_URI=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_REDIRECT_URI=
+ADMIN_GITHUB_IDS=
+CORS_ALLOWED_ORIGINS=
+MULTIBASE_API_URL=
+MULTIBASE_API_KEY=
+VITE_GITHUB_CLIENT_ID=
+VITE_GITHUB_REDIRECT_URI=
+```
 
-**Built by builders, for builders.** 🚀
+Render free tier is acceptable for controlled beta, but expect cold starts and modest performance.
 
-*If you're shipping, you belong here.*
+## Manual Beta Gates
 
-</div>
+Before calling the beta release frozen, complete the manual QA gates:
 
+| Gate | Purpose |
+| --- | --- |
+| GitHub OAuth | First login, returning login, cancel/failure, logout |
+| Admin access | ADMIN can access admin tools; USER cannot |
+| Banned-user journey | Reads/logout allowed; writes blocked; unban restores writes |
+| Media upload | Valid images pass; invalid/malicious files fail |
+| Two-user social loop | Follow, like, comment, collaboration, notifications |
+| Responsive QA | Public, authenticated, and admin screens across target widths |
 
+## API Surface
+
+Base local Docker API:
+
+```text
+http://localhost:8086/api
+```
+
+Primary route groups:
+
+| Group | Examples |
+| --- | --- |
+| Auth | `/auth/github`, `/auth/me`, `/auth/logout` |
+| Users | `/users/{id}`, `/users/me/projects`, `/users/me/ships` |
+| Projects | `/projects`, `/projects/{id}` |
+| Ships | `/ships`, `/ships/{id}`, `/ships/{id}/comments` |
+| Feeds | `/feeds/trending`, `/feeds/following`, `/feeds/personalized` |
+| Search | `/search` |
+| Notifications | `/notifications`, `/notifications/unread-count` |
+| Collaborations | `/collaborations` |
+| Admin | `/admin/users`, `/admin/reports`, `/admin/audit-logs` |
+| Health | `/health`, `/actuator/health/liveness` |
+
+Anonymous users can access public read and discovery routes. Write routes require authentication. Admin routes require ADMIN role.
+
+## Security And Operational Notes
+
+- Use long random `JWT_SECRET` values in every non-local environment.
+- Never commit `.env` or provider secrets.
+- Use numeric GitHub IDs for `ADMIN_GITHUB_IDS`.
+- Keep Swagger disabled by default outside dev/staging.
+- Keep Redis private.
+- Use a dedicated MongoDB Atlas beta database.
+- Keep CI artifact uploads disabled unless storage quota is available.
+- Enable CodeQL only after repository code scanning is configured.
+- Media storage must be configured with a real reachable endpoint before upload QA can pass.
+
+## Version Plan
+
+| Version | Scope |
+| --- | --- |
+| Beta 0.1 | Internal beta: owner/admin validation and manual release gates |
+| Beta 0.2 | Controlled beta: 5-10 trusted users, blocker fixes only |
+| Beta 0.3 | Stability beta: 20-30 users, logs/performance/moderation review |
+| RC 1 | Release candidate: no new features, critical fixes only |
+| MVP v1.0 | Public MVP launch with accepted post-MVP debt documented |
+
+## Roadmap
+
+Post-MVP items should not block Beta 0.1:
+
+- R2/S3 media storage replacement or finalized Multibase production setup
+- email notifications for high-value collaboration events
+- real-time push notifications
+- richer analytics
+- server-side admin search at larger user counts
+- recruiter/team discovery workflows
+- AWS deployment path
+
+## License
+
+This project is currently maintained as the ShipSpace/KREVO MVP codebase. Confirm license and distribution terms before public release.
+
+## Maintainer
+
+Primary repository:
+
+```text
+https://github.com/SamppurnaTH/ShipeSpace
+```
+
+Primary maintainer:
+
+```text
+SamppurnaTH
+```
