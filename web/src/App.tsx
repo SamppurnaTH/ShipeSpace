@@ -24,6 +24,7 @@ import { ErrorPage } from './pages/ErrorPage'
 import { EmptyStatePage } from './pages/EmptyStatePage'
 import { PeoplePage } from './pages/PeoplePage'
 import { AboutPage } from './pages/AboutPage'
+import { HelpPage, PrivacyPage, TermsPage } from './pages/InfoPages'
 import { SearchPage } from './pages/SearchPage'
 import { CollaborationsPage } from './pages/CollaborationsPage'
 import { AuthenticatedHomePage } from './components/home/AuthenticatedHomePage'
@@ -214,6 +215,9 @@ function AppRoutes() {
       <Route path="/learning" element={<PublicWithShell><PlaceholderPage title="Learning" description="Discover educational resources and content from builders. Coming soon." /></PublicWithShell>} />
       <Route path="/shipscore" element={<PublicWithShell><PlaceholderPage title="ShipScore" description="Understand reputation, ranking, and the builder leaderboard. Coming soon." /></PublicWithShell>} />
       <Route path="/about" element={<PublicWithShell><AboutPage /></PublicWithShell>} />
+      <Route path="/help" element={<PublicWithShell><HelpPage /></PublicWithShell>} />
+      <Route path="/privacy" element={<PublicWithShell><PrivacyPage /></PublicWithShell>} />
+      <Route path="/terms" element={<PublicWithShell><TermsPage /></PublicWithShell>} />
 
       <Route path="/admin" element={<AdminRoute><AdminDashboardPage /></AdminRoute>} />
       <Route path="/admin/users" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />

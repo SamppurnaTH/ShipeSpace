@@ -101,10 +101,10 @@ const FOOTER_GROUPS = [
   {
     title: 'KREVO',
     links: [
-      { label: 'About MVP', to: '#how-it-works' },
-      { label: 'Public discovery', to: '/trending' },
-      { label: 'GitHub login', to: '/auth' },
-      { label: 'Builder search', to: '/people' },
+      { label: 'About', to: '/about' },
+      { label: 'Help', to: '/help' },
+      { label: 'Privacy', to: '/privacy' },
+      { label: 'Terms', to: '/terms' },
     ],
   },
 ]

@@ -107,8 +107,15 @@ export function RightPanel() {
 
       {/* Footer links */}
       <div style={{ padding: 'var(--space-2) var(--space-2)', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {['About', 'Help', 'Privacy', 'Terms'].map(l => (
-          <span key={l} style={{ fontSize: 10, color: 'var(--color-text-muted)', cursor: 'default' }}>{l}</span>
+        {[
+          { label: 'About', to: '/about' },
+          { label: 'Help', to: '/help' },
+          { label: 'Privacy', to: '/privacy' },
+          { label: 'Terms', to: '/terms' },
+        ].map(link => (
+          <Link key={link.to} to={link.to} style={{ fontSize: 10, color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+            {link.label}
+          </Link>
         ))}
         <span style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>- KREVO © 2026</span>
       </div>
