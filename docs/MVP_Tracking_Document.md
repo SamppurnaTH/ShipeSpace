@@ -1661,3 +1661,78 @@ Professional legal review is recommended before broad commercial/public launch f
 ### Decision
 
 **PUBLIC PAGES BETA READY**
+
+### Public Page UX Redesign
+
+**Date:** 2026-08-22
+
+#### Design Problems Found
+
+| Category | Finding | Resolution |
+| --- | --- | --- |
+| VISUAL | Help, Privacy, and Terms looked like plain documentation pages rather than polished product surfaces | Introduced shared public-page hero, section, card, footer, Help Center, and policy layouts |
+| STRUCTURAL | Help used one long generic page pattern, which made product guidance hard to scan | Rebuilt Help as search, topic cards, quick start, detailed guides, FAQs, and support guidance |
+| NAVIGATION | Policy pages lacked strong section navigation | Added desktop sticky table of contents and mobile horizontal section navigation |
+| READABILITY | Privacy/Terms content was accurate but visually dense | Preserved reviewed meaning while grouping content into readable policy sections and subtle callouts |
+| ACCESSIBILITY | Help did not have interactive help-center affordances | Added labeled search, status feedback, real links, and button-based FAQ accordions with `aria-expanded`/`aria-controls` |
+| RESPONSIVE | Existing pages left too much unused desktop space and did not use a mature responsive information layout | Added 1180px public container, responsive grids, single-column mobile layouts, and policy TOC collapse behavior |
+| CONTENT DUPLICATION | Page-level footer patterns risked diverging | Added shared `PublicPageFooter` for About, Help, Privacy, and Terms |
+
+#### Shared Components / Patterns
+
+| Component / Pattern | Purpose |
+| --- | --- |
+| `PublicPageFooter` | Shared centered public footer links for About, Help, Privacy, and Terms |
+| Help Center search | Client-side filtering across topic titles, keywords, questions, and answers |
+| Help topic cards | Replaces pill-only navigation with scannable product help categories |
+| Help FAQ accordion | Accessible common-question pattern for beta users |
+| Policy layout | Shared Privacy/Terms layout with TOC, readable content column, and subtle callouts |
+| Public page CSS system | Shared hero, CTA, card, empty state, support block, and responsive behavior |
+
+#### Files Changed
+
+| File | Change |
+| --- | --- |
+| `web/src/components/PublicPageFooter.tsx` | Added shared public footer component |
+| `web/src/pages/AboutPage.tsx` | Redesigned as startup/product story page with KREVO builder identity CTA |
+| `web/src/pages/InfoPages.tsx` | Rebuilt Help Center and shared Privacy/Terms policy layout while preserving reviewed content |
+| `web/src/index.css` | Added global public-page, Help Center, About, policy, footer, responsive, and accessibility styles |
+| `docs/MVP_Tracking_Document.md` | Recorded public-page UX redesign evidence |
+
+#### Content Preservation / Legal Safety
+
+- Privacy and Terms meaning was preserved from the reviewed beta-safe content.
+- No fake support email, legal entity, phone number, address, compliance certification, testimonials, or usage statistics were added.
+- The pages still state that final legal language, privacy rights, official contact details, and business/legal identity require professional review before broad launch.
+
+#### Responsive / Accessibility Notes
+
+| Area | Result |
+| --- | --- |
+| Mobile | Single-column Help cards, About steps, support blocks, and policy content; CTAs/search controls stack |
+| Tablet | Two-column topic cards and balanced policy/content spacing |
+| Desktop | Wide Help Center layout, full topic grid, sticky policy TOC, and balanced About hero |
+| Keyboard | Links and FAQ controls use semantic anchors/buttons with focusable controls |
+| Search | Search has a label, search role, clear button, and no-result states |
+| FAQ | Accordions use `button`, `aria-expanded`, `aria-controls`, and hidden panels |
+| Headings | Each page keeps one primary H1 and logical section headings |
+
+#### Browser QA Matrix
+
+| Page | 390 | 768 | 1024 | 1440 | Keyboard | Route Refresh |
+| --- | --- | --- | --- | --- | --- | --- |
+| About | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING |
+| Help | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING |
+| Privacy | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING |
+| Terms | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING | MANUAL PENDING |
+
+#### Verification
+
+| Command | Result |
+| --- | --- |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run lint` | PASS - 0 errors, 27 existing warnings |
+| `cd B:\Personal\ShipSpace\web; npm.cmd run build` | PASS |
+
+#### Decision
+
+**PUBLIC PAGE UX REDESIGN COMPLETE**
