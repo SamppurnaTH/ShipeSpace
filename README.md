@@ -1,4 +1,10 @@
-# ShipSpace
+<div align="center">
+  <img src="assets/logo.png" alt="ShipSpace logo" width="160" />
+
+  <h1>ShipSpace</h1>
+
+  <p><strong>A social shipping platform for technical builders.</strong></p>
+</div>
 
 ShipSpace, currently branded in deployment as **KREVO**, is a builder-focused social shipping platform for developers, students, makers, indie hackers, and technical teams who want to show real project progress.
 
